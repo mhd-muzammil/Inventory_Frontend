@@ -28,7 +28,9 @@ function drainQueue(token: string) {
   refreshQueue = [];
 }
 
-const client = axios.create({ baseURL: "/api" });
+const client = axios.create({
+  baseURL: import.meta.env.VITE_API_URL || "/api",
+});
 
 client.interceptors.request.use((config) => {
   const token = tokenStore.getAccess();
@@ -68,7 +70,10 @@ client.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const { data } = await axios.post<{ access: string }>("/api/auth/refresh/", { refresh });
+        const { data } = await axios.post<{ access: string }>(
+          `${import.meta.env.VITE_API_URL || "/api"}/auth/refresh/`,
+          { refresh },
+        );
         tokenStore.setAccess(data.access);
         drainQueue(data.access);
         original.headers!.Authorization = `Bearer ${data.access}`;
