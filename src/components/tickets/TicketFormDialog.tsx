@@ -19,7 +19,9 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 import { ticketSchema, type TicketFormData } from "@/lib/validations";
-import { SERVICE_TYPE_LABELS, PRIORITY_LABELS } from "@/types";
+import { SERVICE_TYPE_LABELS, REGION_LABELS } from "@/types";
+import type { Region } from "@/types";
+import { useAuthStore } from "@/store/authStore";
 import { toast } from "@/components/ui/use-toast";
 import {
   Send,
@@ -45,6 +47,9 @@ export function TicketFormDialog({
   onSubmit,
   onVerifiedSubmit,
 }: TicketFormDialogProps) {
+  const user = useAuthStore((s) => s.user);
+  const isAdmin = user?.role === "admin" || user?.role === "super_admin";
+
   const [step, setStep] = useState<Step>("fill");
   const [submitLoading, setSubmitLoading] = useState(false);
   const [submittedData, setSubmittedData] = useState<TicketFormData | null>(null);
@@ -81,7 +86,7 @@ export function TicketFormDialog({
   });
 
   const serviceTypeValue = watch("service_type");
-  const priorityValue = watch("priority");
+  const regionValue = watch("region");
 
   useEffect(() => {
     if (open) {
@@ -154,7 +159,7 @@ export function TicketFormDialog({
           <div><div class="label">Work Order</div><div class="value">${data.work_order || '-'}</div></div>
           <div><div class="label">Case ID</div><div class="value">${data.case_id || 'Auto-generated'}</div></div>
           <div><div class="label">Warranty Status</div><div class="value">${sType}</div></div>
-          <div><div class="label">Location</div><div class="value">${data.location || '-'}</div></div>
+          <div><div class="label">Region</div><div class="value">${data.region ? ({"vellore":"Vellore","salem":"Salem","chennai":"Chennai","kanchipuram":"Kanchipuram","hosur":"Hosur"} as Record<string,string>)[data.region] || data.region : '-'}</div></div>
         </div>
       </div>
       <div class="section">
@@ -214,8 +219,8 @@ export function TicketFormDialog({
 
   const FormFields = ({ disabled }: { disabled?: boolean }) => (
     <div className="space-y-5">
-      {/* Row 1: Work Order + Case ID + Warranty Status */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      {/* Row 1: Work Order + Case ID + Warranty Status + Region (admin) */}
+      <div className={`grid grid-cols-1 gap-4 ${isAdmin ? "sm:grid-cols-4" : "sm:grid-cols-3"}`}>
         <div className="space-y-2">
           <Label>Work Order</Label>
           <Input {...register("work_order")} placeholder="Work order number" disabled={disabled} />
@@ -239,6 +244,23 @@ export function TicketFormDialog({
             </Select>
           )}
         </div>
+        {isAdmin && (
+          <div className="space-y-2">
+            <Label>Region *</Label>
+            {disabled ? (
+              <Input value={REGION_LABELS[regionValue as Region] || regionValue || "-"} disabled />
+            ) : (
+              <Select value={regionValue || ""} onValueChange={(val) => setValue("region", val as Region)}>
+                <SelectTrigger><SelectValue placeholder="Select region" /></SelectTrigger>
+                <SelectContent>
+                  {Object.entries(REGION_LABELS).map(([v, l]) => (
+                    <SelectItem key={v} value={v}>{l}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Row 2: Customer Name + Contact Number */}
