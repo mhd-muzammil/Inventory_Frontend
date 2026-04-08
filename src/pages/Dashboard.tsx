@@ -5,10 +5,8 @@ import {
   CalendarDays,
   UserCheck,
   UserX,
-  Wrench,
   Package,
   FileText,
-  Truck,
   Clock,
   CheckCircle2,
   Plus,
@@ -18,10 +16,12 @@ import {
   AlertTriangle,
   TrendingUp,
   BarChart3,
+  ShieldCheck,
+  ShieldX,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { SLABreachFeed } from "@/components/dashboard/SLABreachFeed";
 import { useAuthStore } from "@/store/authStore";
@@ -32,44 +32,83 @@ import { useSLABreaches } from "@/hooks/useSLABreaches";
 import { REGION_LABELS } from "@/types";
 import type { Region } from "@/types";
 import { cn } from "@/lib/utils";
-import type { LucideIcon } from "lucide-react";
 
 // ---------------------------------------------------------------------------
-// KPI Card (inline, tailored for dashboard grid)
+// Metric row item inside a service card
 // ---------------------------------------------------------------------------
-interface KPIProps {
-  title: string;
-  value: number | string;
-  icon: LucideIcon;
+interface MetricItemProps {
+  label: string;
+  value: number;
   color: string;
-  bgColor: string;
-  iconColor: string;
-  onClick?: () => void;
+}
+
+function MetricItem({ label, value, color }: MetricItemProps) {
+  return (
+    <div className={cn("rounded-xl border p-3 text-center", color)}>
+      <p className="text-2xl font-bold text-slate-800 dark:text-slate-100">{value}</p>
+      <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 mt-0.5 uppercase tracking-wide">{label}</p>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Service summary card (Overall / Today)
+// ---------------------------------------------------------------------------
+interface ServiceCardProps {
+  title: string;
+  total: number;
+  warranty: number;
+  outOfWarranty: number;
+  assigned: number;
+  unassigned: number;
+  partPending: number;
+  partOrderPending: number;
+  partQuotePending: number;
+  cxPending: number;
+  completed: number;
+  completedLabel: string;
   delay?: number;
 }
 
-function KPI({ title, value, icon: Icon, color, bgColor, iconColor, onClick, delay = 0 }: KPIProps) {
+function ServiceCard({
+  title, total, warranty, outOfWarranty, assigned, unassigned,
+  partPending, partOrderPending, partQuotePending, cxPending,
+  completed, completedLabel, delay = 0,
+}: ServiceCardProps) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 16 }}
+      initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, delay: delay * 0.05 }}
+      transition={{ duration: 0.35, delay: delay * 0.1 }}
+      className="flex-1"
     >
-      <Card
-        className={cn(
-          "p-4 cursor-pointer hover:shadow-md transition-shadow border-l-4",
-          color,
-          onClick && "hover:scale-[1.01] active:scale-[0.99]"
-        )}
-        onClick={onClick}
-      >
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">{title}</p>
-            <p className="text-2xl font-bold text-slate-800 dark:text-slate-100 mt-1">{value}</p>
+      <Card className="overflow-hidden h-full">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-indigo-600 to-indigo-500 px-5 py-4 text-white">
+          <p className="text-sm font-medium opacity-90 uppercase tracking-wide">{title}</p>
+          <p className="text-3xl font-bold mt-1">{total}</p>
+        </div>
+
+        {/* Metrics grid */}
+        <div className="p-4 space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <MetricItem label="Warranty" value={warranty} color="border-blue-200 bg-blue-50/50 dark:border-blue-900 dark:bg-blue-950/30" />
+            <MetricItem label="Out of Warranty" value={outOfWarranty} color="border-orange-200 bg-orange-50/50 dark:border-orange-900 dark:bg-orange-950/30" />
+            <MetricItem label="Assigned" value={assigned} color="border-green-200 bg-green-50/50 dark:border-green-900 dark:bg-green-950/30" />
+            <MetricItem label="Unassigned" value={unassigned} color="border-red-200 bg-red-50/50 dark:border-red-900 dark:bg-red-950/30" />
+            <MetricItem label="Part Pending" value={partPending} color="border-amber-200 bg-amber-50/50 dark:border-amber-900 dark:bg-amber-950/30" />
+            <MetricItem label="Part Order Pending" value={partOrderPending} color="border-purple-200 bg-purple-50/50 dark:border-purple-900 dark:bg-purple-950/30" />
+            <MetricItem label="Part Quote Pending" value={partQuotePending} color="border-pink-200 bg-pink-50/50 dark:border-pink-900 dark:bg-pink-950/30" />
+            <MetricItem label="CX Pending" value={cxPending} color="border-rose-200 bg-rose-50/50 dark:border-rose-900 dark:bg-rose-950/30" />
           </div>
-          <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0", bgColor)}>
-            <Icon className={cn("w-5 h-5", iconColor)} />
+
+          {/* Completed row */}
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 dark:border-emerald-900 dark:bg-emerald-950/30 p-3 flex items-center justify-center gap-3">
+            <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+            <div className="text-center">
+              <p className="text-2xl font-bold text-emerald-700 dark:text-emerald-300">{completed}</p>
+              <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">{completedLabel}</p>
+            </div>
           </div>
         </div>
       </Card>
@@ -80,21 +119,25 @@ function KPI({ title, value, icon: Icon, color, bgColor, iconColor, onClick, del
 // ---------------------------------------------------------------------------
 // Loading skeleton
 // ---------------------------------------------------------------------------
-function KPIGridSkeleton() {
+function ServiceCardSkeleton() {
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-      {Array.from({ length: 10 }).map((_, i) => (
-        <Card key={i} className="p-4">
-          <div className="flex items-center justify-between">
-            <div className="space-y-2">
-              <Skeleton className="h-3 w-20" />
-              <Skeleton className="h-7 w-12" />
+    <Card className="overflow-hidden flex-1">
+      <div className="bg-slate-200 dark:bg-slate-700 px-5 py-4">
+        <Skeleton className="h-4 w-32 bg-slate-300 dark:bg-slate-600" />
+        <Skeleton className="h-8 w-16 mt-2 bg-slate-300 dark:bg-slate-600" />
+      </div>
+      <div className="p-4 space-y-3">
+        <div className="grid grid-cols-2 gap-3">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="rounded-xl border p-3 text-center">
+              <Skeleton className="h-7 w-10 mx-auto" />
+              <Skeleton className="h-3 w-16 mx-auto mt-2" />
             </div>
-            <Skeleton className="w-10 h-10 rounded-xl" />
-          </div>
-        </Card>
-      ))}
-    </div>
+          ))}
+        </div>
+        <Skeleton className="h-16 w-full rounded-xl" />
+      </div>
+    </Card>
   );
 }
 
@@ -190,129 +233,45 @@ export default function Dashboard() {
         </Card>
       )}
 
-      {/* ── KPI Cards Grid (your 10 requested KPIs) ────────────────────── */}
+      {/* ── Service Cards (Overall + Today) ────────────────────────────── */}
       {dashLoading ? (
-        <KPIGridSkeleton />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <ServiceCardSkeleton />
+          <ServiceCardSkeleton />
+        </div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-          <KPI
-            title="Total Services"
-            value={o?.total_tickets ?? 0}
-            icon={Ticket}
-            color="border-indigo-500"
-            bgColor="bg-indigo-100 dark:bg-indigo-950/50"
-            iconColor="text-indigo-600 dark:text-indigo-400"
-            onClick={() => navigate("/cso-entry")}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <ServiceCard
+            title="Overall Services"
+            total={o?.total_tickets ?? 0}
+            warranty={o?.warranty_count ?? 0}
+            outOfWarranty={o?.out_of_warranty_count ?? 0}
+            assigned={o?.assigned_count ?? 0}
+            unassigned={o?.unassigned_count ?? 0}
+            partPending={o?.part_pending_count ?? 0}
+            partOrderPending={o?.part_order_pending_count ?? 0}
+            partQuotePending={o?.part_quote_pending_count ?? 0}
+            cxPending={o?.cx_pending_count ?? 0}
+            completed={o?.completed_count ?? 0}
+            completedLabel="Completed"
             delay={0}
           />
-          <KPI
+          <ServiceCard
             title="Today Services"
-            value={o?.tickets_today ?? 0}
-            icon={CalendarDays}
-            color="border-blue-500"
-            bgColor="bg-blue-100 dark:bg-blue-950/50"
-            iconColor="text-blue-600 dark:text-blue-400"
+            total={o?.tickets_today ?? 0}
+            warranty={o?.today_warranty ?? 0}
+            outOfWarranty={o?.today_out_of_warranty ?? 0}
+            assigned={o?.today_assigned ?? 0}
+            unassigned={o?.today_unassigned ?? 0}
+            partPending={o?.today_part_pending ?? 0}
+            partOrderPending={o?.today_part_order_pending ?? 0}
+            partQuotePending={o?.today_part_quote_pending ?? 0}
+            cxPending={o?.today_cx_pending ?? 0}
+            completed={o?.closed_today ?? 0}
+            completedLabel="Today Completed"
             delay={1}
           />
-          <KPI
-            title="Assigned"
-            value={o?.assigned_count ?? 0}
-            icon={UserCheck}
-            color="border-green-500"
-            bgColor="bg-green-100 dark:bg-green-950/50"
-            iconColor="text-green-600 dark:text-green-400"
-            delay={2}
-          />
-          <KPI
-            title="Unassigned"
-            value={o?.unassigned_count ?? 0}
-            icon={UserX}
-            color="border-red-500"
-            bgColor="bg-red-100 dark:bg-red-950/50"
-            iconColor="text-red-600 dark:text-red-400"
-            delay={3}
-          />
-          <KPI
-            title="In Progress"
-            value={o?.in_progress_count ?? 0}
-            icon={Wrench}
-            color="border-cyan-500"
-            bgColor="bg-cyan-100 dark:bg-cyan-950/50"
-            iconColor="text-cyan-600 dark:text-cyan-400"
-            delay={4}
-          />
-          <KPI
-            title="Part Pending"
-            value={o?.part_pending_count ?? 0}
-            icon={Package}
-            color="border-amber-500"
-            bgColor="bg-amber-100 dark:bg-amber-950/50"
-            iconColor="text-amber-600 dark:text-amber-400"
-            onClick={() => navigate("/part-request")}
-            delay={5}
-          />
-          <KPI
-            title="Part Order Pending"
-            value={o?.part_order_pending_count ?? 0}
-            icon={TrendingUp}
-            color="border-purple-500"
-            bgColor="bg-purple-100 dark:bg-purple-950/50"
-            iconColor="text-purple-600 dark:text-purple-400"
-            onClick={() => navigate("/purchase-order")}
-            delay={6}
-          />
-          <KPI
-            title="Part Quote Pending"
-            value={o?.part_quote_pending_count ?? 0}
-            icon={FileText}
-            color="border-orange-500"
-            bgColor="bg-orange-100 dark:bg-orange-950/50"
-            iconColor="text-orange-600 dark:text-orange-400"
-            onClick={() => navigate("/quotation")}
-            delay={7}
-          />
-          <KPI
-            title="Ready to Dispatch"
-            value={o?.ready_to_dispatch_count ?? 0}
-            icon={Truck}
-            color="border-lime-500"
-            bgColor="bg-lime-100 dark:bg-lime-950/50"
-            iconColor="text-lime-600 dark:text-lime-400"
-            delay={8}
-          />
-          <KPI
-            title="CX Pending"
-            value={o?.cx_pending_count ?? 0}
-            icon={Clock}
-            color="border-rose-500"
-            bgColor="bg-rose-100 dark:bg-rose-950/50"
-            iconColor="text-rose-600 dark:text-rose-400"
-            delay={9}
-          />
         </div>
-      )}
-
-      {/* Completed - standalone highlight card */}
-      {!dashLoading && (
-        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
-          <Card className="border-l-4 border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/20">
-            <CardContent className="flex items-center justify-between py-5">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center">
-                  <CheckCircle2 className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Completed</p>
-                  <p className="text-3xl font-bold text-emerald-700 dark:text-emerald-300">{o?.completed_count ?? 0}</p>
-                </div>
-              </div>
-              <div className="text-right">
-                <p className="text-xs text-slate-500 dark:text-slate-400">Closed today</p>
-                <p className="text-lg font-semibold text-slate-800 dark:text-slate-100">{o?.closed_today ?? 0}</p>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
       )}
 
       {/* SLA Breaches + Quick Actions */}

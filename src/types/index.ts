@@ -340,7 +340,7 @@ export interface DashboardOverview {
   avg_resolution_hrs: number;
   tickets_today: number;
   closed_today: number;
-  // Specific workflow KPIs
+  // Overall workflow KPIs
   assigned_count: number;
   unassigned_count: number;
   in_progress_count: number;
@@ -350,6 +350,17 @@ export interface DashboardOverview {
   ready_to_dispatch_count: number;
   cx_pending_count: number;
   completed_count: number;
+  warranty_count: number;
+  out_of_warranty_count: number;
+  // Today's KPIs
+  today_warranty: number;
+  today_out_of_warranty: number;
+  today_assigned: number;
+  today_unassigned: number;
+  today_part_pending: number;
+  today_part_order_pending: number;
+  today_part_quote_pending: number;
+  today_cx_pending: number;
 }
 
 export interface RegionStats {
