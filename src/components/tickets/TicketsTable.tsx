@@ -250,9 +250,10 @@ export function TicketsTable({
                     {/* Engineer (Assignee) */}
                     <TableCell>
                       <span className="text-sm text-slate-700 dark:text-slate-300">
-                        {ticket.assigned_engineer?.name ?? (
-                          <span className="text-slate-400 dark:text-slate-500 italic">Unassigned</span>
-                        )}
+                        {ticket.assigned_engineer?.name
+                          ?? ticket.current_assignee?.full_name
+                          ?? (<span className="text-slate-400 dark:text-slate-500 italic">Unassigned</span>)
+                        }
                       </span>
                     </TableCell>
 

@@ -183,7 +183,7 @@ export function TicketDetailPanel({
             <InfoRow
               icon={User}
               label="Assigned Engineer"
-              value={ticket.assigned_engineer?.name}
+              value={ticket.assigned_engineer?.name ?? ticket.current_assignee?.full_name}
             />
             <InfoRow
               icon={MapPin}
