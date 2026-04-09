@@ -44,7 +44,10 @@ client.interceptors.response.use(
     const original = error.config as typeof error.config & { _retry?: boolean };
     const isRefreshEndpoint = original?.url?.includes("/auth/refresh/");
 
-    if (error.response?.status === 401 && !original?._retry && !isRefreshEndpoint) {
+    // Skip interceptor for login endpoint — let the caller handle auth errors
+    const isLoginEndpoint = original?.url?.includes("/auth/login/");
+
+    if (error.response?.status === 401 && !original?._retry && !isRefreshEndpoint && !isLoginEndpoint) {
       const refresh = localStorage.getItem("refresh-token");
 
       if (!refresh) {

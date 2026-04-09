@@ -42,6 +42,7 @@ export function TicketsTable({
 }: TicketsTableProps) {
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [assignTicketId, setAssignTicketId] = useState<number>(0);
+  const [assignTicketRegion, setAssignTicketRegion] = useState<string | undefined>(undefined);
   const [transitionDialogOpen, setTransitionDialogOpen] = useState(false);
   const [selectedTransition, setSelectedTransition] = useState<AvailableTransition | null>(null);
   const [selectedTicketId, setSelectedTicketId] = useState<number>(0);
@@ -249,7 +250,7 @@ export function TicketsTable({
                     {/* Engineer (Assignee) */}
                     <TableCell>
                       <span className="text-sm text-slate-700 dark:text-slate-300">
-                        {ticket.current_assignee?.full_name ?? (
+                        {ticket.assigned_engineer?.name ?? (
                           <span className="text-slate-400 dark:text-slate-500 italic">Unassigned</span>
                         )}
                       </span>
@@ -259,7 +260,7 @@ export function TicketsTable({
                     <TableCell>
                       <div className="flex items-center gap-1.5">
                         {ticket.current_status === "cso_created" && (
-                          <Button variant="outline" size="sm" className="gap-1 text-xs" onClick={() => { setAssignTicketId(ticket.id); setAssignDialogOpen(true); }}>
+                          <Button variant="outline" size="sm" className="gap-1 text-xs" onClick={() => { setAssignTicketId(ticket.id); setAssignTicketRegion(ticket.region); setAssignDialogOpen(true); }}>
                             <UserPlus className="w-3.5 h-3.5" /> Assign
                           </Button>
                         )}
@@ -313,7 +314,7 @@ export function TicketsTable({
         </div>
       )}
 
-      <AssignEngineerDialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen} ticketId={assignTicketId} onSuccess={() => onRefresh?.()} />
+      <AssignEngineerDialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen} ticketId={assignTicketId} ticketRegion={assignTicketRegion as any} onSuccess={() => onRefresh?.()} />
 
       {selectedTransition && (
         <TransitionDialog

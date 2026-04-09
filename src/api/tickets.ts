@@ -39,7 +39,7 @@ export async function deleteTicket(id: number | string): Promise<void> {
 
 export async function transitionTicket(
   id: number | string,
-  payload: { to_status: string; comment?: string; assignee_id?: number; metadata?: Record<string, unknown> },
+  payload: { to_status: string; comment?: string; assignee_id?: number; engineer_id?: number; metadata?: Record<string, unknown> },
 ): Promise<Ticket> {
   const { data } = await client.post<Ticket>(`/tickets/${id}/transition/`, payload);
   return data;

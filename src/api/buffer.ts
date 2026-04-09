@@ -2,8 +2,10 @@ import client from "./client";
 import type { BufferEntry } from "@/types";
 
 export async function getBufferEntries(): Promise<BufferEntry[]> {
-  const { data } = await client.get<BufferEntry[]>("/buffer/");
-  return data;
+  const { data } = await client.get<{ items: BufferEntry[] } | BufferEntry[]>("/buffer/");
+  // Backend returns paginated { items: [...] } format
+  if (Array.isArray(data)) return data;
+  return data.items ?? [];
 }
 
 export async function createBufferEntry(payload: Record<string, unknown>): Promise<BufferEntry> {

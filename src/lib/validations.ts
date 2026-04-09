@@ -166,6 +166,15 @@ export const bufferSchema = z.object({
 
 export type BufferFormData = z.infer<typeof bufferSchema>;
 
+export const bufferPartSchema = z.object({
+  part_number: z.string().min(1, "Part number is required"),
+  part_name: z.string().min(1, "Part name is required"),
+  quantity: z.coerce.number().min(1, "Quantity must be at least 1"),
+  general_name: z.string().optional().default(""),
+});
+
+export type BufferPartFormData = z.infer<typeof bufferPartSchema>;
+
 // ============================================================
 // INVOICE SCHEMA
 // ============================================================
@@ -195,6 +204,20 @@ export const paymentSchema = z.object({
 });
 
 export type PaymentFormData = z.infer<typeof paymentSchema>;
+
+// ============================================================
+// ENGINEER SCHEMA
+// ============================================================
+
+export const engineerSchema = z.object({
+  name: z.string().min(2, "Name must be at least 2 characters"),
+  email: z.string().email("Invalid email").or(z.literal("")).optional(),
+  phone: z.string().optional().default(""),
+  region: z.enum(["vellore", "salem", "chennai", "kanchipuram", "hosur"]).optional(),
+  status: z.enum(["active", "inactive"]).default("active"),
+});
+
+export type EngineerFormData = z.infer<typeof engineerSchema>;
 
 // ============================================================
 // CUSTOMER SCHEMA (keep existing)

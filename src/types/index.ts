@@ -52,6 +52,32 @@ export interface AuthResponse {
   user: User;
 }
 
+export type EngineerStatus = "active" | "inactive";
+
+export interface Engineer {
+  id: number;
+  name: string;
+  email: string;
+  phone: string;
+  region: Region;
+  region_display: string;
+  status: EngineerStatus;
+  status_display: string;
+  created_by: number | null;
+  created_by_name: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface EngineerSummary {
+  id: number;
+  name: string;
+  phone: string;
+  region: Region;
+  region_display: string;
+  status: EngineerStatus;
+}
+
 // ============================================================
 // TICKETS
 // ============================================================
@@ -82,6 +108,8 @@ export interface Ticket {
   current_status: TicketStatus;
   current_status_display: string;
   current_assignee: Pick<User, "id" | "full_name" | "role"> | null;
+  assigned_engineer: EngineerSummary | null;
+  assigned_at: string | null;
   requires_parts: boolean;
   // Part details
   part_number: string;
@@ -284,6 +312,17 @@ export interface BufferEntry {
   reserved_for_ticket_number: string | null;
   is_active: boolean;
   expires_at: string | null;
+  created_at: string;
+}
+
+export interface BufferPart {
+  id: number;
+  part_number: string;
+  part_name: string;
+  quantity: number;
+  general_name: string;
+  created_by: number | null;
+  created_by_name: string | null;
   created_at: string;
 }
 

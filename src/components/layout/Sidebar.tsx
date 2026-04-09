@@ -17,6 +17,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ShieldCheck,
+  HardHat,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/authStore";
@@ -25,6 +26,7 @@ const navLinks = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
   { to: "/customers", label: "Customers", icon: Users },
   { to: "/cso-entry", label: "CSO Entry", icon: FileText },
+  { to: "/engineers", label: "Engineers", icon: HardHat },
   { to: "/quotation", label: "Quotation", icon: FileQuestion },
   { to: "/part-request", label: "Part Request", icon: Wrench },
   { to: "/invoice", label: "Invoice", icon: Receipt },

@@ -51,11 +51,13 @@ export async function adjustStock(payload: {
 }
 
 export async function getLowStock(): Promise<StockItem[]> {
-  const { data } = await client.get<StockItem[]>("/stock/low/");
-  return data;
+  const { data } = await client.get<{ items: StockItem[] } | StockItem[]>("/stock/low/");
+  if (Array.isArray(data)) return data;
+  return data.items ?? [];
 }
 
 export async function searchStock(query: string): Promise<StockItem[]> {
-  const { data } = await client.get<StockItem[]>("/stock/search/", { params: { q: query } });
-  return data;
+  const { data } = await client.get<{ items: StockItem[] } | StockItem[]>("/stock/search/", { params: { q: query } });
+  if (Array.isArray(data)) return data;
+  return data.items ?? [];
 }

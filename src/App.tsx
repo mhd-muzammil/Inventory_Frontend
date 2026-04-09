@@ -14,6 +14,7 @@ import Reports from "@/pages/Reports";
 import Settings from "@/pages/Settings";
 import Login from "@/pages/Login";
 import UserManagement from "@/pages/UserManagement";
+import EngineerManagement from "@/pages/EngineerManagement";
 import TicketDetail from "@/pages/TicketDetail";
 
 export default function App() {
@@ -34,6 +35,7 @@ export default function App() {
           <Route path="/purchase-order" element={<PurchaseOrder />} />
           <Route path="/reports" element={<Reports />} />
           <Route path="/settings" element={<Settings />} />
+          <Route path="/engineers" element={<EngineerManagement />} />
           <Route path="/users" element={<UserManagement />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />

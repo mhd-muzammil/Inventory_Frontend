@@ -1,5 +1,5 @@
 import { NavLink } from "react-router-dom";
-import { LayoutDashboard, Users, FileText, Warehouse, ShieldCheck } from "lucide-react";
+import { LayoutDashboard, Users, FileText, Warehouse, ShieldCheck, HardHat } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/authStore";
 
@@ -7,6 +7,7 @@ const tabs = [
   { to: "/", label: "Home", icon: LayoutDashboard },
   { to: "/customers", label: "Customers", icon: Users },
   { to: "/cso-entry", label: "CSO", icon: FileText },
+  { to: "/engineers", label: "Engineers", icon: HardHat },
   { to: "/stock", label: "Stock", icon: Warehouse },
 ];
 
