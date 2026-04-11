@@ -46,54 +46,55 @@ export interface TransitionDef {
 
 export const WORKFLOW_TRANSITIONS: Record<TicketStatus, TransitionDef[]> = {
   cso_created: [
-    { to: "assigned", label: "Assign Engineer", roles: ["manager", "admin"], requiresComment: false, requiresField: "current_assignee_id" },
+    { to: "assigned", label: "Assign Engineer", roles: ["manager", "sub_admin", "super_admin", "admin"], requiresComment: false, requiresField: "current_assignee_id" },
   ],
   assigned: [
-    { to: "diagnosis", label: "Start Diagnosis", roles: ["engineer", "admin"], requiresComment: false },
+    { to: "diagnosis", label: "Start Diagnosis", roles: ["engineer", "sub_admin", "super_admin", "admin"], requiresComment: false },
   ],
   diagnosis: [
-    { to: "part_requested", label: "Request Parts", roles: ["engineer", "admin"], requiresComment: true, requiresParts: true },
-    { to: "in_progress", label: "Start Repair (No Parts)", roles: ["engineer", "admin"], requiresComment: true, requiresParts: false },
+    { to: "part_requested", label: "Request Parts", roles: ["engineer", "sub_admin", "super_admin", "admin"], requiresComment: true, requiresParts: true },
+    { to: "in_progress", label: "Start Repair (No Parts)", roles: ["engineer", "sub_admin", "super_admin", "admin"], requiresComment: true, requiresParts: false },
   ],
   part_requested: [
-    { to: "part_approved", label: "Approve Parts", roles: ["manager", "admin"], requiresComment: false },
-    { to: "diagnosis", label: "Reject \u2014 Re-diagnose", roles: ["manager", "admin"], requiresComment: true },
+    // Only manager / admin can approve parts — sub_admin is explicitly excluded
+    { to: "part_approved", label: "Approve Parts", roles: ["manager", "super_admin", "admin"], requiresComment: false },
+    { to: "diagnosis", label: "Reject \u2014 Re-diagnose", roles: ["manager", "super_admin", "admin"], requiresComment: true },
   ],
   part_approved: [
-    { to: "quotation_sent", label: "Send Quotation", roles: ["cc_team", "admin"], requiresComment: false },
+    { to: "quotation_sent", label: "Send Quotation", roles: ["cc_team", "sub_admin", "super_admin", "admin"], requiresComment: false },
   ],
   quotation_sent: [
-    { to: "cx_pending", label: "Awaiting Customer", roles: ["cc_team", "admin"], requiresComment: false },
+    { to: "cx_pending", label: "Awaiting Customer", roles: ["cc_team", "sub_admin", "super_admin", "admin"], requiresComment: false },
   ],
   cx_pending: [
-    { to: "cx_approved", label: "Customer Approved", roles: ["cc_team", "admin"], requiresComment: false },
-    { to: "cx_rejected", label: "Customer Rejected", roles: ["cc_team", "admin"], requiresComment: true },
+    { to: "cx_approved", label: "Customer Approved", roles: ["cc_team", "sub_admin", "super_admin", "admin"], requiresComment: false },
+    { to: "cx_rejected", label: "Customer Rejected", roles: ["cc_team", "sub_admin", "super_admin", "admin"], requiresComment: true },
   ],
   cx_approved: [
-    { to: "part_ordered", label: "Place Order", roles: ["manager", "admin"], requiresComment: false },
+    { to: "part_ordered", label: "Place Order", roles: ["manager", "sub_admin", "super_admin", "admin"], requiresComment: false },
   ],
   cx_rejected: [
-    { to: "closed", label: "Close Ticket", roles: ["manager", "admin"], requiresComment: true },
-    { to: "quotation_sent", label: "Re-negotiate \u2014 Resend", roles: ["cc_team", "manager", "admin"], requiresComment: true },
+    { to: "closed", label: "Close Ticket", roles: ["manager", "sub_admin", "super_admin", "admin"], requiresComment: true },
+    { to: "quotation_sent", label: "Re-negotiate \u2014 Resend", roles: ["cc_team", "manager", "sub_admin", "super_admin", "admin"], requiresComment: true },
   ],
   part_ordered: [
-    { to: "part_received", label: "Parts Received", roles: ["manager", "admin"], requiresComment: false },
+    { to: "part_received", label: "Parts Received", roles: ["manager", "sub_admin", "super_admin", "admin"], requiresComment: false },
   ],
   part_received: [
-    { to: "in_progress", label: "Start Repair", roles: ["engineer", "admin"], requiresComment: false },
+    { to: "in_progress", label: "Start Repair", roles: ["engineer", "sub_admin", "super_admin", "admin"], requiresComment: false },
   ],
   in_progress: [
-    { to: "ready_for_delivery", label: "Mark Ready", roles: ["engineer", "admin"], requiresComment: true },
+    { to: "ready_for_delivery", label: "Mark Ready", roles: ["engineer", "sub_admin", "super_admin", "admin"], requiresComment: true },
   ],
   ready_for_delivery: [
-    { to: "closed", label: "Deliver & Close", roles: ["receptionist", "manager", "admin"], requiresComment: false },
+    { to: "closed", label: "Deliver & Close", roles: ["receptionist", "manager", "sub_admin", "super_admin", "admin"], requiresComment: false },
   ],
   closed: [
-    { to: "under_observation", label: "Under Observation", roles: ["manager", "admin"], requiresComment: true },
+    { to: "under_observation", label: "Under Observation", roles: ["manager", "sub_admin", "super_admin", "admin"], requiresComment: true },
   ],
   under_observation: [
-    { to: "closed", label: "Final Close", roles: ["manager", "admin"], requiresComment: true },
-    { to: "in_progress", label: "Reopen for Repair", roles: ["manager", "admin"], requiresComment: true },
+    { to: "closed", label: "Final Close", roles: ["manager", "sub_admin", "super_admin", "admin"], requiresComment: true },
+    { to: "in_progress", label: "Reopen for Repair", roles: ["manager", "sub_admin", "super_admin", "admin"], requiresComment: true },
   ],
 };
 
@@ -172,7 +173,7 @@ export function getAvailableTransitions(
 ): TransitionDef[] {
   const transitions = WORKFLOW_TRANSITIONS[currentStatus] || [];
   return transitions.filter((t) => {
-    if (!t.roles.includes(userRole) && userRole !== "admin") return false;
+    if (!t.roles.includes(userRole)) return false;
     if (t.requiresParts === true && requiresParts === false) return false;
     if (t.requiresParts === false && requiresParts === true) return false;
     return true;

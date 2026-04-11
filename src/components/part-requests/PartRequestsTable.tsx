@@ -69,7 +69,7 @@ export function PartRequestsTable({
 
   const start = (pagination.page - 1) * pagination.per_page + 1;
   const end = Math.min(pagination.page * pagination.per_page, pagination.total);
-  const isManager = userRole === "manager" || userRole === "admin";
+  const isManager = userRole === "manager" || userRole === "admin" || userRole === "super_admin";
 
   return (
     <div>

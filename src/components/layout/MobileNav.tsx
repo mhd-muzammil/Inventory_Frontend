@@ -1,5 +1,5 @@
 import { NavLink } from "react-router-dom";
-import { LayoutDashboard, Users, FileText, Warehouse, ShieldCheck, HardHat } from "lucide-react";
+import { LayoutDashboard, Users, FileText, Warehouse, ShieldCheck, ShieldAlert, HardHat } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/authStore";
 
@@ -13,6 +13,7 @@ const tabs = [
 
 const superAdminTabs = [
   { to: "/users", label: "Users", icon: ShieldCheck },
+  { to: "/managers", label: "Managers", icon: ShieldAlert },
 ];
 
 export function MobileNav() {

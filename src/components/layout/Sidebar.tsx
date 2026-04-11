@@ -17,6 +17,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ShieldCheck,
+  ShieldAlert,
   HardHat,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -39,6 +40,7 @@ const navLinks = [
 
 const superAdminLinks = [
   { to: "/users", label: "User Management", icon: ShieldCheck },
+  { to: "/managers", label: "Managers", icon: ShieldAlert },
 ];
 
 export function Sidebar() {

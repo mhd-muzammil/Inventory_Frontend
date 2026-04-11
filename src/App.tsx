@@ -14,6 +14,7 @@ import Reports from "@/pages/Reports";
 import Settings from "@/pages/Settings";
 import Login from "@/pages/Login";
 import UserManagement from "@/pages/UserManagement";
+import ManagerManagement from "@/pages/ManagerManagement";
 import EngineerManagement from "@/pages/EngineerManagement";
 import TicketDetail from "@/pages/TicketDetail";
 
@@ -37,6 +38,7 @@ export default function App() {
           <Route path="/settings" element={<Settings />} />
           <Route path="/engineers" element={<EngineerManagement />} />
           <Route path="/users" element={<UserManagement />} />
+          <Route path="/managers" element={<ManagerManagement />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

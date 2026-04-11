@@ -14,7 +14,7 @@ import {
 import { StatusBadge } from "@/components/workflow/StatusBadge";
 import { AssignEngineerDialog } from "./AssignEngineerDialog";
 import { TransitionDialog } from "@/components/workflow/TransitionDialog";
-import { WORKFLOW_TRANSITIONS, STATUS_CONFIG, DEFAULT_SLAS, formatDuration } from "@/lib/workflow";
+import { getAvailableTransitions, STATUS_CONFIG, DEFAULT_SLAS, formatDuration } from "@/lib/workflow";
 import { cn } from "@/lib/utils";
 import { transitionTicket } from "@/api/tickets";
 import { toast } from "@/components/ui/use-toast";
@@ -22,6 +22,7 @@ import { extractApiError } from "@/api/client";
 import { formatDate } from "@/lib/utils";
 import { SERVICE_TYPE_LABELS } from "@/types";
 import type { Ticket, PaginationMeta, TicketStatus, AvailableTransition } from "@/types";
+import { useAuthStore } from "@/store/authStore";
 
 interface TicketsTableProps {
   data: Ticket[];
@@ -47,9 +48,11 @@ export function TicketsTable({
   const [selectedTransition, setSelectedTransition] = useState<AvailableTransition | null>(null);
   const [selectedTicketId, setSelectedTicketId] = useState<number>(0);
   const [transitioning, setTransitioning] = useState<number | null>(null);
+  const userRole = useAuthStore((s) => s.user?.role);
 
-  const getTransitions = (status: TicketStatus) => {
-    const defs = WORKFLOW_TRANSITIONS[status] || [];
+  const getTransitions = (ticket: Ticket) => {
+    if (!userRole) return [];
+    const defs = getAvailableTransitions(ticket.current_status, userRole, ticket.requires_parts);
     return defs.map((d) => ({
       to_status: d.to as TicketStatus,
       label: d.label,
@@ -123,7 +126,7 @@ export function TicketsTable({
               </TableRow>
             ) : (
               data.map((ticket, i) => {
-                const transitions = getTransitions(ticket.current_status);
+                const transitions = getTransitions(ticket);
                 const isTransitioning = transitioning === ticket.id;
                 const warrantyLabel = SERVICE_TYPE_LABELS[ticket.service_type] || ticket.service_type;
 
