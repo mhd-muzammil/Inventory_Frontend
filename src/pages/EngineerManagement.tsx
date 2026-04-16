@@ -98,7 +98,7 @@ export default function EngineerManagement() {
     if (!deleteTarget) return;
     try {
       await deleteEngineer(deleteTarget.id);
-      toast({ title: "Engineer deactivated" });
+      toast({ title: "Engineer deleted successfully" });
       setDeleteTarget(null);
       fetchEngineers();
     } catch (err) {
@@ -316,15 +316,14 @@ export default function EngineerManagement() {
       <Dialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
         <DialogContent className="sm:max-w-[400px]">
           <DialogHeader>
-            <DialogTitle>Deactivate {deleteTarget?.name}?</DialogTitle>
+            <DialogTitle>Delete {deleteTarget?.name}?</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-slate-500">
-            This will deactivate the engineer. They won't appear in assignment dropdowns
-            and cannot be assigned to new tickets.
+            This will permanently delete the engineer. This action cannot be undone.
           </p>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteTarget(null)}>Cancel</Button>
-            <Button variant="destructive" onClick={handleDelete}>Deactivate</Button>
+            <Button variant="destructive" onClick={handleDelete}>Delete</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
