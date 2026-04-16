@@ -10,6 +10,7 @@ interface TicketTimelineProps {
   timeline: TimelineEntry[];
   currentStatus: TicketStatus;
   requiresParts: boolean;
+  assignedEngineerName?: string | null;
   className?: string;
 }
 
@@ -18,7 +19,7 @@ const PARTS_STATUSES = new Set<TicketStatus>([
   "part_ordered", "part_received",
 ]);
 
-export function TicketTimeline({ timeline, currentStatus, requiresParts, className }: TicketTimelineProps) {
+export function TicketTimeline({ timeline, currentStatus, requiresParts, assignedEngineerName, className }: TicketTimelineProps) {
   // If current status is in the parts flow, force parts path even if flag is stale
   const needsParts = requiresParts || PARTS_STATUSES.has(currentStatus);
   const fullPath = getFullPath(needsParts);
@@ -79,6 +80,11 @@ export function TicketTimeline({ timeline, currentStatus, requiresParts, classNa
                   <span className={cn("font-medium text-sm", isPending ? "text-slate-400 dark:text-slate-500" : "text-slate-800 dark:text-slate-100")}>
                     {config.label}
                   </span>
+                  {status === "assigned" && assignedEngineerName && !isPending && (
+                    <span className="text-xs font-medium text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 px-2 py-0.5 rounded-full">
+                      {assignedEngineerName}
+                    </span>
+                  )}
                   {isCurrent && <StatusBadge status={status} size="sm" />}
                   {entry?.is_breached && (
                     <span className="text-xs font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/50 px-2 py-0.5 rounded-full">

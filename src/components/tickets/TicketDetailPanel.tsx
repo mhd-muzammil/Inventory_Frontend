@@ -239,6 +239,7 @@ export function TicketDetailPanel({
                 timeline={timeline}
                 currentStatus={ticket.current_status}
                 requiresParts={ticket.requires_parts}
+                assignedEngineerName={ticket.assigned_engineer?.name ?? null}
               />
             ) : (
               <p className="text-sm text-slate-500 dark:text-slate-400 italic">
