@@ -115,11 +115,11 @@ export default function UserManagement() {
     if (!deleteTarget) return;
     try {
       await deleteSubAdmin(deleteTarget.id);
-      toast({ title: "Sub-admin deactivated" });
+      toast({ title: "Sub-admin deleted successfully" });
       setDeleteTarget(null);
       fetchAdmins();
     } catch {
-      toast({ title: "Failed to deactivate sub-admin", variant: "destructive" });
+      toast({ title: "Failed to delete sub-admin", variant: "destructive" });
     }
   };
 
@@ -206,11 +206,9 @@ export default function UserManagement() {
                       <Button variant="ghost" size="icon" onClick={() => openEdit(a)} className="h-8 w-8">
                         <Pencil className="w-4 h-4" />
                       </Button>
-                      {a.is_active && (
-                        <Button variant="ghost" size="icon" onClick={() => setDeleteTarget(a)} className="h-8 w-8 text-red-500 hover:text-red-600">
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      )}
+                      <Button variant="ghost" size="icon" onClick={() => setDeleteTarget(a)} className="h-8 w-8 text-red-500 hover:text-red-600">
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -287,14 +285,14 @@ export default function UserManagement() {
       <Dialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
         <DialogContent className="sm:max-w-[400px]">
           <DialogHeader>
-            <DialogTitle>Deactivate {deleteTarget?.username}?</DialogTitle>
+            <DialogTitle>Delete {deleteTarget?.username}?</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-slate-500">
-            This will deactivate the sub-admin account. They won't be able to log in.
+            This will permanently delete the sub-admin account. This action cannot be undone.
           </p>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteTarget(null)}>Cancel</Button>
-            <Button variant="destructive" onClick={handleDelete}>Deactivate</Button>
+            <Button variant="destructive" onClick={handleDelete}>Delete</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
