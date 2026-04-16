@@ -5,7 +5,12 @@ import { PriorityBadge } from "@/components/workflow/PriorityBadge";
 import { DelayIndicator } from "@/components/workflow/DelayIndicator";
 import { TransitionActions } from "@/components/workflow/TransitionActions";
 import { TicketTimeline } from "@/components/workflow/TicketTimeline";
+import { PrintTemplate } from "./PrintTemplate";
+import { TicketEditDialog } from "./TicketEditDialog";
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
 import {
+  Pencil,
   User,
   Phone,
   Mail,
@@ -62,6 +67,8 @@ export function TicketDetailPanel({
   transitions,
   onTransitioned,
 }: TicketDetailPanelProps) {
+  const [editOpen, setEditOpen] = useState(false);
+
   return (
     <div className="space-y-6">
       {/* ── Header ──────────────────────────────────────── */}
@@ -84,6 +91,10 @@ export function TicketDetailPanel({
             elapsedMins={ticket.current_stage_elapsed_mins}
             size="md"
           />
+          <Button variant="outline" onClick={() => setEditOpen(true)} className="gap-2">
+            <Pencil className="w-4 h-4" /> Edit
+          </Button>
+          <PrintTemplate ticket={ticket} />
         </div>
       </div>
 
@@ -249,6 +260,13 @@ export function TicketDetailPanel({
           </CardContent>
         </Card>
       </div>
+
+      <TicketEditDialog
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        ticket={ticket}
+        onSaved={onTransitioned}
+      />
     </div>
   );
 }

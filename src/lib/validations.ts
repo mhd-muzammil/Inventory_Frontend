@@ -28,6 +28,22 @@ export const ticketSchema = z.object({
   // Dates
   arrival_date: z.string().nullable().optional(),
   target_completion: z.string().nullable().optional(),
+  // Part Details
+  part_number: z.string().optional().default(""),
+  part_usage: z.string().optional().default(""),
+  failure_code: z.string().optional().default(""),
+  part_description: z.string().optional().default(""),
+  qty: z.coerce.number().min(0).optional().default(0),
+  ct_code: z.string().optional().default(""),
+  so_req_id: z.string().optional().default(""),
+  removed_part_sno: z.string().optional().default(""),
+  installed_part_sno: z.string().optional().default(""),
+  // Engineer / Resolution
+  engineer_name: z.string().optional().default(""),
+  hp_id: z.string().optional().default(""),
+  resolution_summary: z.string().optional().default(""),
+  explanation: z.string().optional().default(""),
+  customer_comments: z.string().optional().default(""),
 });
 
 export type TicketFormData = z.infer<typeof ticketSchema>;

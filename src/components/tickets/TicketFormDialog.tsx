@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -27,12 +27,31 @@ import {
   Send,
   CheckCircle2,
   ArrowLeft,
+  ArrowRight,
   Loader2,
   Printer,
   Save,
+  User,
+  Package,
+  Wrench,
 } from "lucide-react";
 
-type Step = "fill" | "review" | "done";
+type Step = "customer" | "parts" | "engineer" | "review" | "done";
+const STEPS: Step[] = ["customer", "parts", "engineer", "review", "done"];
+const STEP_LABELS: Record<Step, string> = {
+  customer: "Customer & Product",
+  parts: "Part Details",
+  engineer: "Engineer & Resolution",
+  review: "Review",
+  done: "Done",
+};
+const STEP_ICONS: Record<Step, React.ElementType> = {
+  customer: User,
+  parts: Package,
+  engineer: Wrench,
+  review: Send,
+  done: CheckCircle2,
+};
 
 interface TicketFormDialogProps {
   open: boolean;
@@ -50,7 +69,7 @@ export function TicketFormDialog({
   const user = useAuthStore((s) => s.user);
   const isAdmin = user?.role === "admin" || user?.role === "super_admin";
 
-  const [step, setStep] = useState<Step>("fill");
+  const [step, setStep] = useState<Step>("customer");
   const [submitLoading, setSubmitLoading] = useState(false);
   const [submittedData, setSubmittedData] = useState<TicketFormData | null>(null);
 
@@ -61,6 +80,7 @@ export function TicketFormDialog({
     getValues,
     setValue,
     watch,
+    trigger,
     formState: { errors },
   } = useForm<TicketFormData>({
     resolver: zodResolver(ticketSchema),
@@ -82,6 +102,20 @@ export function TicketFormDialog({
       issue_description: "",
       arrival_date: null,
       target_completion: null,
+      part_number: "",
+      part_usage: "",
+      failure_code: "",
+      part_description: "",
+      qty: 0,
+      ct_code: "",
+      so_req_id: "",
+      removed_part_sno: "",
+      installed_part_sno: "",
+      engineer_name: "",
+      hp_id: "",
+      resolution_summary: "",
+      explanation: "",
+      customer_comments: "",
     },
   });
 
@@ -90,15 +124,29 @@ export function TicketFormDialog({
 
   useEffect(() => {
     if (open) {
-      setStep("fill");
+      setStep("customer");
       setSubmittedData(null);
       reset();
     }
   }, [open, reset]);
 
-  const handleSendToReview = (data: TicketFormData) => {
-    setSubmittedData(data);
-    setStep("review");
+  const handleNext = async () => {
+    if (step === "customer") {
+      const valid = await trigger(["cust_name", "cust_email"]);
+      if (!valid) return;
+      setStep("parts");
+    } else if (step === "parts") {
+      setStep("engineer");
+    } else if (step === "engineer") {
+      setSubmittedData(getValues());
+      setStep("review");
+    }
+  };
+
+  const handleBack = () => {
+    if (step === "parts") setStep("customer");
+    else if (step === "engineer") setStep("parts");
+    else if (step === "review") setStep("engineer");
   };
 
   const handleConfirmAndSubmit = async () => {
@@ -130,196 +178,130 @@ export function TicketFormDialog({
   const handlePrint = () => {
     const data = submittedData || getValues();
     const sType = SERVICE_TYPE_LABELS[data.service_type as keyof typeof SERVICE_TYPE_LABELS] || data.service_type;
+    const region = (data.region || user?.region || "salem") as string;
 
-    const printWindow = window.open("", "_blank", "width=800,height=600");
+    const regionPrefixes: Record<string, string> = { vellore: "RT-VLR", salem: "RT-SAL", chennai: "RT-CHN", kanchipuram: "RT-KPM", hosur: "RT-HSR" };
+    const regionAddresses: Record<string, { lines: string; phone: string; cell: string; gst: string }> = {
+      salem: { lines: "22/26, LIC Colony, Hotel Vasantham Road, OPP. New Bus Stand, SALEM - 636004", phone: "+91 427-4057671", cell: "+91 8122633004", gst: "33AALCR1788A1ZG" },
+      vellore: { lines: "No.1, Gandhi Nagar, 2nd Street, Vellore - 632001", phone: "+91 416-2243456", cell: "+91 8122633004", gst: "33AALCR1788A1ZG" },
+      chennai: { lines: "No.5, Anna Salai, Chennai - 600002", phone: "+91 44-28523456", cell: "+91 8122633004", gst: "33AALCR1788A1ZG" },
+      kanchipuram: { lines: "No.10, Gandhi Road, Kanchipuram - 631501", phone: "+91 44-27223456", cell: "+91 8122633004", gst: "33AALCR1788A1ZG" },
+      hosur: { lines: "No.3, Industrial Area, Hosur - 635109", phone: "+91 4344-223456", cell: "+91 8122633004", gst: "33AALCR1788A1ZG" },
+    };
+    const addr = regionAddresses[region] || regionAddresses.salem;
+    const prefix = regionPrefixes[region] || "RT";
+    const serviceTypes = ["warranty", "non_warranty", "doc", "amc", "rental"];
+    const serviceLabels = ["Warranty", "Non Warranty", "DOC", "AMC", "Rental"];
+    const checkboxes = serviceTypes.map((k, i) => `<label><span class="checkbox ${data.service_type === k ? 'checked' : ''}"></span>${serviceLabels[i]}&nbsp;&nbsp;</label>`).join("");
+
+    const printWindow = window.open("", "_blank", "width=800,height=1100");
     if (!printWindow) return;
 
-    printWindow.document.write(`<!DOCTYPE html><html><head><title>Service Ticket</title>
+    printWindow.document.write(`<!DOCTYPE html><html><head><title>CSO - ${data.work_order || "New"}</title>
       <style>
-        body{font-family:'Segoe UI',Arial,sans-serif;padding:40px;color:#1e293b;font-size:13px}
-        h1{font-size:18px;margin-bottom:2px}
-        .sub{color:#64748b;font-size:12px;margin-bottom:20px}
-        .section{margin-bottom:16px}
-        .section-title{font-size:13px;font-weight:600;border-bottom:1px solid #e2e8f0;padding-bottom:4px;margin-bottom:8px}
-        .grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 20px}
-        .label{font-size:10px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px}
-        .value{font-size:13px;color:#1e293b;margin-bottom:4px}
-        .full{grid-column:span 2}
-        .complaint{min-height:60px;border:1px solid #e2e8f0;border-radius:6px;padding:8px;white-space:pre-wrap;margin-top:4px}
-        .sig-line{margin-top:40px;display:flex;justify-content:space-between}
-        .sig-box{text-align:center;width:180px}
-        .sig-box .line{border-top:1px solid #94a3b8;margin-top:50px;padding-top:4px;font-size:11px;color:#64748b}
-        @media print{body{padding:20px}}
+        @page{size:A4;margin:10mm}
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#000;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+        table{border-collapse:collapse;width:100%}
+        td,th{border:1px solid #000;padding:4px 6px;font-size:11px;vertical-align:top}
+        th{font-weight:bold;background-color:#f3f4f6!important}
+        .container{width:100%;max-width:190mm;margin:0 auto;border:2px solid #000}
+        .header{text-align:center;padding:8px 12px;border-bottom:2px solid #000;position:relative}
+        .header-gst{position:absolute;left:12px;top:8px;font-size:10px;font-weight:bold}
+        .header-cso{position:absolute;right:12px;top:8px;font-size:10px;font-weight:bold}
+        .header-badge{display:inline-block;background:#1e40af;color:white;padding:2px 12px;font-size:11px;font-weight:bold;border-radius:2px;margin-bottom:4px}
+        .company-name{font-size:16px;font-weight:900;color:#dc2626;letter-spacing:1px;margin:2px 0}
+        .company-address{font-size:9px;font-weight:bold;color:#1e3a5f}
+        .section-label{font-weight:bold;font-size:11px;background-color:#f3f4f6!important;padding:4px 6px;border:1px solid #000}
+        .checkbox{display:inline-block;width:12px;height:12px;border:1.5px solid #000;margin-right:3px;vertical-align:middle;position:relative}
+        .checkbox.checked::after{content:"\\2713";position:absolute;top:-3px;left:1px;font-size:12px;font-weight:bold;color:#1e40af}
+        .service-type-row{padding:6px 12px;border-bottom:1px solid #000;font-size:11px}
+        .description-box{min-height:50px;padding:6px;border:1px solid #000;font-size:11px;white-space:pre-wrap}
+        .sig-section{display:flex;justify-content:space-between;padding:8px 12px;min-height:60px;border-top:1px solid #000}
+        .sig-box{width:45%}
+        .sig-label{font-size:10px;font-weight:bold;border-top:1px solid #000;padding-top:4px;margin-top:30px}
+        .footer-stripe{height:14px;background:repeating-linear-gradient(-45deg,#dc2626,#dc2626 8px,#fff 8px,#fff 16px)!important;border-top:1px solid #000}
+        .footer-note{font-size:8px;padding:4px 8px;border-top:1px solid #000;color:#333}
+        .footer-web{font-size:9px;padding:3px 8px;font-weight:bold;border-top:1px solid #000}
       </style></head><body>
-      <h1>Service Ticket - CSO Entry</h1>
-      <p class="sub">RenderWays Service Management</p>
-      <div class="section">
-        <div class="section-title">Ticket Details</div>
-        <div class="grid">
-          <div><div class="label">Work Order</div><div class="value">${data.work_order || '-'}</div></div>
-          <div><div class="label">Case ID</div><div class="value">${data.case_id || 'Auto-generated'}</div></div>
-          <div><div class="label">Warranty Status</div><div class="value">${sType}</div></div>
-          <div><div class="label">Region</div><div class="value">${data.region ? ({"vellore":"Vellore","salem":"Salem","chennai":"Chennai","kanchipuram":"Kanchipuram","hosur":"Hosur"} as Record<string,string>)[data.region] || data.region : '-'}</div></div>
+      <div class="container">
+        <div class="header">
+          <div class="header-gst">GST # ${addr.gst}</div>
+          <div class="header-cso">CSO No. : ${prefix}</div>
+          <span class="header-badge">HP Care</span>
+          <div class="company-name">RENDERWAYS TECHNOLOGY PVT LTD</div>
+          <div class="company-address">${addr.lines}<br>Ph: ${addr.phone}, Cell: ${addr.cell}</div>
         </div>
-      </div>
-      <div class="section">
-        <div class="section-title">Customer Information</div>
-        <div class="grid">
-          <div><div class="label">Customer Name</div><div class="value">${data.cust_name || '-'}</div></div>
-          <div><div class="label">Contact Number</div><div class="value">${data.cust_contact || '-'}</div></div>
-          <div><div class="label">Email</div><div class="value">${data.cust_email || '-'}</div></div>
-          <div><div class="label">Address</div><div class="value">${data.cust_address || '-'}</div></div>
+        <table>
+          <tr><th>Customer Name</th><td>${data.cust_name || ''}</td><th>Service Type</th><td>${sType}</td></tr>
+          <tr><th>Contact Number</th><td>${data.cust_contact || ''}</td><th>Product Name</th><td>${data.product_name || ''}</td></tr>
+          <tr><th rowspan="5">Customer Address</th><td rowspan="5">${data.cust_address || ''}</td><th>Serial Number</th><td>${data.serial_number || ''}</td></tr>
+          <tr><th>Case ID</th><td>${data.case_id || ''}</td></tr>
+          <tr><th>Condition Received</th><td>${data.condition_received || ''}</td></tr>
+          <tr><th>Arrival Date</th><td>${data.arrival_date || new Date().toLocaleDateString("en-IN")}</td></tr>
+          <tr><th>Delivery Date</th><td>${data.target_completion || ''}</td></tr>
+        </table>
+        <div class="service-type-row"><strong>Service Type : </strong>${checkboxes}</div>
+        <div class="section-label">Issue Description:</div>
+        <div class="description-box">${data.issue_description || ''}</div>
+        <table>
+          <tr><th>Part Details<br><span style="font-weight:normal;font-size:9px">Product/Part No.</span></th><th>Part Usage</th><th>Failure Code</th><th>Part Description</th><th>Qty</th><th>CT Code</th><th>So. No./<br>Req ID</th><th>Removed Part S.No.</th><th>Installed Part S.No.</th></tr>
+          <tr><td>${data.part_number || '&nbsp;'}</td><td>${data.part_usage || '&nbsp;'}</td><td>${data.failure_code || '&nbsp;'}</td><td>${data.part_description || '&nbsp;'}</td><td>${data.qty || '&nbsp;'}</td><td>${data.ct_code || '&nbsp;'}</td><td>${data.so_req_id || '&nbsp;'}</td><td>${data.removed_part_sno || '&nbsp;'}</td><td>${data.installed_part_sno || '&nbsp;'}</td></tr>
+        </table>
+        <div class="section-label">Resolution Summary :</div>
+        <div class="description-box" style="min-height:35px">${data.resolution_summary || ''}</div>
+        <table>
+          <tr><th style="text-align:center">Engineer Details</th><th style="text-align:center">Call Status</th><th style="text-align:center">Explanation</th></tr>
+          <tr><td><div><strong>Engineer</strong></div><div>Name : ${data.engineer_name || ''}</div><div>HP ID : ${data.hp_id || ''}</div></td><td><div><span class="checkbox checked"></span> Pending</div><div><span class="checkbox"></span> Closed</div><div><span class="checkbox"></span> Taken for Service</div></td><td>${data.explanation || '&nbsp;'}</td></tr>
+        </table>
+        <div class="section-label">Customer Comments :</div>
+        <div class="description-box" style="min-height:35px">${data.customer_comments || ''}</div>
+        <div class="sig-section">
+          <div class="sig-box"><div class="sig-label">Customer Signature<br><span style="font-weight:normal;font-size:9px">Received in Good Condition</span></div></div>
+          <div class="sig-box" style="text-align:right"><div class="sig-label">Engineer Signature</div></div>
         </div>
+        <div class="footer-note">Note : Hard Disk related issue and replacement may lead to loss of data. It is advisable for the customer to Backup the files &amp; Applications prior to repair Activity. Physical Damage not &amp; under Cover Warranty.</div>
+        <div class="footer-stripe"></div>
+        <div class="footer-web">Web Support : https://support.hp.com/in-en/</div>
       </div>
-      <div class="section">
-        <div class="section-title">Product Details</div>
-        <div class="grid">
-          <div><div class="label">Product</div><div class="value">${data.product_name || '-'}</div></div>
-          <div><div class="label">Serial Number</div><div class="value">${data.serial_number || '-'}</div></div>
-          <div><div class="label">Model</div><div class="value">${data.model_number || '-'}</div></div>
-          <div><div class="label">Brand</div><div class="value">${data.brand || '-'}</div></div>
-          <div><div class="label">Condition</div><div class="value">${data.condition_received || '-'}</div></div>
-        </div>
-      </div>
-      <div class="section">
-        <div class="section-title">Complaint</div>
-        <div class="complaint">${data.issue_description || '-'}</div>
-      </div>
-      <div class="sig-line">
-        <div class="sig-box"><div class="line">Customer Signature</div></div>
-        <div class="sig-box"><div class="line">Received By</div></div>
-      </div>
-      <script>window.onload=function(){window.print()}</script>
+      <script>window.onload=function(){window.print();window.onafterprint=function(){window.close()}}</script>
     </body></html>`);
     printWindow.document.close();
   };
 
-  const StepIndicator = () => (
-    <div className="flex items-center justify-center gap-2 mb-4">
-      {(["fill", "review", "done"] as Step[]).map((s, i) => {
-        const labels = ["Fill Form", "Customer Review", "Done"];
-        const isActive = s === step;
-        const isPast = (["fill", "review", "done"] as Step[]).indexOf(step) > i;
-        return (
-          <div key={s} className="flex items-center gap-2">
-            {i > 0 && <div className={`h-px w-8 ${isPast ? "bg-green-500" : "bg-slate-300 dark:bg-slate-600"}`} />}
-            <div className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full ${
-              isActive ? "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300"
-              : isPast ? "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300"
-              : "bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500"
-            }`}>
-              {isPast && <CheckCircle2 className="w-3 h-3" />}
-              {labels[i]}
+  /* ── Step indicator ─────────────────────────────────── */
+  const StepIndicator = () => {
+    const fillSteps: Step[] = ["customer", "parts", "engineer", "review", "done"];
+    const currentIdx = fillSteps.indexOf(step);
+    return (
+      <div className="flex items-center justify-center gap-1 mb-4 flex-wrap">
+        {fillSteps.map((s, i) => {
+          const isActive = s === step;
+          const isPast = currentIdx > i;
+          const Icon = STEP_ICONS[s];
+          return (
+            <div key={s} className="flex items-center gap-1">
+              {i > 0 && <div className={`h-px w-5 sm:w-8 ${isPast ? "bg-green-500" : "bg-slate-300 dark:bg-slate-600"}`} />}
+              <div className={`flex items-center gap-1 text-[10px] sm:text-xs font-medium px-2 py-1 rounded-full ${
+                isActive ? "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300"
+                : isPast ? "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300"
+                : "bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500"
+              }`}>
+                {isPast ? <CheckCircle2 className="w-3 h-3" /> : <Icon className="w-3 h-3" />}
+                <span className="hidden sm:inline">{STEP_LABELS[s]}</span>
+              </div>
             </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-
-  const FormFields = ({ disabled }: { disabled?: boolean }) => (
-    <div className="space-y-5">
-      {/* Row 1: Work Order + Case ID + Warranty Status + Region (admin) */}
-      <div className={`grid grid-cols-1 gap-4 ${isAdmin ? "sm:grid-cols-4" : "sm:grid-cols-3"}`}>
-        <div className="space-y-2">
-          <Label>Work Order</Label>
-          <Input {...register("work_order")} placeholder="Work order number" disabled={disabled} />
-        </div>
-        <div className="space-y-2">
-          <Label>Case ID</Label>
-          <Input {...register("case_id")} placeholder="Auto-generated if empty" disabled={disabled} />
-        </div>
-        <div className="space-y-2">
-          <Label>Warranty Status *</Label>
-          {disabled ? (
-            <Input value={SERVICE_TYPE_LABELS[serviceTypeValue as keyof typeof SERVICE_TYPE_LABELS] || serviceTypeValue} disabled />
-          ) : (
-            <Select value={serviceTypeValue} onValueChange={(val) => setValue("service_type", val as TicketFormData["service_type"])}>
-              <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
-              <SelectContent>
-                {Object.entries(SERVICE_TYPE_LABELS).map(([v, l]) => (
-                  <SelectItem key={v} value={v}>{l}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-        </div>
-        {isAdmin && (
-          <div className="space-y-2">
-            <Label>Region *</Label>
-            {disabled ? (
-              <Input value={REGION_LABELS[regionValue as Region] || regionValue || "-"} disabled />
-            ) : (
-              <Select value={regionValue || ""} onValueChange={(val) => setValue("region", val as Region)}>
-                <SelectTrigger><SelectValue placeholder="Select region" /></SelectTrigger>
-                <SelectContent>
-                  {Object.entries(REGION_LABELS).map(([v, l]) => (
-                    <SelectItem key={v} value={v}>{l}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          </div>
-        )}
+          );
+        })}
       </div>
+    );
+  };
 
-      {/* Row 2: Customer Name + Contact Number */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label>Customer Name *</Label>
-          <Input {...register("cust_name")} placeholder="Full name" disabled={disabled} />
-          {errors.cust_name && <p className="text-xs text-red-500">{errors.cust_name.message}</p>}
-        </div>
-        <div className="space-y-2">
-          <Label>Contact Number</Label>
-          <Input {...register("cust_contact")} placeholder="Phone number" disabled={disabled} />
-        </div>
-      </div>
-
-      {/* Row 3: Location + Email */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label>Location</Label>
-          <Input {...register("location")} placeholder="Customer location / city" disabled={disabled} />
-        </div>
-        <div className="space-y-2">
-          <Label>Email</Label>
-          <Input {...register("cust_email")} placeholder="customer@email.com" disabled={disabled} />
-        </div>
-      </div>
-
-      {/* Row 4: Product + Serial + Brand */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="space-y-2">
-          <Label>Product Name</Label>
-          <Input {...register("product_name")} placeholder="e.g. HP Laptop" disabled={disabled} />
-        </div>
-        <div className="space-y-2">
-          <Label>Serial Number</Label>
-          <Input {...register("serial_number")} placeholder="Serial number" disabled={disabled} />
-        </div>
-        <div className="space-y-2">
-          <Label>Brand</Label>
-          <Input {...register("brand")} placeholder="Brand name" disabled={disabled} />
-        </div>
-      </div>
-
-      {/* Complaint - unlimited textarea */}
-      <div className="space-y-2">
-        <Label>Complaint / Issue Description</Label>
-        <textarea
-          {...register("issue_description")}
-          placeholder="Describe the issue in detail..."
-          disabled={disabled}
-          rows={5}
-          className="flex w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-60 resize-y min-h-[120px]"
-        />
-      </div>
-    </div>
-  );
+  /* ── Shared textarea style ──────────────────────────── */
+  const textareaClass = "flex w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-60 resize-y min-h-[80px]";
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { if (!v) setStep("fill"); onOpenChange(v); }}>
+    <Dialog open={open} onOpenChange={(v) => { if (!v) setStep("customer"); onOpenChange(v); }}>
       <DialogContent className="sm:max-w-[750px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>New Service Ticket (CSO Entry)</DialogTitle>
@@ -327,32 +309,289 @@ export function TicketFormDialog({
 
         <StepIndicator />
 
-        {/* STEP 1: FILL */}
-        {step === "fill" && (
-          <form onSubmit={handleSubmit(handleSendToReview)} className="space-y-6">
-            <FormFields />
+        {/* ══════════ STEP 1: CUSTOMER & PRODUCT ══════════ */}
+        {step === "customer" && (
+          <div className="space-y-5">
+            <div className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-200">
+              <User className="w-4 h-4 text-indigo-500" /> Customer & Product Details
+            </div>
+
+            <div className={`grid grid-cols-1 gap-4 ${isAdmin ? "sm:grid-cols-4" : "sm:grid-cols-3"}`}>
+              <div className="space-y-2">
+                <Label>Work Order</Label>
+                <Input {...register("work_order")} placeholder="WO number" />
+              </div>
+              <div className="space-y-2">
+                <Label>Case ID</Label>
+                <Input {...register("case_id")} placeholder="Auto if empty" />
+              </div>
+              <div className="space-y-2">
+                <Label>Warranty Status *</Label>
+                <Select value={serviceTypeValue} onValueChange={(val) => setValue("service_type", val as TicketFormData["service_type"])}>
+                  <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(SERVICE_TYPE_LABELS).map(([v, l]) => (
+                      <SelectItem key={v} value={v}>{l}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {isAdmin && (
+                <div className="space-y-2">
+                  <Label>Region *</Label>
+                  <Select value={regionValue || ""} onValueChange={(val) => setValue("region", val as Region)}>
+                    <SelectTrigger><SelectValue placeholder="Select region" /></SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(REGION_LABELS).map(([v, l]) => (
+                        <SelectItem key={v} value={v}>{l}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Customer Name *</Label>
+                <Input {...register("cust_name")} placeholder="Full name" />
+                {errors.cust_name && <p className="text-xs text-red-500">{errors.cust_name.message}</p>}
+              </div>
+              <div className="space-y-2">
+                <Label>Contact Number</Label>
+                <Input {...register("cust_contact")} placeholder="Phone number" />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Email</Label>
+                <Input {...register("cust_email")} placeholder="customer@email.com" />
+                {errors.cust_email && <p className="text-xs text-red-500">{errors.cust_email.message}</p>}
+              </div>
+              <div className="space-y-2">
+                <Label>Location</Label>
+                <Input {...register("location")} placeholder="City / area" />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Customer Address</Label>
+              <textarea {...register("cust_address")} placeholder="Full address" rows={2} className={textareaClass} style={{ minHeight: "60px" }} />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label>Product Name</Label>
+                <Input {...register("product_name")} placeholder="e.g. HP Laptop" />
+              </div>
+              <div className="space-y-2">
+                <Label>Serial Number</Label>
+                <Input {...register("serial_number")} placeholder="Serial number" />
+              </div>
+              <div className="space-y-2">
+                <Label>Brand</Label>
+                <Input {...register("brand")} placeholder="Brand" />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Model Number</Label>
+                <Input {...register("model_number")} placeholder="Model" />
+              </div>
+              <div className="space-y-2">
+                <Label>Condition Received</Label>
+                <Input {...register("condition_received")} placeholder="e.g. Good, Damaged" />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Complaint / Issue Description</Label>
+              <textarea {...register("issue_description")} placeholder="Describe the issue..." rows={4} className={textareaClass} />
+            </div>
+
             <DialogFooter className="border-t border-slate-200 dark:border-slate-700 pt-4">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-              <Button type="submit" className="gap-2">
+              <Button type="button" onClick={handleNext} className="gap-2">
+                Next: Part Details <ArrowRight className="w-4 h-4" />
+              </Button>
+            </DialogFooter>
+          </div>
+        )}
+
+        {/* ══════════ STEP 2: PART DETAILS ══════════ */}
+        {step === "parts" && (
+          <div className="space-y-5">
+            <div className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-200">
+              <Package className="w-4 h-4 text-indigo-500" /> Part Details
+            </div>
+
+            <p className="text-xs text-slate-500 dark:text-slate-400">Fill in if parts are involved. Skip if not applicable.</p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Part Number / Product Part No.</Label>
+                <Input {...register("part_number")} placeholder="Part number" />
+              </div>
+              <div className="space-y-2">
+                <Label>Part Usage</Label>
+                <Input {...register("part_usage")} placeholder="Part usage" />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Failure Code</Label>
+                <Input {...register("failure_code")} placeholder="Failure code" />
+              </div>
+              <div className="space-y-2">
+                <Label>Part Description</Label>
+                <Input {...register("part_description")} placeholder="Description" />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label>Quantity</Label>
+                <Input type="number" {...register("qty")} placeholder="0" />
+              </div>
+              <div className="space-y-2">
+                <Label>CT Code</Label>
+                <Input {...register("ct_code")} placeholder="CT code" />
+              </div>
+              <div className="space-y-2">
+                <Label>SO No. / Req ID</Label>
+                <Input {...register("so_req_id")} placeholder="SO / Req ID" />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Removed Part S.No.</Label>
+                <Input {...register("removed_part_sno")} placeholder="Removed serial" />
+              </div>
+              <div className="space-y-2">
+                <Label>Installed Part S.No.</Label>
+                <Input {...register("installed_part_sno")} placeholder="Installed serial" />
+              </div>
+            </div>
+
+            <DialogFooter className="border-t border-slate-200 dark:border-slate-700 pt-4">
+              <Button type="button" variant="outline" onClick={handleBack} className="gap-2">
+                <ArrowLeft className="w-4 h-4" /> Back
+              </Button>
+              <Button type="button" onClick={handleNext} className="gap-2">
+                Next: Engineer <ArrowRight className="w-4 h-4" />
+              </Button>
+            </DialogFooter>
+          </div>
+        )}
+
+        {/* ══════════ STEP 3: ENGINEER & RESOLUTION ══════════ */}
+        {step === "engineer" && (
+          <div className="space-y-5">
+            <div className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-200">
+              <Wrench className="w-4 h-4 text-indigo-500" /> Engineer & Resolution
+            </div>
+
+            <p className="text-xs text-slate-500 dark:text-slate-400">Fill in engineer details and resolution. Skip if not applicable.</p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Engineer Name</Label>
+                <Input {...register("engineer_name")} placeholder="Engineer name" />
+              </div>
+              <div className="space-y-2">
+                <Label>HP ID</Label>
+                <Input {...register("hp_id")} placeholder="HP ID" />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Resolution Summary</Label>
+              <textarea {...register("resolution_summary")} placeholder="Summary of the resolution..." rows={3} className={textareaClass} />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Explanation</Label>
+              <textarea {...register("explanation")} placeholder="Detailed explanation..." rows={3} className={textareaClass} />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Customer Comments</Label>
+              <textarea {...register("customer_comments")} placeholder="Customer feedback..." rows={3} className={textareaClass} />
+            </div>
+
+            <DialogFooter className="border-t border-slate-200 dark:border-slate-700 pt-4">
+              <Button type="button" variant="outline" onClick={handleBack} className="gap-2">
+                <ArrowLeft className="w-4 h-4" /> Back
+              </Button>
+              <Button type="button" onClick={handleNext} className="gap-2">
                 <Send className="w-4 h-4" /> Review with Customer
               </Button>
             </DialogFooter>
-          </form>
+          </div>
         )}
 
-        {/* STEP 2: REVIEW */}
+        {/* ══════════ STEP 4: REVIEW ══════════ */}
         {step === "review" && (
-          <div className="space-y-6">
-            <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-xl p-4 text-center">
-              <Send className="w-8 h-8 text-blue-500 mx-auto mb-2" />
-              <p className="font-medium text-blue-800 dark:text-blue-200">Show details to customer for review</p>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Verify all details are correct. Print a copy or save.</p>
+          <div className="space-y-4">
+            <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-xl p-3 text-center">
+              <Send className="w-6 h-6 text-blue-500 mx-auto mb-1" />
+              <p className="font-medium text-blue-800 dark:text-blue-200 text-sm">Show details to customer for review</p>
             </div>
 
-            <FormFields disabled />
+            {/* Review summary */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+              <div className="space-y-3 border border-slate-200 dark:border-slate-700 rounded-xl p-4">
+                <p className="font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2"><User className="w-4 h-4 text-indigo-500" /> Customer</p>
+                <ReviewField label="Name" value={getValues("cust_name")} />
+                <ReviewField label="Contact" value={getValues("cust_contact")} />
+                <ReviewField label="Email" value={getValues("cust_email")} />
+                <ReviewField label="Address" value={getValues("cust_address")} />
+                <ReviewField label="Location" value={getValues("location")} />
+              </div>
+              <div className="space-y-3 border border-slate-200 dark:border-slate-700 rounded-xl p-4">
+                <p className="font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2"><Package className="w-4 h-4 text-indigo-500" /> Product</p>
+                <ReviewField label="Product" value={getValues("product_name")} />
+                <ReviewField label="Serial No." value={getValues("serial_number")} />
+                <ReviewField label="Brand" value={getValues("brand")} />
+                <ReviewField label="Model" value={getValues("model_number")} />
+                <ReviewField label="Service" value={SERVICE_TYPE_LABELS[serviceTypeValue as keyof typeof SERVICE_TYPE_LABELS] || serviceTypeValue} />
+                <ReviewField label="Condition" value={getValues("condition_received")} />
+              </div>
+            </div>
+
+            <div className="border border-slate-200 dark:border-slate-700 rounded-xl p-4 text-sm space-y-2">
+              <p className="font-semibold text-slate-700 dark:text-slate-200">Issue Description</p>
+              <p className="text-slate-600 dark:text-slate-300 whitespace-pre-wrap">{getValues("issue_description") || "-"}</p>
+            </div>
+
+            {(getValues("part_number") || getValues("engineer_name") || getValues("resolution_summary")) && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                {getValues("part_number") && (
+                  <div className="space-y-3 border border-slate-200 dark:border-slate-700 rounded-xl p-4">
+                    <p className="font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2"><Package className="w-4 h-4 text-indigo-500" /> Part Details</p>
+                    <ReviewField label="Part No." value={getValues("part_number")} />
+                    <ReviewField label="Description" value={getValues("part_description")} />
+                    <ReviewField label="Qty" value={String(getValues("qty") || "")} />
+                    <ReviewField label="Failure Code" value={getValues("failure_code")} />
+                  </div>
+                )}
+                {(getValues("engineer_name") || getValues("resolution_summary")) && (
+                  <div className="space-y-3 border border-slate-200 dark:border-slate-700 rounded-xl p-4">
+                    <p className="font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2"><Wrench className="w-4 h-4 text-indigo-500" /> Engineer</p>
+                    <ReviewField label="Name" value={getValues("engineer_name")} />
+                    <ReviewField label="HP ID" value={getValues("hp_id")} />
+                    <ReviewField label="Resolution" value={getValues("resolution_summary")} />
+                  </div>
+                )}
+              </div>
+            )}
 
             <DialogFooter className="border-t border-slate-200 dark:border-slate-700 pt-4 flex-col sm:flex-row gap-2">
-              <Button type="button" variant="outline" onClick={() => setStep("fill")} className="gap-2">
+              <Button type="button" variant="outline" onClick={handleBack} className="gap-2">
                 <ArrowLeft className="w-4 h-4" /> Edit
               </Button>
               <Button type="button" variant="outline" onClick={handlePrint} className="gap-2">
@@ -366,7 +605,7 @@ export function TicketFormDialog({
           </div>
         )}
 
-        {/* STEP 3: DONE */}
+        {/* ══════════ STEP 5: DONE ══════════ */}
         {step === "done" && (
           <div className="py-8 text-center">
             <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -386,5 +625,15 @@ export function TicketFormDialog({
         )}
       </DialogContent>
     </Dialog>
+  );
+}
+
+/* ── Review helper ────────────────────────────────────── */
+function ReviewField({ label, value }: { label: string; value?: string }) {
+  return (
+    <div>
+      <span className="text-xs text-slate-500 dark:text-slate-400">{label}</span>
+      <p className="text-slate-800 dark:text-slate-100 text-sm">{value || <span className="text-slate-400 italic">-</span>}</p>
+    </div>
   );
 }
