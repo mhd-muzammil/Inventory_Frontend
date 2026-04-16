@@ -24,7 +24,7 @@ const subAdminSchema = z.object({
   email: z.string().email("Invalid email").or(z.literal("")).optional(),
   first_name: z.string().optional().default(""),
   last_name: z.string().optional().default(""),
-  region: z.enum(["vellore", "salem", "chennai", "kanchipuram"], { message: "Select a region" }),
+  region: z.enum(["vellore", "salem", "chennai", "kanchipuram", "hosur"], { message: "Select a region" }),
 });
 
 type SubAdminFormData = z.infer<typeof subAdminSchema>;
