@@ -67,16 +67,13 @@ export const WORKFLOW_TRANSITIONS: Record<TicketStatus, TransitionDef[]> = {
     { to: "cx_pending", label: "Awaiting Customer", roles: ["cc_team", "sub_admin", "super_admin", "admin"], requiresComment: false },
   ],
   cx_pending: [
-    { to: "cx_approved", label: "Customer Approved", roles: ["cc_team", "sub_admin", "super_admin", "admin"], requiresComment: false },
-    { to: "cx_rejected", label: "Customer Rejected", roles: ["cc_team", "sub_admin", "super_admin", "admin"], requiresComment: true },
+    { to: "part_ordered", label: "Customer Approved \u2014 Order Parts", roles: ["cc_team", "sub_admin", "super_admin", "admin"], requiresComment: false },
+    { to: "closed", label: "Customer Rejected \u2014 Close", roles: ["cc_team", "sub_admin", "super_admin", "admin"], requiresComment: true },
+    { to: "quotation_sent", label: "Re-negotiate \u2014 Resend", roles: ["cc_team", "sub_admin", "super_admin", "admin"], requiresComment: true },
   ],
-  cx_approved: [
-    { to: "part_ordered", label: "Place Order", roles: ["manager", "sub_admin", "super_admin", "admin"], requiresComment: false },
-  ],
-  cx_rejected: [
-    { to: "closed", label: "Close Ticket", roles: ["manager", "sub_admin", "super_admin", "admin"], requiresComment: true },
-    { to: "quotation_sent", label: "Re-negotiate \u2014 Resend", roles: ["cc_team", "manager", "sub_admin", "super_admin", "admin"], requiresComment: true },
-  ],
+  // cx_approved / cx_rejected removed — handled directly from cx_pending
+  cx_approved: [],
+  cx_rejected: [],
   part_ordered: [
     { to: "part_received", label: "Parts Received", roles: ["manager", "sub_admin", "super_admin", "admin"], requiresComment: false },
   ],
@@ -84,6 +81,7 @@ export const WORKFLOW_TRANSITIONS: Record<TicketStatus, TransitionDef[]> = {
     { to: "in_progress", label: "Start Repair", roles: ["engineer", "sub_admin", "super_admin", "admin"], requiresComment: false },
   ],
   in_progress: [
+    { to: "part_requested", label: "Request Parts", roles: ["engineer", "sub_admin", "super_admin", "admin"], requiresComment: true },
     { to: "ready_for_delivery", label: "Mark Ready", roles: ["engineer", "sub_admin", "super_admin", "admin"], requiresComment: true },
   ],
   ready_for_delivery: [
@@ -94,7 +92,6 @@ export const WORKFLOW_TRANSITIONS: Record<TicketStatus, TransitionDef[]> = {
   ],
   under_observation: [
     { to: "closed", label: "Final Close", roles: ["manager", "sub_admin", "super_admin", "admin"], requiresComment: true },
-    { to: "in_progress", label: "Reopen for Repair", roles: ["manager", "sub_admin", "super_admin", "admin"], requiresComment: true },
   ],
 };
 
@@ -153,7 +150,6 @@ export const DEFAULT_SLAS: SLADefault[] = [
   { status: "part_approved",      sla_minutes: 120,   responsible_role: "cc_team",      label: "Send quotation within 2 hrs" },
   { status: "quotation_sent",     sla_minutes: 60,    responsible_role: "cc_team",      label: "Mark customer pending within 1 hr" },
   { status: "cx_pending",         sla_minutes: 1440,  responsible_role: "cc_team",      label: "Customer responds within 24 hrs" },
-  { status: "cx_approved",        sla_minutes: 60,    responsible_role: "manager",      label: "Place order within 1 hr" },
   { status: "part_ordered",       sla_minutes: 2880,  responsible_role: "manager",      label: "Parts arrive within 48 hrs" },
   { status: "part_received",      sla_minutes: 120,   responsible_role: "manager",      label: "Start repair within 2 hrs" },
   { status: "in_progress",        sla_minutes: 480,   responsible_role: "engineer",     label: "Complete repair within 8 hrs" },
@@ -191,7 +187,7 @@ export function getFullPath(requiresParts: boolean): TicketStatus[] {
     return [
       "cso_created", "assigned", "diagnosis",
       "part_requested", "part_approved", "quotation_sent",
-      "cx_pending", "cx_approved", "part_ordered", "part_received",
+      "cx_pending", "part_ordered", "part_received",
       "in_progress", "ready_for_delivery", "closed",
     ];
   }

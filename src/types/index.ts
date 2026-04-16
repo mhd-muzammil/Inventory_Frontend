@@ -111,6 +111,7 @@ export interface Ticket {
   assigned_engineer: EngineerSummary | null;
   assigned_at: string | null;
   requires_parts: boolean;
+  was_under_observation: boolean;
   // Part details
   part_number: string;
   part_usage: string;

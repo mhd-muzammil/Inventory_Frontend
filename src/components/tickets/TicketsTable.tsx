@@ -53,11 +53,17 @@ export function TicketsTable({
   const getTransitions = (ticket: Ticket) => {
     if (!userRole) return [];
     const defs = getAvailableTransitions(ticket.current_status, userRole, ticket.requires_parts);
-    return defs.map((d) => ({
-      to_status: d.to as TicketStatus,
-      label: d.label,
-      requires_comment: d.requiresComment,
-    }));
+    return defs
+      .filter((d) => {
+        // Block closed → under_observation if ticket already went through it (final close)
+        if (ticket.current_status === "closed" && d.to === "under_observation" && ticket.was_under_observation) return false;
+        return true;
+      })
+      .map((d) => ({
+        to_status: d.to as TicketStatus,
+        label: d.label,
+        requires_comment: d.requiresComment,
+      }));
   };
 
   const handleQuickTransition = async (ticketId: number, toStatus: TicketStatus) => {

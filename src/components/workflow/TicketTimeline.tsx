@@ -13,17 +13,25 @@ interface TicketTimelineProps {
   className?: string;
 }
 
+const PARTS_STATUSES = new Set<TicketStatus>([
+  "part_requested", "part_approved", "quotation_sent", "cx_pending",
+  "part_ordered", "part_received",
+]);
+
 export function TicketTimeline({ timeline, currentStatus, requiresParts, className }: TicketTimelineProps) {
-  const fullPath = getFullPath(requiresParts);
-  const completedStatuses = new Set(timeline.filter((e) => e.exited_at).map((e) => e.to_status));
+  // If current status is in the parts flow, force parts path even if flag is stale
+  const needsParts = requiresParts || PARTS_STATUSES.has(currentStatus);
+  const fullPath = getFullPath(needsParts);
   const currentIndex = fullPath.indexOf(currentStatus);
 
   return (
     <div className={cn("relative", className)}>
       <div className="space-y-0">
         {fullPath.map((status, idx) => {
-          const entry = timeline.find((e) => e.to_status === status);
-          const isCompleted = completedStatuses.has(status);
+          // Latest timeline entry for this status
+          const entry = [...timeline].reverse().find((e) => e.to_status === status);
+          // Position-based: before current = completed, at current = current, after = pending
+          const isCompleted = currentIndex >= 0 ? idx < currentIndex : !!entry?.exited_at;
           const isCurrent = status === currentStatus;
           const isPending = !isCompleted && !isCurrent;
           const config = STATUS_CONFIG[status];
@@ -79,7 +87,7 @@ export function TicketTimeline({ timeline, currentStatus, requiresParts, classNa
                   )}
                 </div>
 
-                {entry && (
+                {entry && (isCompleted || isCurrent) && (
                   <div className="mt-1 space-y-1">
                     {/* Actor + time */}
                     <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
@@ -113,7 +121,7 @@ export function TicketTimeline({ timeline, currentStatus, requiresParts, classNa
                   </div>
                 )}
 
-                {isPending && !entry && (
+                {isPending && (
                   <p className="text-xs text-slate-400 dark:text-slate-600 mt-1">Pending</p>
                 )}
               </div>
