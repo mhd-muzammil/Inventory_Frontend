@@ -76,6 +76,11 @@ export function TicketDetailPanel({
         <div className="flex-1 min-w-0">
           <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100 tracking-tight">
             {ticket.ticket_number}
+            {ticket.form_number && (
+              <span className="ml-2 text-sm font-medium text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 px-2 py-0.5 rounded-full align-middle">
+                {ticket.form_number}
+              </span>
+            )}
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
             {ticket.product_name}

@@ -107,6 +107,7 @@ export function TicketsTable({
                   UID <ArrowUpDown className="w-3 h-3" />
                 </button>
               </TableHead>
+              <TableHead>Form No.</TableHead>
               <TableHead>Work Order</TableHead>
               <TableHead>Case ID</TableHead>
               <TableHead>
@@ -126,7 +127,7 @@ export function TicketsTable({
           <TableBody>
             {data.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={11} className="h-32 text-center text-slate-500 dark:text-slate-400">
+                <TableCell colSpan={12} className="h-32 text-center text-slate-500 dark:text-slate-400">
                   No tickets found.
                 </TableCell>
               </TableRow>
@@ -149,6 +150,11 @@ export function TicketsTable({
                       <Link to={`/tickets/${ticket.id}`} className="text-indigo-600 dark:text-indigo-400 hover:underline">
                         {ticket.ticket_number}
                       </Link>
+                    </TableCell>
+
+                    {/* Form No. */}
+                    <TableCell>
+                      <span className="font-mono text-xs text-slate-600 dark:text-slate-300">{ticket.form_number || <span className="text-slate-400 italic">—</span>}</span>
                     </TableCell>
 
                     {/* Work Order */}

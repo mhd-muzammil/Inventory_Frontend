@@ -301,7 +301,7 @@ export function PrintTemplate({ ticket }: PrintTemplateProps) {
             {/* ── HEADER ─────────────────────────────── */}
             <div className="header">
               <div className="header-gst">GST # {addr.gst}</div>
-              <div className="header-cso">CSO No. : {csoPrefix}-{ticket.ticket_number.replace("TKT-", "")}</div>
+              <div className="header-cso">CSO No. : {ticket.form_number || `${csoPrefix}-${ticket.ticket_number.replace("TKT-", "")}`}</div>
               <span className="header-badge">HP Care</span>
               <div className="company-name">RENDERWAYS TECHNOLOGY PVT LTD</div>
               <div className="company-address">

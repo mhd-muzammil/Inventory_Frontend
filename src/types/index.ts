@@ -85,6 +85,7 @@ export interface EngineerSummary {
 export interface Ticket {
   id: number;
   ticket_number: string;
+  form_number: string | null;
   work_order: string;
   // Customer
   cust_name: string;
