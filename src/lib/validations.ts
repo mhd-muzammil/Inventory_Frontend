@@ -187,6 +187,7 @@ export const bufferPartSchema = z.object({
   part_name: z.string().min(1, "Part name is required"),
   quantity: z.coerce.number().min(1, "Quantity must be at least 1"),
   general_name: z.string().optional().default(""),
+  region: z.string().optional().default(""),
 });
 
 export type BufferPartFormData = z.infer<typeof bufferPartSchema>;

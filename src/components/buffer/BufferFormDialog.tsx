@@ -16,7 +16,9 @@ import { bufferPartSchema, type BufferPartFormData } from "@/lib/validations";
 import { createBufferPart, updateBufferPart } from "@/api/bufferParts";
 import { extractApiError } from "@/api/client";
 import { toast } from "@/components/ui/use-toast";
-import type { BufferPart } from "@/types";
+import { REGION_LABELS } from "@/types";
+import type { BufferPart, Region } from "@/types";
+import { useAuthStore } from "@/store/authStore";
 
 interface BufferFormDialogProps {
   open: boolean;
@@ -27,6 +29,9 @@ interface BufferFormDialogProps {
 
 export function BufferFormDialog({ open, onOpenChange, editing, onSuccess }: BufferFormDialogProps) {
   const [saving, setSaving] = useState(false);
+  const user = useAuthStore((s) => s.user);
+  const canPickRegion = user?.role === "admin" || user?.role === "super_admin" || user?.role === "manager";
+  const lockedRegion: Region | "" = canPickRegion ? "" : (user?.region ?? "");
 
   const {
     register,
@@ -44,20 +49,38 @@ export function BufferFormDialog({ open, onOpenChange, editing, onSuccess }: Buf
         part_name: editing.part_name,
         quantity: editing.quantity,
         general_name: editing.general_name || "",
+        region: editing.region || lockedRegion,
       });
     } else if (open) {
-      reset({ part_number: "", part_name: "", quantity: 1, general_name: "" });
+      reset({
+        part_number: "",
+        part_name: "",
+        quantity: 1,
+        general_name: "",
+        region: lockedRegion,
+      });
     }
-  }, [open, editing, reset]);
+  }, [open, editing, reset, lockedRegion]);
 
   const onSubmit = async (data: BufferPartFormData) => {
+    if (canPickRegion && !data.region) {
+      toast({ title: "Region is required", variant: "destructive" });
+      return;
+    }
     setSaving(true);
     try {
+      const payload = canPickRegion ? data : { ...data, region: lockedRegion };
       if (editing) {
-        await updateBufferPart(editing.id, data);
+        await updateBufferPart(editing.id, payload);
         toast({ title: "Buffer part updated successfully" });
       } else {
-        await createBufferPart(data);
+        await createBufferPart({
+          part_number: payload.part_number,
+          part_name: payload.part_name,
+          quantity: payload.quantity,
+          general_name: payload.general_name,
+          region: payload.region,
+        });
         toast({ title: "Buffer part added successfully" });
       }
       onSuccess();
@@ -99,6 +122,28 @@ export function BufferFormDialog({ open, onOpenChange, editing, onSuccess }: Buf
               <Label>General Name</Label>
               <Input {...register("general_name")} placeholder="e.g. Printer Consumable" />
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Region *</Label>
+            {canPickRegion ? (
+              <select
+                {...register("region")}
+                className="flex h-10 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900"
+              >
+                <option value="">Select region...</option>
+                {(Object.entries(REGION_LABELS) as [Region, string][]).map(([value, label]) => (
+                  <option key={value} value={value}>{label}</option>
+                ))}
+              </select>
+            ) : (
+              <Input
+                value={lockedRegion ? REGION_LABELS[lockedRegion as Region] : "—"}
+                disabled
+                className="bg-slate-50 dark:bg-slate-800"
+              />
+            )}
+            {errors.region && <p className="text-xs text-red-500">{errors.region.message}</p>}
           </div>
 
           <DialogFooter>

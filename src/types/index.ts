@@ -323,6 +323,8 @@ export interface BufferPart {
   part_name: string;
   quantity: number;
   general_name: string;
+  region: Region | "";
+  region_display: string;
   created_by: number | null;
   created_by_name: string | null;
   created_at: string;

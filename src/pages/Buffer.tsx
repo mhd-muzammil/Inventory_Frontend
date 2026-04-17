@@ -1,6 +1,6 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { motion } from "framer-motion";
-import { Layers, AlertCircle, Plus, Search } from "lucide-react";
+import { Layers, AlertCircle, Plus, Search, MapPin, Globe } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,10 +10,15 @@ import { getBufferParts, deleteBufferPart } from "@/api/bufferParts";
 import { extractApiError } from "@/api/client";
 import { toast } from "@/components/ui/use-toast";
 import { useDebounce } from "@/hooks/useDebounce";
-import type { BufferPart, PaginationMeta } from "@/types";
+import { useAuthStore } from "@/store/authStore";
+import { REGION_LABELS } from "@/types";
+import type { BufferPart, PaginationMeta, Region } from "@/types";
 import { useEffect, useCallback } from "react";
 
 export default function Buffer() {
+  const user = useAuthStore((s) => s.user);
+  const hasRegion = !!user?.region;
+  const [viewMode, setViewMode] = useState<"my_region" | "overall">(hasRegion ? "my_region" : "overall");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [data, setData] = useState<BufferPart[]>([]);
@@ -32,6 +37,7 @@ export default function Buffer() {
     try {
       const res = await getBufferParts({
         search: debouncedSearch || undefined,
+        view: viewMode,
         page,
         per_page: 20,
       });
@@ -42,7 +48,7 @@ export default function Buffer() {
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, page]);
+  }, [debouncedSearch, viewMode, page]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -77,7 +83,34 @@ export default function Buffer() {
       </div>
 
       {/* Toolbar */}
-      <div className="flex items-center gap-3 mb-6">
+      <div className="flex flex-wrap items-center gap-3 mb-6">
+        {hasRegion && (
+          <div className="flex items-center rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
+            <button
+              onClick={() => { setViewMode("my_region"); setPage(1); }}
+              className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium transition-colors ${
+                viewMode === "my_region"
+                  ? "bg-indigo-600 text-white"
+                  : "text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+              }`}
+            >
+              <MapPin className="w-4 h-4" />
+              My Region ({REGION_LABELS[user!.region as Region] || user!.region})
+            </button>
+            <button
+              onClick={() => { setViewMode("overall"); setPage(1); }}
+              className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium transition-colors ${
+                viewMode === "overall"
+                  ? "bg-indigo-600 text-white"
+                  : "text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+              }`}
+            >
+              <Globe className="w-4 h-4" />
+              Overall Stock
+            </button>
+          </div>
+        )}
+
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
           <Input
@@ -87,7 +120,7 @@ export default function Buffer() {
             className="pl-9"
           />
         </div>
-        <Button onClick={() => setAddDialogOpen(true)} className="gap-2">
+        <Button onClick={() => setAddDialogOpen(true)} className="gap-2 ml-auto">
           <Plus className="w-4 h-4" /> Add Part
         </Button>
       </div>

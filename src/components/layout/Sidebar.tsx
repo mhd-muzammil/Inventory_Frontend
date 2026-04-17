@@ -33,7 +33,7 @@ const navLinks = [
   { to: "/invoice", label: "Invoice", icon: Receipt },
   { to: "/stock", label: "Stock", icon: Warehouse },
   { to: "/buffer", label: "Buffer", icon: Layers },
-  { to: "/buffer-stock", label: "Buffer Stock Mgmt", icon: Layers },
+  // { to: "/buffer-stock", label: "Buffer Stock Mgmt", icon: Layers },
   { to: "/purchase-order", label: "Purchase Order", icon: ShoppingCart },
   { to: "/reports", label: "Report", icon: BarChart3 },
   { to: "/settings", label: "Settings", icon: Settings },

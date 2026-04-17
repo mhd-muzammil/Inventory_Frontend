@@ -1,7 +1,13 @@
 import client from "./client";
 import type { BufferPart, PaginatedResponse } from "@/types";
 
-export async function getBufferParts(filters?: { search?: string; page?: number; per_page?: number }): Promise<PaginatedResponse<BufferPart>> {
+export async function getBufferParts(filters?: {
+  search?: string;
+  page?: number;
+  per_page?: number;
+  view?: "my_region" | "overall";
+  region?: string;
+}): Promise<PaginatedResponse<BufferPart>> {
   const { data } = await client.get<PaginatedResponse<BufferPart>>("/buffer-parts/", { params: filters });
   return data;
 }
@@ -11,6 +17,7 @@ export async function createBufferPart(payload: {
   part_name: string;
   quantity: number;
   general_name?: string;
+  region?: string;
 }): Promise<BufferPart> {
   const { data } = await client.post<BufferPart>("/buffer-parts/", payload);
   return data;

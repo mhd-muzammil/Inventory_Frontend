@@ -50,10 +50,12 @@ export function BufferTable({ data, loading, pagination, onPageChange, onEdit, o
         <Table>
           <TableHeader>
             <TableRow className="bg-slate-50 dark:bg-slate-800/50">
+              <TableHead className="w-12">S.No</TableHead>
               <TableHead>Part Number</TableHead>
               <TableHead>Part Name</TableHead>
               <TableHead>Quantity</TableHead>
               <TableHead>General Name</TableHead>
+              <TableHead>Region</TableHead>
               <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -66,6 +68,9 @@ export function BufferTable({ data, loading, pagination, onPageChange, onEdit, o
                 transition={{ delay: i * 0.03 }}
                 className="border-b border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
               >
+                <TableCell className="text-sm text-slate-500 dark:text-slate-400">
+                  {(pagination.page - 1) * pagination.per_page + i + 1}
+                </TableCell>
                 <TableCell className="font-mono text-sm font-medium">
                   {entry.part_number}
                 </TableCell>
@@ -75,6 +80,13 @@ export function BufferTable({ data, loading, pagination, onPageChange, onEdit, o
                 </TableCell>
                 <TableCell className="text-sm text-slate-600 dark:text-slate-300">
                   {entry.general_name || <span className="text-slate-400 italic">—</span>}
+                </TableCell>
+                <TableCell>
+                  {entry.region_display ? (
+                    <Badge variant="outline">{entry.region_display}</Badge>
+                  ) : (
+                    <span className="text-slate-400 italic">—</span>
+                  )}
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-1">
