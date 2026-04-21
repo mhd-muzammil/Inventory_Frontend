@@ -23,6 +23,10 @@ export async function updateStockItem(id: number | string, payload: Record<strin
   return data;
 }
 
+export async function deleteStockItem(id: number | string): Promise<void> {
+  await client.delete(`/stock/${id}/`);
+}
+
 export async function getStockMovements(stockItemId: number | string): Promise<StockMovement[]> {
   const { data } = await client.get<StockMovement[]>(`/stock/${stockItemId}/movements/`);
   return data;

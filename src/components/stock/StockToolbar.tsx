@@ -14,6 +14,9 @@ interface StockToolbarProps {
   onAdd: () => void;
   onClearFilters: () => void;
   hasActiveFilters: boolean;
+  isAdmin?: boolean;
+  region?: string;
+  onRegionChange?: (val: string) => void;
 }
 
 export function StockToolbar({
@@ -27,6 +30,9 @@ export function StockToolbar({
   onAdd,
   onClearFilters,
   hasActiveFilters,
+  isAdmin,
+  region,
+  onRegionChange,
 }: StockToolbarProps) {
   return (
     <div className="space-y-3 mb-6">
@@ -76,6 +82,23 @@ export function StockToolbar({
             ))}
           </SelectContent>
         </Select>
+
+        {/* Region (Admin Only) */}
+        {isAdmin && region !== undefined && onRegionChange && (
+          <Select value={region} onValueChange={onRegionChange}>
+            <SelectTrigger className="w-full sm:w-44">
+              <SelectValue placeholder="Region" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Regions</SelectItem>
+              <SelectItem value="chennai">Chennai</SelectItem>
+              <SelectItem value="vellore">Vellore</SelectItem>
+              <SelectItem value="salem">Salem</SelectItem>
+              <SelectItem value="hosur">Hosur</SelectItem>
+              <SelectItem value="kanchipuram">Kanchipuram</SelectItem>
+            </SelectContent>
+          </Select>
+        )}
 
         {/* Low Stock Toggle */}
         <Button

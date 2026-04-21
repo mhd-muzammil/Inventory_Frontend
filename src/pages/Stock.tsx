@@ -1,27 +1,44 @@
 import { useState, useMemo, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Warehouse, AlertCircle, AlertTriangle } from "lucide-react";
+import { Warehouse, AlertCircle, AlertTriangle, Loader2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { StockToolbar } from "@/components/stock/StockToolbar";
 import { StockTable } from "@/components/stock/StockTable";
 import { StockFormDialog } from "@/components/stock/StockFormDialog";
 import { StockAdjustDialog } from "@/components/stock/StockAdjustDialog";
 import { useStock } from "@/hooks/useStock";
 import { useDebounce } from "@/hooks/useDebounce";
-import { getLowStock } from "@/api/stock";
+import { getLowStock, deleteStockItem } from "@/api/stock";
+import { toast } from "@/components/ui/use-toast";
+import { useAuthStore } from "@/store/authStore";
 import type { StockItem } from "@/types";
 
 export default function Stock() {
+  const { user } = useAuthStore();
+  const isAdmin = user?.role === "admin" || user?.role === "super_admin";
+  const userRegion = user?.region || "";
+
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("all");
   const [lowStockOnly, setLowStockOnly] = useState(false);
+  const [regionFilter, setRegionFilter] = useState<string>(isAdmin ? "all" : userRegion || "all");
   const [page, setPage] = useState(1);
 
   // Dialogs
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<StockItem | null>(null);
   const [adjustItem, setAdjustItem] = useState<StockItem | null>(null);
+  const [deleteItem, setDeleteItem] = useState<StockItem | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Low stock alert
   const [lowStockCount, setLowStockCount] = useState(0);
@@ -33,10 +50,11 @@ export default function Stock() {
       search: debouncedSearch || undefined,
       category: category !== "all" ? category : undefined,
       low_stock_only: lowStockOnly || undefined,
+      region: regionFilter !== "all" ? regionFilter : undefined,
       page,
       per_page: 20,
     }),
-    [debouncedSearch, category, lowStockOnly, page],
+    [debouncedSearch, category, lowStockOnly, regionFilter, page],
   );
 
   const { data, loading, error, pagination, refetch } = useStock(filters);
@@ -46,23 +64,41 @@ export default function Stock() {
     getLowStock().then((items) => setLowStockCount(items.length)).catch(() => {});
   }, [data]);
 
-  const hasActiveFilters = search !== "" || category !== "all" || lowStockOnly;
+  const hasActiveFilters = search !== "" || category !== "all" || lowStockOnly || (isAdmin && regionFilter !== "all");
 
   const handleClearFilters = () => {
     setSearch("");
     setCategory("all");
     setLowStockOnly(false);
+    if (isAdmin) setRegionFilter("all");
     setPage(1);
   };
 
-  const handleEdit = (id: number | string) => {
-    const item = data.find((d) => d.id === id);
-    if (item) setEditingItem(item);
+  const handleEdit = (item: StockItem) => {
+    setEditingItem(item);
   };
 
-  const handleAdjust = (id: number | string) => {
-    const item = data.find((d) => d.id === id);
-    if (item) setAdjustItem(item);
+  const handleAdjust = (item: StockItem) => {
+    setAdjustItem(item);
+  };
+
+  const handleDelete = (item: StockItem) => {
+    setDeleteItem(item);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteItem) return;
+    setIsDeleting(true);
+    try {
+      await deleteStockItem(deleteItem.id);
+      toast({ title: "Stock item deleted successfully" });
+      refetch();
+      setDeleteItem(null);
+    } catch (err: any) {
+      toast({ title: err.response?.data?.detail || "Failed to delete item", variant: "destructive" });
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   if (error) {
@@ -118,11 +154,14 @@ export default function Stock() {
         category={category}
         onCategoryChange={(v) => { setCategory(v); setPage(1); }}
         lowStockOnly={lowStockOnly}
-        onLowStockToggle={(v) => { setLowStockOnly(v); setPage(1); }}
+        onLowStockToggle={() => { setLowStockOnly(prev => !prev); setPage(1); }}
         onAdd={() => setAddDialogOpen(true)}
         onClearFilters={handleClearFilters}
         hasActiveFilters={hasActiveFilters}
         categories={[]}
+        isAdmin={isAdmin}
+        region={regionFilter}
+        onRegionChange={(v) => { setRegionFilter(v); setPage(1); }}
       />
 
       {!loading && data.length === 0 ? (
@@ -140,6 +179,7 @@ export default function Stock() {
           onPageChange={setPage}
           onEdit={handleEdit}
           onAdjust={handleAdjust}
+          onDelete={handleDelete}
         />
       )}
 
@@ -157,6 +197,26 @@ export default function Stock() {
         stockItem={adjustItem}
         onSuccess={refetch}
       />
+
+      <Dialog open={!!deleteItem} onOpenChange={(open) => !open && !isDeleting && setDeleteItem(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Stock Item</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete <span className="font-semibold text-foreground">{deleteItem?.part_name}</span>? This action cannot be undone and will permanently remove it from your inventory.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mt-4 gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setDeleteItem(null)} disabled={isDeleting}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={confirmDelete} disabled={isDeleting}>
+              {isDeleting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+              Yes, delete item
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </motion.div>
   );
 }

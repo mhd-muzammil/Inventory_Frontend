@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { ChevronLeft, ChevronRight, Package, Pencil, ArrowRightLeft } from "lucide-react";
+import { ChevronLeft, ChevronRight, Package, Pencil, ArrowRightLeft, Trash2 } from "lucide-react";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ interface StockTableProps {
   onPageChange: (page: number) => void;
   onEdit: (item: StockItem) => void;
   onAdjust: (item: StockItem) => void;
+  onDelete: (item: StockItem) => void;
 }
 
 function getAvailabilityStyle(available: number, reorderLevel: number): string {
@@ -30,6 +31,7 @@ export function StockTable({
   onPageChange,
   onEdit,
   onAdjust,
+  onDelete,
 }: StockTableProps) {
   if (loading) {
     return (
@@ -128,6 +130,15 @@ export function StockTable({
                         title="Adjust stock"
                       >
                         <ArrowRightLeft className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => onDelete(item)}
+                        className="h-8 w-8 text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/50"
+                        title="Delete item"
+                      >
+                        <Trash2 className="w-4 h-4" />
                       </Button>
                     </div>
                   </TableCell>
