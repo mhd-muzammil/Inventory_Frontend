@@ -326,14 +326,18 @@ export function PrintTemplate({ ticket }: PrintTemplateProps) {
                   <Td>{ticket.product_name}</Td>
                 </tr>
                 <tr>
-                  <Th rowSpan={5}>Customer Address</Th>
-                  <Td rowSpan={5}>{ticket.cust_address}</Td>
+                  <Th rowSpan={6}>Customer Address</Th>
+                  <Td rowSpan={6}>{ticket.cust_address}</Td>
                   <Th>Serial Number</Th>
                   <Td>{ticket.serial_number}</Td>
                 </tr>
                 <tr>
                   <Th>Case ID</Th>
-                  <Td>{ticket.case_id}</Td>
+                  <Td>{ticket.case_id || ""}</Td>
+                </tr>
+                <tr>
+                  <Th>CSO Date</Th>
+                  <Td>{formatDate(ticket.cso_date)}</Td>
                 </tr>
                 <tr>
                   <Th>Condition Received</Th>

@@ -56,10 +56,12 @@ export function TicketEditDialog({ open, onOpenChange, ticket, onSaved }: Ticket
       serial_number: ticket.serial_number || "",
       model_number: ticket.model_number || "",
       brand: ticket.brand || "",
+      work_order: ticket.work_order || "",
       case_id: ticket.case_id || "",
       condition_received: ticket.condition_received || "",
       service_type: ticket.service_type || "warranty",
       issue_description: ticket.issue_description || "",
+      cso_date: ticket.cso_date || "",
       // Parts
       part_number: ticket.part_number || "",
       part_usage: ticket.part_usage || "",
@@ -169,14 +171,22 @@ export function TicketEditDialog({ open, onOpenChange, ticket, onSaved }: Ticket
                 <Input {...register("brand")} />
               </div>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
               <div className="space-y-2">
                 <Label>Model Number</Label>
                 <Input {...register("model_number")} />
               </div>
               <div className="space-y-2">
+                <Label>Work Order</Label>
+                <Input {...register("work_order")} />
+              </div>
+              <div className="space-y-2">
                 <Label>Case ID</Label>
-                <Input {...register("case_id")} />
+                <Input {...register("case_id")} placeholder="Optional" />
+              </div>
+              <div className="space-y-2">
+                <Label>CSO Date</Label>
+                <Input type="date" {...register("cso_date")} />
               </div>
               <div className="space-y-2">
                 <Label>Condition Received</Label>

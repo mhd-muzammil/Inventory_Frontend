@@ -167,6 +167,11 @@ export function TicketDetailPanel({
             <InfoRow icon={Package} label="Brand" value={ticket.brand} />
             <InfoRow icon={Hash} label="Case ID" value={ticket.case_id} />
             <InfoRow
+              icon={Calendar}
+              label="CSO Date"
+              value={formatDate(ticket.cso_date)}
+            />
+            <InfoRow
               icon={Package}
               label="Condition Received"
               value={ticket.condition_received}

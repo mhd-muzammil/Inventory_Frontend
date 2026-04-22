@@ -18,7 +18,7 @@ export const ticketSchema = z.object({
   serial_number: z.string().optional().default(""),
   model_number: z.string().optional().default(""),
   brand: z.string().optional().default(""),
-  case_id: z.string().optional().default(""),
+  case_id: z.string().nullable().optional(),
   condition_received: z.string().optional().default(""),
   // Service
   service_type: z.enum(["warranty", "non_warranty", "doc", "amc", "rental"]).default("warranty"),
@@ -26,6 +26,7 @@ export const ticketSchema = z.object({
   region: z.enum(["vellore", "salem", "chennai", "kanchipuram", "hosur"]).optional(),
   issue_description: z.string().optional().default(""),
   // Dates
+  cso_date: z.string().nullable().optional(),
   arrival_date: z.string().nullable().optional(),
   target_completion: z.string().nullable().optional(),
   // Part Details

@@ -235,8 +235,9 @@ export function TicketFormDialog({
         <table>
           <tr><th>Customer Name</th><td>${data.cust_name || ''}</td><th>Service Type</th><td>${sType}</td></tr>
           <tr><th>Contact Number</th><td>${data.cust_contact || ''}</td><th>Product Name</th><td>${data.product_name || ''}</td></tr>
-          <tr><th rowspan="5">Customer Address</th><td rowspan="5">${data.cust_address || ''}</td><th>Serial Number</th><td>${data.serial_number || ''}</td></tr>
+          <tr><th rowspan="6">Customer Address</th><td rowspan="6">${data.cust_address || ''}</td><th>Serial Number</th><td>${data.serial_number || ''}</td></tr>
           <tr><th>Case ID</th><td>${data.case_id || ''}</td></tr>
+          <tr><th>CSO Date</th><td>${data.cso_date || new Date().toLocaleDateString("en-IN")}</td></tr>
           <tr><th>Condition Received</th><td>${data.condition_received || ''}</td></tr>
           <tr><th>Arrival Date</th><td>${data.arrival_date || new Date().toLocaleDateString("en-IN")}</td></tr>
           <tr><th>Delivery Date</th><td>${data.target_completion || ''}</td></tr>
@@ -316,14 +317,18 @@ export function TicketFormDialog({
               <User className="w-4 h-4 text-indigo-500" /> Customer & Product Details
             </div>
 
-            <div className={`grid grid-cols-1 gap-4 ${isAdmin ? "sm:grid-cols-4" : "sm:grid-cols-3"}`}>
+            <div className={`grid grid-cols-1 gap-4 ${isAdmin ? "sm:grid-cols-5" : "sm:grid-cols-4"}`}>
               <div className="space-y-2">
                 <Label>Work Order</Label>
                 <Input {...register("work_order")} placeholder="WO number" />
               </div>
               <div className="space-y-2">
                 <Label>Case ID</Label>
-                <Input {...register("case_id")} placeholder="Auto if empty" />
+                <Input {...register("case_id")} placeholder="Optional" />
+              </div>
+              <div className="space-y-2">
+                <Label>CSO Date</Label>
+                <Input type="date" {...register("cso_date")} />
               </div>
               <div className="space-y-2">
                 <Label>Warranty Status *</Label>

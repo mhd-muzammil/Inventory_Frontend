@@ -98,7 +98,7 @@ export interface Ticket {
   serial_number: string;
   model_number: string;
   brand: string;
-  case_id: string;
+  case_id: string | null;
   condition_received: string;
   // Service
   service_type: ServiceType;
@@ -140,6 +140,7 @@ export interface Ticket {
   current_stage_elapsed_mins: number;
   total_delay_mins: number;
   // Dates
+  cso_date: string | null;
   arrival_date: string | null;
   target_completion: string | null;
   closed_at: string | null;
