@@ -31,3 +31,20 @@ export async function updateBufferPart(id: number, payload: Record<string, unkno
 export async function deleteBufferPart(id: number): Promise<void> {
   await client.delete(`/buffer-parts/${id}/`);
 }
+
+// ── Summary ──────────────────────────────────────────────────
+
+export interface BufferPartSummary {
+  regions: { region: string; total: number }[];
+  total: number;
+}
+
+export async function getBufferPartSummary(view?: "my_region" | "overall", region?: string): Promise<BufferPartSummary> {
+  const params: Record<string, string> = {};
+  if (view) params.view = view;
+  if (region) params.region = region;
+  
+  const { data } = await client.get<BufferPartSummary>("/buffer-parts/summary/", { params });
+  return data;
+}
+

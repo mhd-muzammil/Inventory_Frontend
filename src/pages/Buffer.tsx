@@ -1,12 +1,20 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Layers, AlertCircle, Plus, Search, MapPin, Globe } from "lucide-react";
+import { Layers, AlertCircle, Plus, Search, MapPin, Globe, BarChart3, Package } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { BufferTable } from "@/components/buffer/BufferTable";
 import { BufferFormDialog } from "@/components/buffer/BufferFormDialog";
-import { getBufferParts, deleteBufferPart } from "@/api/bufferParts";
+import { getBufferParts, deleteBufferPart, getBufferPartSummary } from "@/api/bufferParts";
+import type { BufferPartSummary } from "@/api/bufferParts";
 import { extractApiError } from "@/api/client";
 import { toast } from "@/components/ui/use-toast";
 import { useDebounce } from "@/hooks/useDebounce";
@@ -17,8 +25,11 @@ import { useEffect, useCallback } from "react";
 
 export default function Buffer() {
   const user = useAuthStore((s) => s.user);
-  const hasRegion = !!user?.region;
-  const [viewMode, setViewMode] = useState<"my_region" | "overall">(hasRegion ? "my_region" : "overall");
+  const isAdmin = user?.role === "admin" || user?.role === "super_admin" || user?.role === "manager";
+  const showToggle = !isAdmin && !!user?.region;
+  
+  const [viewMode, setViewMode] = useState<"my_region" | "overall">(showToggle ? "my_region" : "overall");
+  const [selectedRegion, setSelectedRegion] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [data, setData] = useState<BufferPart[]>([]);
@@ -29,15 +40,32 @@ export default function Buffer() {
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<BufferPart | null>(null);
 
+  // Summary state
+  const [summary, setSummary] = useState<BufferPartSummary | null>(null);
+
   const debouncedSearch = useDebounce(search, 400);
+
+  const fetchSummary = useCallback(async () => {
+    try {
+      const apiView = isAdmin ? "overall" : viewMode;
+      const apiRegion = isAdmin && selectedRegion !== "all" ? selectedRegion : undefined;
+      const res = await getBufferPartSummary(apiView, apiRegion);
+      setSummary(res);
+    } catch {
+      // silent — summary is supplementary
+    }
+  }, [viewMode, isAdmin, selectedRegion]);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
+      const apiView = isAdmin ? "overall" : viewMode;
+      const apiRegion = isAdmin && selectedRegion !== "all" ? selectedRegion : undefined;
       const res = await getBufferParts({
         search: debouncedSearch || undefined,
-        view: viewMode,
+        view: apiView,
+        region: apiRegion,
         page,
         per_page: 20,
       });
@@ -48,15 +76,21 @@ export default function Buffer() {
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, viewMode, page]);
+  }, [debouncedSearch, viewMode, page, isAdmin, selectedRegion]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => { fetchSummary(); }, [fetchSummary]);
+
+  const handleMutated = () => {
+    fetchData();
+    fetchSummary();
+  };
 
   const handleDelete = async (id: number) => {
     try {
       await deleteBufferPart(id);
       toast({ title: "Buffer part deleted" });
-      fetchData();
+      handleMutated();
     } catch (err) {
       toast({ title: extractApiError(err), variant: "destructive" });
     }
@@ -82,9 +116,34 @@ export default function Buffer() {
         <p className="text-slate-500 dark:text-slate-400 mt-1">Manage buffer parts inventory.</p>
       </div>
 
+      {/* ── Summary Cards ──────────────────────────────────────── */}
+      {summary && summary.regions.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 mb-6">
+          {summary.regions.map((r) => (
+            <Card
+              key={r.region}
+              className="p-4 flex flex-col items-center gap-1 border border-slate-200 dark:border-slate-700"
+            >
+              <MapPin className="w-4 h-4 text-indigo-500" />
+              <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+                {REGION_LABELS[r.region as Region] || r.region}
+              </span>
+              <span className="text-xl font-bold text-slate-800 dark:text-slate-100">{r.total}</span>
+            </Card>
+          ))}
+          <Card className="p-4 flex flex-col items-center gap-1 bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800">
+            <BarChart3 className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+            <span className="text-xs font-medium text-indigo-600 dark:text-indigo-400 uppercase tracking-wide">
+              Total
+            </span>
+            <span className="text-xl font-bold text-indigo-700 dark:text-indigo-300">{summary.total}</span>
+          </Card>
+        </div>
+      )}
+
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-3 mb-6">
-        {hasRegion && (
+        {showToggle && (
           <div className="flex items-center rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
             <button
               onClick={() => { setViewMode("my_region"); setPage(1); }}
@@ -109,6 +168,22 @@ export default function Buffer() {
               Overall Stock
             </button>
           </div>
+        )}
+
+        {isAdmin && (
+          <Select value={selectedRegion} onValueChange={(v) => { setSelectedRegion(v); setPage(1); }}>
+            <SelectTrigger className="w-full sm:w-44 bg-white dark:bg-slate-900">
+              <SelectValue placeholder="Region" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Regions</SelectItem>
+              {(Object.entries(REGION_LABELS) as [Region, string][]).map(([value, label]) => (
+                <SelectItem key={value} value={value}>
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         )}
 
         <div className="relative flex-1 max-w-sm">
@@ -147,8 +222,9 @@ export default function Buffer() {
         open={addDialogOpen || !!editingItem}
         onOpenChange={(v) => { if (!v) { setAddDialogOpen(false); setEditingItem(null); } }}
         editing={editingItem}
-        onSuccess={fetchData}
+        onSuccess={handleMutated}
       />
     </motion.div>
   );
 }
+

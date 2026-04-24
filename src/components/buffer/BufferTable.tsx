@@ -53,8 +53,8 @@ export function BufferTable({ data, loading, pagination, onPageChange, onEdit, o
               <TableHead className="w-12">S.No</TableHead>
               <TableHead>Part Number</TableHead>
               <TableHead>Part Name</TableHead>
-              <TableHead>Quantity</TableHead>
               <TableHead>General Name</TableHead>
+              <TableHead>Quantity</TableHead>
               <TableHead>Region</TableHead>
               <TableHead>Actions</TableHead>
             </TableRow>
@@ -75,11 +75,11 @@ export function BufferTable({ data, loading, pagination, onPageChange, onEdit, o
                   {entry.part_number}
                 </TableCell>
                 <TableCell>{entry.part_name}</TableCell>
-                <TableCell>
-                  <Badge variant="secondary">{entry.quantity}</Badge>
-                </TableCell>
                 <TableCell className="text-sm text-slate-600 dark:text-slate-300">
                   {entry.general_name || <span className="text-slate-400 italic">—</span>}
+                </TableCell>
+                <TableCell>
+                  <Badge variant="secondary">{entry.quantity}</Badge>
                 </TableCell>
                 <TableCell>
                   {entry.region_display ? (
