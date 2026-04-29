@@ -22,6 +22,7 @@ export function extractApiError(err: unknown): string {
 
 let isRefreshing = false;
 let refreshQueue: ((token: string) => void)[] = [];
+let refreshPromise: Promise<string | null> | null = null;
 
 function drainQueue(token: string) {
   refreshQueue.forEach((cb) => cb(token));
@@ -32,9 +33,43 @@ const client = axios.create({
   baseURL: import.meta.env.VITE_API_URL || "/api",
 });
 
-client.interceptors.request.use((config) => {
-  const token = tokenStore.getAccess();
-  if (token) config.headers.Authorization = `Bearer ${token}`;
+async function refreshAccessToken(): Promise<string | null> {
+  const refresh = localStorage.getItem("refresh-token");
+  if (!refresh) return null;
+
+  if (refreshPromise) return refreshPromise;
+
+  refreshPromise = axios
+    .post<{ access: string }>(`${import.meta.env.VITE_API_URL || "/api"}/auth/refresh/`, { refresh })
+    .then(({ data }) => {
+      tokenStore.setAccess(data.access);
+      return data.access;
+    })
+    .catch(() => {
+      tokenStore.clear();
+      localStorage.removeItem("refresh-token");
+      return null;
+    })
+    .finally(() => {
+      refreshPromise = null;
+    });
+
+  return refreshPromise;
+}
+
+client.interceptors.request.use(async (config) => {
+  let token = tokenStore.getAccess();
+  const url = config.url || "";
+  const isAuthCall = url.includes("/auth/login/") || url.includes("/auth/register/") || url.includes("/auth/refresh/");
+
+  if (!token && !isAuthCall && localStorage.getItem("refresh-token")) {
+    token = await refreshAccessToken();
+  }
+
+  if (token) {
+    config.headers = config.headers ?? {};
+    config.headers.Authorization = `Bearer ${token}`;
+  }
   return config;
 });
 
@@ -63,7 +98,8 @@ client.interceptors.response.use(
         // Queue this request until the in-flight refresh completes
         return new Promise((resolve) => {
           refreshQueue.push((token) => {
-            original.headers!.Authorization = `Bearer ${token}`;
+            original.headers = original.headers ?? {};
+            original.headers.Authorization = `Bearer ${token}`;
             resolve(client(original));
           });
         });
@@ -79,7 +115,8 @@ client.interceptors.response.use(
         );
         tokenStore.setAccess(data.access);
         drainQueue(data.access);
-        original.headers!.Authorization = `Bearer ${data.access}`;
+        original.headers = original.headers ?? {};
+        original.headers.Authorization = `Bearer ${data.access}`;
         return client(original);
       } catch {
         tokenStore.clear();
