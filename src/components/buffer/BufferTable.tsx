@@ -1,3 +1,4 @@
+import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { BoxesIcon, Pencil, Trash2 } from "lucide-react";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
@@ -5,7 +6,45 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { transitionBufferPart } from "@/api/bufferParts";
+import { extractApiError } from "@/api/client";
+import { toast } from "@/components/ui/use-toast";
 import type { BufferPart, PaginationMeta } from "@/types";
+
+type WorkflowStatus = BufferPart["status"];
+
+const NEXT_STATUS_MAP: Record<WorkflowStatus, WorkflowStatus | null> = {
+  BUFFER_IN: "OUT",
+  OUT: "DEFECTIVE_RETURN",
+  DEFECTIVE_RETURN: "REORDER",
+  REORDER: "PART_RECEIVED",
+  PART_RECEIVED: "CLOSED",
+  CLOSED: null,
+};
+
+const NEXT_ACTION_MAP: Record<WorkflowStatus, string> = {
+  BUFFER_IN: "Mark Out",
+  OUT: "Defective Return",
+  DEFECTIVE_RETURN: "Reorder",
+  REORDER: "Part Received",
+  PART_RECEIVED: "Close Case",
+  CLOSED: "Completed",
+};
+
+const STATUS_LABELS: Record<WorkflowStatus, string> = {
+  BUFFER_IN: "BUFFER_IN",
+  OUT: "OUT",
+  DEFECTIVE_RETURN: "DEFECTIVE_RETURN",
+  REORDER: "REORDER",
+  PART_RECEIVED: "PART_RECEIVED",
+  CLOSED: "CLOSED",
+};
+
+const TRACK_STEPS: WorkflowStatus[] = ["BUFFER_IN", "OUT", "DEFECTIVE_RETURN", "REORDER", "PART_RECEIVED", "CLOSED"];
 
 interface BufferTableProps {
   data: BufferPart[];
@@ -14,9 +53,58 @@ interface BufferTableProps {
   onPageChange: (page: number) => void;
   onEdit: (item: BufferPart) => void;
   onDelete: (id: number) => void;
+  onRowUpdated: (item: BufferPart) => void;
 }
 
-export function BufferTable({ data, loading, pagination, onPageChange, onEdit, onDelete }: BufferTableProps) {
+export function BufferTable({ data, loading, pagination, onPageChange, onEdit, onDelete, onRowUpdated }: BufferTableProps) {
+  const [transitionOpen, setTransitionOpen] = useState(false);
+  const [trackOpen, setTrackOpen] = useState(false);
+  const [activeRow, setActiveRow] = useState<BufferPart | null>(null);
+  const [engineerName, setEngineerName] = useState("");
+  const [caseId, setCaseId] = useState("");
+  const [remarks, setRemarks] = useState("");
+  const [savingTransition, setSavingTransition] = useState(false);
+
+  const isOutTransition = activeRow?.status === "BUFFER_IN";
+  const canConfirm = useMemo(() => {
+    if (!activeRow) return false;
+    if (activeRow.status === "CLOSED") return false;
+    if (isOutTransition) return engineerName.trim().length > 0 && caseId.trim().length > 0;
+    return true;
+  }, [activeRow, caseId, engineerName, isOutTransition]);
+
+  const openTransition = (row: BufferPart) => {
+    setActiveRow(row);
+    setEngineerName(row.engineer_name || "");
+    setCaseId(row.case_id || "");
+    setRemarks("");
+    setTransitionOpen(true);
+  };
+
+  const openTrack = (row: BufferPart) => {
+    setActiveRow(row);
+    setTrackOpen(true);
+  };
+
+  const handleTransition = async () => {
+    if (!activeRow || !canConfirm) return;
+    setSavingTransition(true);
+    try {
+      const updated = await transitionBufferPart(activeRow.id, {
+        engineer_name: engineerName.trim() || undefined,
+        case_id: caseId.trim() || undefined,
+        remarks: remarks.trim() || undefined,
+      });
+      onRowUpdated(updated);
+      setTransitionOpen(false);
+      toast({ title: "Status updated" });
+    } catch (err) {
+      toast({ title: extractApiError(err), variant: "destructive" });
+    } finally {
+      setSavingTransition(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="space-y-3">
@@ -31,12 +119,8 @@ export function BufferTable({ data, loading, pagination, onPageChange, onEdit, o
     return (
       <Card className="flex flex-col items-center justify-center py-16 text-center">
         <BoxesIcon className="w-12 h-12 text-slate-300 dark:text-slate-600 mb-4" />
-        <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-1">
-          No buffer parts found
-        </h3>
-        <p className="text-sm text-slate-500 dark:text-slate-400">
-          Add parts to the buffer to get started.
-        </p>
+        <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-1">No buffer parts found</h3>
+        <p className="text-sm text-slate-500 dark:text-slate-400">Add parts to the buffer to get started.</p>
       </Card>
     );
   }
@@ -56,6 +140,9 @@ export function BufferTable({ data, loading, pagination, onPageChange, onEdit, o
               <TableHead>General Name</TableHead>
               <TableHead>Quantity</TableHead>
               <TableHead>Region</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Next Action</TableHead>
+              <TableHead>Track</TableHead>
               <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -71,34 +158,43 @@ export function BufferTable({ data, loading, pagination, onPageChange, onEdit, o
                 <TableCell className="text-sm text-slate-500 dark:text-slate-400">
                   {(pagination.page - 1) * pagination.per_page + i + 1}
                 </TableCell>
-                <TableCell className="font-mono text-sm font-medium">
-                  {entry.part_number}
-                </TableCell>
+                <TableCell className="font-mono text-sm font-medium">{entry.part_number}</TableCell>
                 <TableCell>{entry.part_name}</TableCell>
                 <TableCell className="text-sm text-slate-600 dark:text-slate-300">
-                  {entry.general_name || <span className="text-slate-400 italic">—</span>}
+                  {entry.general_name || <span className="text-slate-400 italic">-</span>}
                 </TableCell>
                 <TableCell>
                   <Badge variant="secondary">{entry.quantity}</Badge>
                 </TableCell>
                 <TableCell>
-                  {entry.region_display ? (
-                    <Badge variant="outline">{entry.region_display}</Badge>
-                  ) : (
-                    <span className="text-slate-400 italic">—</span>
-                  )}
+                  {entry.region_display ? <Badge variant="outline">{entry.region_display}</Badge> : <span className="text-slate-400 italic">-</span>}
+                </TableCell>
+                <TableCell>
+                  <Badge variant="outline" className="text-[11px]">
+                    {STATUS_LABELS[entry.status || "BUFFER_IN"]}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={(entry.status || "BUFFER_IN") === "CLOSED"}
+                    onClick={() => openTransition(entry)}
+                  >
+                    {NEXT_ACTION_MAP[entry.status || "BUFFER_IN"]}
+                  </Button>
+                </TableCell>
+                <TableCell>
+                  <Button size="sm" variant="ghost" onClick={() => openTrack(entry)}>
+                    View Track
+                  </Button>
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-1">
                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onEdit(entry)}>
                       <Pencil className="w-4 h-4" />
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-red-500 hover:text-red-600"
-                      onClick={() => onDelete(entry.id)}
-                    >
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-600" onClick={() => onDelete(entry.id)}>
                       <Trash2 className="w-4 h-4" />
                     </Button>
                   </div>
@@ -111,13 +207,91 @@ export function BufferTable({ data, loading, pagination, onPageChange, onEdit, o
 
       {pagination.total > 0 && (
         <div className="flex items-center justify-between mt-4 text-sm text-slate-500 dark:text-slate-400">
-          <span>Showing {start}–{end} of {pagination.total}</span>
+          <span>Showing {start}-{end} of {pagination.total}</span>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => onPageChange(pagination.page - 1)} disabled={pagination.page <= 1}>Previous</Button>
-            <Button variant="outline" size="sm" onClick={() => onPageChange(pagination.page + 1)} disabled={pagination.page >= pagination.pages}>Next</Button>
+            <Button variant="outline" size="sm" onClick={() => onPageChange(pagination.page - 1)} disabled={pagination.page <= 1}>
+              Previous
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => onPageChange(pagination.page + 1)} disabled={pagination.page >= pagination.pages}>
+              Next
+            </Button>
           </div>
         </div>
       )}
+
+      <Dialog open={transitionOpen} onOpenChange={setTransitionOpen}>
+        <DialogContent className="sm:max-w-[520px]">
+          <DialogHeader>
+            <DialogTitle>Transition Ticket</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {isOutTransition && (
+              <>
+                <div className="space-y-2">
+                  <Label>Engineer Name *</Label>
+                  <Input value={engineerName} onChange={(e) => setEngineerName(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Case ID *</Label>
+                  <Input value={caseId} onChange={(e) => setCaseId(e.target.value)} />
+                </div>
+              </>
+            )}
+            <div className="space-y-2">
+              <Label>Remarks</Label>
+              <Textarea value={remarks} onChange={(e) => setRemarks(e.target.value)} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setTransitionOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleTransition} disabled={!canConfirm || savingTransition}>
+              Confirm Transition
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={trackOpen} onOpenChange={setTrackOpen}>
+        <DialogContent className="sm:max-w-[700px]">
+          <DialogHeader>
+            <DialogTitle>Track</DialogTitle>
+          </DialogHeader>
+          {activeRow && (
+            <div className="space-y-5">
+              <div className="grid grid-cols-2 md:grid-cols-6 gap-2">
+                {TRACK_STEPS.map((step, idx) => {
+                  const currentIndex = TRACK_STEPS.indexOf(activeRow.status || "BUFFER_IN");
+                  const completed = idx < currentIndex;
+                  const current = idx === currentIndex;
+                  return (
+                    <div key={step} className="rounded-xl border border-slate-200 dark:border-slate-700 p-2 text-center">
+                      <div className={`h-2.5 w-2.5 rounded-full mx-auto mb-1 ${completed ? "bg-emerald-500" : current ? "bg-indigo-500" : "bg-slate-500/40"}`} />
+                      <p className="text-[11px] text-slate-700 dark:text-slate-200">{step}</p>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="space-y-3 max-h-[340px] overflow-auto">
+                {(activeRow.transition_history || []).map((h, idx) => (
+                  <div key={`${h.timestamp}-${idx}`} className="rounded-xl border border-slate-200 dark:border-slate-700 p-3 text-sm space-y-1">
+                    <p className="font-medium text-slate-800 dark:text-slate-100">{h.from_status} -&gt; {h.to_status}</p>
+                    {h.engineer_name && <p>Engineer Name: {h.engineer_name}</p>}
+                    {h.case_id && <p>Case ID: {h.case_id}</p>}
+                    <p>Comment: {h.comment || "-"}</p>
+                    <p>Updated By: {h.updated_by || "-"}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">{new Date(h.timestamp).toLocaleString()}</p>
+                  </div>
+                ))}
+                {(activeRow.transition_history || []).length === 0 && (
+                  <p className="text-sm text-slate-500 dark:text-slate-400">No transitions yet.</p>
+                )}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

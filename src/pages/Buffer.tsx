@@ -215,6 +215,9 @@ export default function Buffer() {
           onPageChange={setPage}
           onEdit={(item) => setEditingItem(item)}
           onDelete={handleDelete}
+          onRowUpdated={(updated) => {
+            setData((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
+          }}
         />
       )}
 
