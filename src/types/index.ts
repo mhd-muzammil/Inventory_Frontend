@@ -4,7 +4,7 @@
 
 export type UserRole = "admin" | "manager" | "engineer" | "receptionist" | "cc_team" | "super_admin" | "sub_admin";
 export type Region = "vellore" | "salem" | "chennai" | "kanchipuram" | "hosur";
-export type ServiceType = "warranty" | "non_warranty" | "doc" | "amc" | "rental";
+export type ServiceType = "warranty" | "non_warranty" | "doa" | "amc" | "rental" | "trade";
 export type TicketPriority = "low" | "medium" | "high" | "critical";
 
 export type TicketStatus =
@@ -579,9 +579,10 @@ export const REGION_LABELS: Record<Region, string> = {
 export const SERVICE_TYPE_LABELS: Record<ServiceType, string> = {
   warranty: "Warranty",
   non_warranty: "Non Warranty",
-  doc: "DOC",
+  doa: "DOA",
   amc: "AMC",
   rental: "Rental",
+  trade: "Trade",
 };
 
 export const PRIORITY_LABELS: Record<TicketPriority, string> = {

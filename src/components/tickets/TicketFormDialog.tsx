@@ -190,8 +190,8 @@ export function TicketFormDialog({
     };
     const addr = regionAddresses[region] || regionAddresses.salem;
     const prefix = regionPrefixes[region] || "RT";
-    const serviceTypes = ["warranty", "non_warranty", "doc", "amc", "rental"];
-    const serviceLabels = ["Warranty", "Non Warranty", "DOC", "AMC", "Rental"];
+    const serviceTypes = ["warranty", "non_warranty", "doa", "amc", "rental", "trade"];
+    const serviceLabels = ["Warranty", "Non Warranty", "DOA", "AMC", "Rental", "Trade"];
     const checkboxes = serviceTypes.map((k, i) => `<label><span class="checkbox ${data.service_type === k ? 'checked' : ''}"></span>${serviceLabels[i]}&nbsp;&nbsp;</label>`).join("");
 
     const printWindow = window.open("", "_blank", "width=800,height=1100");
