@@ -57,9 +57,10 @@ const DEFAULT_ADDRESS = REGION_ADDRESS.salem;
 const SERVICE_TYPES = [
   { key: "warranty", label: "Warranty" },
   { key: "non_warranty", label: "Non Warranty" },
-  { key: "doc", label: "DOC" },
+  { key: "doa", label: "DOA" },
   { key: "amc", label: "AMC" },
   { key: "rental", label: "Rental" },
+  { key: "trade", label: "Trade" },
 ] as const;
 
 /* ── Call status options ───────────────────────────────────── */
