@@ -35,6 +35,15 @@ const NEXT_ACTION_MAP: Record<WorkflowStatus, string> = {
   CLOSED: "Completed",
 };
 
+const NEXT_ACTION_COLOR_MAP: Record<WorkflowStatus, string> = {
+  BUFFER_IN: "bg-blue-600 hover:bg-blue-700 text-white border-transparent dark:bg-blue-600 dark:hover:bg-blue-700 dark:text-white",
+  OUT: "bg-amber-500 hover:bg-amber-600 text-white border-transparent dark:bg-amber-500 dark:hover:bg-amber-600 dark:text-white",
+  DEFECTIVE_RETURN: "bg-purple-600 hover:bg-purple-700 text-white border-transparent dark:bg-purple-600 dark:hover:bg-purple-700 dark:text-white",
+  REORDER: "bg-emerald-600 hover:bg-emerald-700 text-white border-transparent dark:bg-emerald-600 dark:hover:bg-emerald-700 dark:text-white",
+  PART_RECEIVED: "bg-indigo-600 hover:bg-indigo-700 text-white border-transparent dark:bg-indigo-600 dark:hover:bg-indigo-700 dark:text-white",
+  CLOSED: "border-slate-200 text-slate-400 bg-transparent hover:bg-transparent",
+};
+
 const STATUS_LABELS: Record<WorkflowStatus, string> = {
   BUFFER_IN: "BUFFER_IN",
   OUT: "OUT",
@@ -143,7 +152,7 @@ export function BufferTable({ data, loading, pagination, onPageChange, onEdit, o
               <TableHead>Status</TableHead>
               <TableHead>Next Action</TableHead>
               <TableHead>Track</TableHead>
-              <TableHead>Actions</TableHead>
+              <TableHead>Edit</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -178,6 +187,7 @@ export function BufferTable({ data, loading, pagination, onPageChange, onEdit, o
                   <Button
                     size="sm"
                     variant="outline"
+                    className={NEXT_ACTION_COLOR_MAP[entry.status || "BUFFER_IN"]}
                     disabled={(entry.status || "BUFFER_IN") === "CLOSED"}
                     onClick={() => openTransition(entry)}
                   >
