@@ -267,35 +267,75 @@ export function BufferTable({ data, loading, pagination, onPageChange, onEdit, o
         <DialogContent className="sm:max-w-[700px]">
           <DialogHeader>
             <DialogTitle>Track</DialogTitle>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Workflow transition history</p>
           </DialogHeader>
           {activeRow && (
-            <div className="space-y-5">
-              <div className="grid grid-cols-2 md:grid-cols-6 gap-2">
+            <div className="space-y-6">
+              <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
                 {TRACK_STEPS.map((step, idx) => {
                   const currentIndex = TRACK_STEPS.indexOf(activeRow.status || "BUFFER_IN");
                   const completed = idx < currentIndex;
                   const current = idx === currentIndex;
+                  const formattedStep = step.split('_').map(w => w.charAt(0) + w.slice(1).toLowerCase()).join(' ');
                   return (
-                    <div key={step} className="rounded-xl border border-slate-200 dark:border-slate-700 p-2 text-center">
-                      <div className={`h-2.5 w-2.5 rounded-full mx-auto mb-1 ${completed ? "bg-emerald-500" : current ? "bg-indigo-500" : "bg-slate-500/40"}`} />
-                      <p className="text-[11px] text-slate-700 dark:text-slate-200">{step}</p>
+                    <div key={step} className={`rounded-xl border p-2.5 text-center transition-colors ${current ? "border-indigo-200 dark:border-indigo-800 bg-indigo-50/50 dark:bg-indigo-900/20" : "border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30"}`}>
+                      <div className={`h-2.5 w-2.5 rounded-full mx-auto mb-1.5 shadow-sm ${completed ? "bg-emerald-500" : current ? "bg-indigo-500 shadow-indigo-500/40" : "bg-slate-300 dark:bg-slate-700"}`} />
+                      <p className={`text-[11px] font-medium ${current ? "text-indigo-700 dark:text-indigo-300" : "text-slate-600 dark:text-slate-400"}`}>{formattedStep}</p>
                     </div>
                   );
                 })}
               </div>
-              <div className="space-y-3 max-h-[340px] overflow-auto">
-                {(activeRow.transition_history || []).map((h, idx) => (
-                  <div key={`${h.timestamp}-${idx}`} className="rounded-xl border border-slate-200 dark:border-slate-700 p-3 text-sm space-y-1">
-                    <p className="font-medium text-slate-800 dark:text-slate-100">{h.from_status} -&gt; {h.to_status}</p>
-                    {h.engineer_name && <p>Engineer Name: {h.engineer_name}</p>}
-                    {h.case_id && <p>Case ID: {h.case_id}</p>}
-                    <p>Comment: {h.comment || "-"}</p>
-                    <p>Updated By: {h.updated_by || "-"}</p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">{new Date(h.timestamp).toLocaleString()}</p>
-                  </div>
-                ))}
+              <div className="space-y-4 max-h-[380px] overflow-y-auto pr-2">
+                {(activeRow.transition_history || []).map((h, idx) => {
+                  const formatStatus = (s: string) => s.split('_').map(w => w.charAt(0) + w.slice(1).toLowerCase()).join(' ');
+                  const d = new Date(h.timestamp);
+                  const dateStr = d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+                  const timeStr = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "numeric", hour12: true });
+                  const formattedDate = `${dateStr} • ${timeStr}`;
+
+                  return (
+                    <div key={`${h.timestamp}-${idx}`} className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/50 p-4 space-y-3 shadow-sm">
+                      <p className="font-semibold text-slate-900 dark:text-slate-50 text-sm">
+                        {formatStatus(h.from_status)} &rarr; {formatStatus(h.to_status)}
+                      </p>
+                      <div className="grid gap-2 text-sm">
+                        {h.engineer_name && (
+                          <div className="flex items-start gap-2">
+                            <span className="text-slate-500 dark:text-slate-400 w-24 shrink-0">Engineer</span>
+                            <span className="font-medium text-slate-800 dark:text-slate-200">{h.engineer_name}</span>
+                          </div>
+                        )}
+                        {h.case_id && (
+                          <div className="flex items-start gap-2">
+                            <span className="text-slate-500 dark:text-slate-400 w-24 shrink-0">Case ID</span>
+                            <span className="font-medium text-slate-800 dark:text-slate-200">{h.case_id}</span>
+                          </div>
+                        )}
+                        {h.comment && (
+                          <div className="flex items-start gap-2">
+                            <span className="text-slate-500 dark:text-slate-400 w-24 shrink-0">Comment</span>
+                            <span className="font-medium text-slate-800 dark:text-slate-200">{h.comment}</span>
+                          </div>
+                        )}
+                        {h.updated_by && (
+                          <div className="flex items-start gap-2">
+                            <span className="text-slate-500 dark:text-slate-400 w-24 shrink-0">Updated by</span>
+                            <span className="font-medium text-slate-800 dark:text-slate-200">{h.updated_by}</span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="pt-3 border-t border-slate-100 dark:border-slate-800/60 mt-1">
+                        <p className="text-[11px] text-slate-400 dark:text-slate-500 font-medium">
+                          {formattedDate}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
                 {(activeRow.transition_history || []).length === 0 && (
-                  <p className="text-sm text-slate-500 dark:text-slate-400">No transitions yet.</p>
+                  <div className="text-center py-8">
+                    <p className="text-sm text-slate-500 dark:text-slate-400">No transitions yet.</p>
+                  </div>
                 )}
               </div>
             </div>
