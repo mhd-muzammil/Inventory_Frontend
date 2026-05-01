@@ -326,7 +326,7 @@ export function PrintTemplate({ ticket }: PrintTemplateProps) {
                         <div className="checkbox-group" style={{ width: "70%" }}>
                           {SERVICE_TYPES.map(({ key, label }) => (
                             <label key={key}>
-                              {label} <input type="checkbox" checked={ticket.service_type === key} readOnly />
+                              {label} <input type="checkbox" defaultChecked={ticket.service_type === key} readOnly />
                             </label>
                           ))}
                         </div>
@@ -390,8 +390,8 @@ export function PrintTemplate({ ticket }: PrintTemplateProps) {
                     <td rowSpan={3} style={{ borderBottom: "none" }}>
                       <div className="engineer-status">
                         {CALL_STATUSES.map((status) => (
-                          <span key={status}>
-                            {status}
+                          <span key={status} style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                            <input type="checkbox" defaultChecked={callStatus === status} readOnly /> {status}
                           </span>
                         ))}
                       </div>
@@ -418,7 +418,7 @@ export function PrintTemplate({ ticket }: PrintTemplateProps) {
               <div className="signatures">
                 <div>
                   Customer Signature<br />
-                  Received in Good Condiotion
+                  Received in Good Condition
                 </div>
                 <div>Engineer Signature</div>
               </div>
