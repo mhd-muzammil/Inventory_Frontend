@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowUpDown, UserPlus, Eye, ArrowRight, Loader2, ChevronDown, MessageSquare, Clock, AlertTriangle, AlertCircle, CheckCircle2 } from "lucide-react";
+import { ArrowUpDown, UserPlus, Eye, ArrowRight, Loader2, ChevronDown, MessageSquare, Clock, AlertTriangle, AlertCircle, CheckCircle2, Trash2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -16,7 +16,7 @@ import { AssignEngineerDialog } from "./AssignEngineerDialog";
 import { TransitionDialog } from "@/components/workflow/TransitionDialog";
 import { getAvailableTransitions, STATUS_CONFIG, DEFAULT_SLAS, formatDuration } from "@/lib/workflow";
 import { cn } from "@/lib/utils";
-import { transitionTicket } from "@/api/tickets";
+import { transitionTicket, deleteTicket } from "@/api/tickets";
 import { toast } from "@/components/ui/use-toast";
 import { extractApiError } from "@/api/client";
 import { formatDate } from "@/lib/utils";
@@ -83,6 +83,17 @@ export function TicketsTable({
     setSelectedTicketId(ticketId);
     setSelectedTransition(transition);
     setTransitionDialogOpen(true);
+  };
+
+  const handleDeleteTicket = async (ticketId: number) => {
+    if (!window.confirm("Are you sure you want to delete this ticket?")) return;
+    try {
+      await deleteTicket(ticketId);
+      toast({ title: "Ticket deleted successfully" });
+      onRefresh?.();
+    } catch (err) {
+      toast({ title: extractApiError(err), variant: "destructive" });
+    }
   };
 
   if (loading) {
@@ -310,6 +321,12 @@ export function TicketsTable({
                             <Eye className="w-3.5 h-3.5" />
                           </Button>
                         </Link>
+
+                        {(userRole === "super_admin" || userRole === "admin") && (
+                          <Button variant="ghost" size="sm" className="gap-1 text-xs text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/50" onClick={() => handleDeleteTicket(ticket.id)}>
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        )}
                       </div>
                     </TableCell>
                   </motion.tr>

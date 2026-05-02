@@ -8,6 +8,11 @@ import { TicketTimeline } from "@/components/workflow/TicketTimeline";
 import { PrintTemplate } from "./PrintTemplate";
 import { TicketEditDialog } from "./TicketEditDialog";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuthStore } from "@/store/authStore";
+import { deleteTicket } from "@/api/tickets";
+import { toast } from "@/components/ui/use-toast";
+import { extractApiError } from "@/api/client";
 import { Button } from "@/components/ui/button";
 import {
   Pencil,
@@ -20,6 +25,7 @@ import {
   Wrench,
   Calendar,
   Clock,
+  Trash2,
 } from "lucide-react";
 import {
   SERVICE_TYPE_LABELS,
@@ -68,6 +74,19 @@ export function TicketDetailPanel({
   onTransitioned,
 }: TicketDetailPanelProps) {
   const [editOpen, setEditOpen] = useState(false);
+  const navigate = useNavigate();
+  const userRole = useAuthStore((s) => s.user?.role);
+
+  const handleDelete = async () => {
+    if (!window.confirm("Are you sure you want to delete this ticket?")) return;
+    try {
+      await deleteTicket(ticket.id);
+      toast({ title: "Ticket deleted successfully" });
+      navigate("/cso-entry");
+    } catch (err) {
+      toast({ title: extractApiError(err), variant: "destructive" });
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -100,6 +119,11 @@ export function TicketDetailPanel({
             <Pencil className="w-4 h-4" /> Edit
           </Button>
           <PrintTemplate ticket={ticket} />
+          {(userRole === "super_admin" || userRole === "admin") && (
+            <Button variant="outline" onClick={handleDelete} className="gap-2 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200 hover:border-red-300 dark:text-red-400 dark:hover:bg-red-950/50 dark:border-red-900/50">
+              <Trash2 className="w-4 h-4" /> Delete
+            </Button>
+          )}
         </div>
       </div>
 
