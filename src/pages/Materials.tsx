@@ -28,6 +28,7 @@ export default function CSOEntry() {
   const isAdmin = user?.role === "admin" || user?.role === "super_admin";
 
   const [regionStats, setRegionStats] = useState<RegionStats[] | null>(null);
+  const [selectedRegion, setSelectedRegion] = useState<Region | undefined>(undefined);
 
   const fetchRegionStats = useCallback(async () => {
     if (!isAdmin) return;
@@ -43,7 +44,7 @@ export default function CSOEntry() {
     setLoading(true);
     setError(null);
     try {
-      const res = await getTickets({ page, ordering, per_page: 20 });
+      const res = await getTickets({ page, ordering, region: selectedRegion, per_page: 20 });
       setData(res.items);
       setPagination({ total: res.total, page: res.page, per_page: res.per_page, pages: res.pages });
     } catch (err: any) {
@@ -52,7 +53,7 @@ export default function CSOEntry() {
     } finally {
       setLoading(false);
     }
-  }, [page, ordering]);
+  }, [page, ordering, selectedRegion]);
 
   useEffect(() => { fetchTickets(); }, [fetchTickets]);
   useEffect(() => { fetchRegionStats(); }, [fetchRegionStats]);
@@ -92,19 +93,32 @@ export default function CSOEntry() {
       {/* ── Summary Cards ──────────────────────────────────────── */}
       {isAdmin && regionStats && regionStats.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 mb-6">
-          {regionStats.map((r) => (
-            <Card
-              key={r.region}
-              className="p-4 flex flex-col items-center gap-1 border border-slate-200 dark:border-slate-700"
-            >
-              <MapPin className="w-4 h-4 text-indigo-500" />
-              <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">
-                {REGION_LABELS[r.region as Region] || r.region}
-              </span>
-              <span className="text-xl font-bold text-slate-800 dark:text-slate-100">{r.total_tickets || 0}</span>
-            </Card>
-          ))}
-          <Card className="p-4 flex flex-col items-center gap-1 bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800">
+          {regionStats.map((r) => {
+            const isSelected = selectedRegion === r.region;
+            return (
+              <Card
+                key={r.region}
+                onClick={() => { setSelectedRegion(isSelected ? undefined : (r.region as Region)); setPage(1); }}
+                className={`p-4 flex flex-col items-center gap-1 border cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all select-none ${
+                  isSelected
+                    ? "border-indigo-600 bg-indigo-50/40 dark:bg-indigo-950/30 ring-1 ring-indigo-600"
+                    : "border-slate-200 dark:border-slate-700"
+                }`}
+              >
+                <MapPin className={`w-4 h-4 ${isSelected ? "text-indigo-600 dark:text-indigo-400" : "text-indigo-500"}`} />
+                <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+                  {REGION_LABELS[r.region as Region] || r.region}
+                </span>
+                <span className="text-xl font-bold text-slate-800 dark:text-slate-100">{r.total_tickets || 0}</span>
+              </Card>
+            );
+          })}
+          <Card
+            onClick={() => { setSelectedRegion(undefined); setPage(1); }}
+            className={`p-4 flex flex-col items-center gap-1 border cursor-pointer hover:bg-indigo-100/50 dark:hover:bg-indigo-900/40 transition-all select-none bg-indigo-50 dark:bg-indigo-950/30 border-indigo-200 dark:border-indigo-800 ${
+              selectedRegion === undefined ? "ring-2 ring-indigo-600" : ""
+            }`}
+          >
             <BarChart3 className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
             <span className="text-xs font-medium text-indigo-600 dark:text-indigo-400 uppercase tracking-wide">
               Total
