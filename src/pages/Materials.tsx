@@ -1,16 +1,17 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
-import { Ticket as TicketIcon, Plus, AlertCircle } from "lucide-react";
+import { Ticket as TicketIcon, Plus, AlertCircle, MapPin, BarChart3 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TicketFormDialog } from "@/components/tickets/TicketFormDialog";
 import { TicketsTable } from "@/components/tickets/TicketsTable";
 import { createTicket, getTickets } from "@/api/tickets";
+import { getRegionComparison } from "@/api/dashboard";
 import { toast } from "@/components/ui/use-toast";
 import { useAuthStore } from "@/store/authStore";
 import { REGION_LABELS } from "@/types";
-import type { Ticket, PaginationMeta, Region } from "@/types";
+import type { Ticket, PaginationMeta, Region, RegionStats } from "@/types";
 
 export default function CSOEntry() {
   const [formOpen, setFormOpen] = useState(false);
@@ -25,6 +26,18 @@ export default function CSOEntry() {
 
   const user = useAuthStore((s) => s.user);
   const isAdmin = user?.role === "admin" || user?.role === "super_admin";
+
+  const [regionStats, setRegionStats] = useState<RegionStats[] | null>(null);
+
+  const fetchRegionStats = useCallback(async () => {
+    if (!isAdmin) return;
+    try {
+      const res = await getRegionComparison();
+      setRegionStats(res);
+    } catch {
+      // silent
+    }
+  }, [isAdmin]);
 
   const fetchTickets = useCallback(async () => {
     setLoading(true);
@@ -42,6 +55,7 @@ export default function CSOEntry() {
   }, [page, ordering]);
 
   useEffect(() => { fetchTickets(); }, [fetchTickets]);
+  useEffect(() => { fetchRegionStats(); }, [fetchRegionStats]);
 
   const handleSort = (field: string) => {
     setOrdering((prev) => (prev === field ? `-${field}` : field));
@@ -74,6 +88,33 @@ export default function CSOEntry() {
           <Plus className="w-4 h-4" /> Add Ticket
         </Button>
       </div>
+
+      {/* ── Summary Cards ──────────────────────────────────────── */}
+      {isAdmin && regionStats && regionStats.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 mb-6">
+          {regionStats.map((r) => (
+            <Card
+              key={r.region}
+              className="p-4 flex flex-col items-center gap-1 border border-slate-200 dark:border-slate-700"
+            >
+              <MapPin className="w-4 h-4 text-indigo-500" />
+              <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+                {REGION_LABELS[r.region as Region] || r.region}
+              </span>
+              <span className="text-xl font-bold text-slate-800 dark:text-slate-100">{r.total_tickets || 0}</span>
+            </Card>
+          ))}
+          <Card className="p-4 flex flex-col items-center gap-1 bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800">
+            <BarChart3 className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+            <span className="text-xs font-medium text-indigo-600 dark:text-indigo-400 uppercase tracking-wide">
+              Total
+            </span>
+            <span className="text-xl font-bold text-indigo-700 dark:text-indigo-300">
+              {regionStats.reduce((acc, r) => acc + (r.total_tickets || 0), 0)}
+            </span>
+          </Card>
+        </div>
+      )}
 
       {/* Error state */}
       {error && (
