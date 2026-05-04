@@ -21,7 +21,8 @@ export const ticketSchema = z.object({
   case_id: z.string().nullable().optional(),
   condition_received: z.string().optional().default(""),
   // Service
-  service_type: z.enum(["warranty", "non_warranty", "doa", "amc", "rental", "trade"]).default("warranty"),
+  service_type: z.enum(["warranty", "non_warranty", "doa", "amc", "rental", "trade", "rca", "accessories"]).default("warranty"),
+
   priority: z.enum(["low", "medium", "high", "critical"]).default("medium"),
   region: z.enum(["vellore", "salem", "chennai", "kanchipuram", "hosur"]).optional(),
   issue_description: z.string().optional().default(""),
