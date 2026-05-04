@@ -4,8 +4,9 @@
 
 export type UserRole = "admin" | "manager" | "engineer" | "receptionist" | "cc_team" | "super_admin" | "sub_admin";
 export type Region = "vellore" | "salem" | "chennai" | "kanchipuram" | "hosur";
-export type ServiceType = "warranty" | "non_warranty" | "doa" | "amc" | "rental" | "trade";
+export type ServiceType = "warranty" | "non_warranty" | "doa" | "amc" | "rental" | "trade" | "rca" | "accessories";
 export type TicketPriority = "low" | "medium" | "high" | "critical";
+
 
 export type TicketStatus =
   | "cso_created"
@@ -595,6 +596,8 @@ export const SERVICE_TYPE_LABELS: Record<ServiceType, string> = {
   amc: "AMC",
   rental: "Rental",
   trade: "Trade",
+  rca: "RCA",
+  accessories: "Accessories",
 };
 
 export const PRIORITY_LABELS: Record<TicketPriority, string> = {
