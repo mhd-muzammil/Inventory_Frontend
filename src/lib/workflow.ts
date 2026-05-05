@@ -54,6 +54,7 @@ export const WORKFLOW_TRANSITIONS: Record<TicketStatus, TransitionDef[]> = {
   diagnosis: [
     { to: "part_requested", label: "Request Parts", roles: ["engineer", "sub_admin", "super_admin", "admin"], requiresComment: true, requiresParts: true },
     { to: "in_progress", label: "Start Repair (No Parts)", roles: ["engineer", "sub_admin", "super_admin", "admin"], requiresComment: true, requiresParts: false },
+    { to: "closed", label: "Return Product", roles: ["engineer", "sub_admin", "super_admin", "admin"], requiresComment: true, requiresParts: false },
   ],
   part_requested: [
     // Only manager / admin can approve parts — sub_admin is explicitly excluded
