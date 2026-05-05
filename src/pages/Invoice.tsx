@@ -1,10 +1,11 @@
 import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
-import { Receipt, AlertCircle } from "lucide-react";
+import { Receipt, AlertCircle, Plus } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { InvoicesToolbar } from "@/components/invoices/InvoicesToolbar";
 import { InvoicesTable } from "@/components/invoices/InvoicesTable";
+import { InvoiceFormDialog } from "@/components/invoices/InvoiceFormDialog";
 import { useInvoices } from "@/hooks/useInvoices";
 import { toast } from "@/components/ui/use-toast";
 import { sendInvoice, markInvoicePaid } from "@/api/invoices";
@@ -14,6 +15,7 @@ import type { InvoiceStatus } from "@/types";
 export default function Invoice() {
   const [status, setStatus] = useState("all");
   const [page, setPage] = useState(1);
+  const [isFormOpen, setIsFormOpen] = useState(false);
 
   const filters = useMemo(
     () => ({
@@ -77,19 +79,24 @@ export default function Invoice() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
     >
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">
-          Invoices
-        </h1>
-        <p className="text-slate-500 dark:text-slate-400 mt-1">
-          Manage and track invoices.
-        </p>
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">
+            Invoices
+          </h1>
+          <p className="text-slate-500 dark:text-slate-400 mt-1">
+            Manage and track invoices.
+          </p>
+        </div>
+        <Button onClick={() => setIsFormOpen(true)} className="gap-2">
+          <Plus className="w-4 h-4" /> New Invoice
+        </Button>
       </div>
 
       <InvoicesToolbar
         status={status}
         onStatusChange={(v) => { setStatus(v); setPage(1); }}
-        onAdd={() => {}}
+        onAdd={() => setIsFormOpen(true)}
         onClearFilters={handleClearFilters}
         hasActiveFilters={hasActiveFilters}
       />
@@ -103,6 +110,9 @@ export default function Invoice() {
           <p className="text-sm text-slate-500 mb-4">
             Invoices will be generated from approved quotations.
           </p>
+          <Button onClick={() => setIsFormOpen(true)} className="gap-2">
+            <Plus className="w-4 h-4" /> Create First Invoice
+          </Button>
         </Card>
       ) : (
         <InvoicesTable
@@ -114,6 +124,9 @@ export default function Invoice() {
           onMarkPaid={handleMarkPaid}
         />
       )}
+
+      <InvoiceFormDialog open={isFormOpen} onOpenChange={setIsFormOpen} />
     </motion.div>
   );
 }
+

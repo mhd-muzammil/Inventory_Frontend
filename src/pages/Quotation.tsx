@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
-import { FileText, AlertCircle } from "lucide-react";
+import { FileText, AlertCircle, Trash2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { QuotationsToolbar } from "@/components/quotations/QuotationsToolbar";
@@ -9,11 +9,23 @@ import { useQuotations } from "@/hooks/useQuotations";
 import { toast } from "@/components/ui/use-toast";
 import { sendQuotation, recordCustomerResponse } from "@/api/quotations";
 import { extractApiError } from "@/api/client";
-import type { QuotationStatus } from "@/types";
+import { QuotationFormDialog } from "@/components/quotations/QuotationFormDialog";
 
 export default function Quotation() {
   const [status, setStatus] = useState("all");
   const [page, setPage] = useState(1);
+  const [openDialog, setOpenDialog] = useState(false);
+  const [localQuotations, setLocalQuotations] = useState<any[]>(() => {
+    const saved = localStorage.getItem("localQuotations");
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const handleSaveLocalQuotation = async (quotation: any) => {
+    const newList = [quotation, ...localQuotations];
+    setLocalQuotations(newList);
+    localStorage.setItem("localQuotations", JSON.stringify(newList));
+    toast({ title: "Quotation saved successfully!" });
+  };
 
   const filters = useMemo(
     () => ({
@@ -95,9 +107,15 @@ export default function Quotation() {
       <QuotationsToolbar
         status={status}
         onStatusChange={(v) => { setStatus(v); setPage(1); }}
-        onAdd={() => {}}
+        onAdd={() => setOpenDialog(true)}
         onClearFilters={handleClearFilters}
         hasActiveFilters={hasActiveFilters}
+      />
+
+      <QuotationFormDialog
+        open={openDialog}
+        onOpenChange={setOpenDialog}
+        onSubmitQuotation={handleSaveLocalQuotation}
       />
 
       {!loading && data.length === 0 ? (
@@ -119,6 +137,60 @@ export default function Quotation() {
           onSend={handleSend}
           onRecordResponse={handleRecordResponse}
         />
+      )}
+
+      {localQuotations.length > 0 && (
+        <div className="mt-8 space-y-4">
+          <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+            <FileText className="w-5 h-5 text-indigo-600" /> Manually Created Quotations
+          </h3>
+          <Card className="p-4 bg-white dark:bg-slate-900 overflow-hidden border border-slate-200 dark:border-slate-800">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-200 dark:border-slate-800 font-bold text-slate-500 text-xs">
+                    <th className="p-2">Quote No</th>
+                    <th className="p-2">Customer</th>
+                    <th className="p-2">Issue Date</th>
+                    <th className="p-2">Valid Until</th>
+                    <th className="p-2 text-right">Amount</th>
+                    <th className="p-2 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40 text-slate-700 dark:text-slate-200 text-xs">
+                  {localQuotations.map((q: any, i: number) => (
+                    <tr key={i} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                      <td className="p-2 font-medium text-slate-900 dark:text-white">{q.quoteNumber}</td>
+                      <td className="p-2">{q.quoteToName}</td>
+                      <td className="p-2">{q.issueDate}</td>
+                      <td className="p-2">{q.validUntil}</td>
+                      <td className="p-2 text-right font-semibold">
+                        ₹{Number(q.overallTotal).toLocaleString("en-IN", {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                      </td>
+                      <td className="p-2 text-right">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 text-xs text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 px-2"
+                          onClick={() => {
+                            const updated = localQuotations.filter((_: any, idx: number) => idx !== i);
+                            setLocalQuotations(updated);
+                            localStorage.setItem("localQuotations", JSON.stringify(updated));
+                          }}
+                        >
+                          <Trash2 className="w-3.5 h-3.5 mr-1" /> Delete
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        </div>
       )}
     </motion.div>
   );
