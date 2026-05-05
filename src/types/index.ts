@@ -114,6 +114,7 @@ export interface Ticket {
   assigned_at: string | null;
   requires_parts: boolean;
   was_under_observation: boolean;
+  was_returned: boolean;
   // Part details
   part_number: string;
   part_usage: string;
