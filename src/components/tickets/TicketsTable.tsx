@@ -56,7 +56,9 @@ export function TicketsTable({
     return defs
       .filter((d) => {
         // Block closed → under_observation if ticket already went through it (final close)
-        if (ticket.current_status === "closed" && d.to === "under_observation" && ticket.was_under_observation) return false;
+        if (ticket.current_status === "closed" && d.to === "under_observation") {
+          if (ticket.was_under_observation || ticket.was_returned) return false;
+        }
         return true;
       })
       .map((d) => ({
