@@ -78,6 +78,7 @@ export function PartRequestsTable({
           <TableHeader>
             <TableRow className="bg-slate-50 dark:bg-slate-800/50">
               <TableHead>Ticket #</TableHead>
+              {isManager && <TableHead>Region</TableHead>}
               <TableHead>Part Number</TableHead>
               <TableHead>Part Name</TableHead>
               <TableHead>Qty</TableHead>
@@ -97,6 +98,13 @@ export function PartRequestsTable({
                 className="border-b border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
               >
                 <TableCell className="font-medium">{pr.ticket_number}</TableCell>
+                {isManager && (
+                  <TableCell>
+                    <Badge variant="outline" className="capitalize">
+                      {pr.region_display || pr.region}
+                    </Badge>
+                  </TableCell>
+                )}
                 <TableCell className="font-mono text-sm">{pr.part_number}</TableCell>
                 <TableCell>{pr.part_name}</TableCell>
                 <TableCell>
