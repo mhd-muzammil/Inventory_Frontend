@@ -33,7 +33,7 @@ export async function rejectPartRequest(id: number | string, rejection_reason: s
   return data;
 }
 
-export async function getPendingPartRequests(): Promise<PartRequest[]> {
-  const { data } = await client.get<PartRequest[]>("/part-requests/pending/");
+export async function getPendingPartRequests(): Promise<PaginatedResponse<PartRequest>> {
+  const { data } = await client.get<PaginatedResponse<PartRequest>>("/part-requests/pending/");
   return data;
 }
