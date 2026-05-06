@@ -182,6 +182,8 @@ export interface PartRequest {
   id: number;
   ticket_id: number;
   ticket_number: string;
+  region: Region;
+  region_display: string;
   requested_by: Pick<User, "id" | "full_name" | "role">;
   part_number: string;
   part_name: string;
@@ -538,6 +540,7 @@ export interface PartRequestFilters {
   ticket_id?: number;
   status?: PartRequestStatus;
   urgency?: PartUrgency;
+  region?: Region;
   page?: number;
   per_page?: number;
 }
