@@ -1,13 +1,17 @@
 import { Plus, SlidersHorizontal, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
-import { PART_REQUEST_STATUS_LABELS } from "@/types";
+import { PART_REQUEST_STATUS_LABELS, REGION_LABELS } from "@/types";
+import type { UserRole } from "@/types";
 
 interface PartRequestsToolbarProps {
   status: string;
   onStatusChange: (val: string) => void;
   urgency: string;
   onUrgencyChange: (val: string) => void;
+  region: string;
+  onRegionChange: (val: string) => void;
+  userRole: UserRole;
   onAdd: () => void;
   onClearFilters: () => void;
   hasActiveFilters: boolean;
@@ -24,10 +28,14 @@ export function PartRequestsToolbar({
   onStatusChange,
   urgency,
   onUrgencyChange,
+  region,
+  onRegionChange,
+  userRole,
   onAdd,
   onClearFilters,
   hasActiveFilters,
 }: PartRequestsToolbarProps) {
+  const canSeeAllRegions = userRole === "admin" || userRole === "super_admin";
   return (
     <div className="space-y-3 mb-6">
       {/* Row 1: Action buttons */}
@@ -82,6 +90,23 @@ export function PartRequestsToolbar({
             ))}
           </SelectContent>
         </Select>
+
+        {/* Region (Admins only) */}
+        {canSeeAllRegions && (
+          <Select value={region} onValueChange={onRegionChange}>
+            <SelectTrigger className="w-full sm:w-44">
+              <SelectValue placeholder="Region" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Regions</SelectItem>
+              {Object.entries(REGION_LABELS).map(([value, label]) => (
+                <SelectItem key={value} value={value}>
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       </div>
     </div>
   );
