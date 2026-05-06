@@ -10,11 +10,12 @@ import { useAuthStore } from "@/store/authStore";
 import { toast } from "@/components/ui/use-toast";
 import { approvePartRequest, rejectPartRequest } from "@/api/partRequests";
 import { extractApiError } from "@/api/client";
-import type { PartRequestStatus, PartUrgency } from "@/types";
+import type { PartRequestStatus, PartUrgency, Region } from "@/types";
 
 export default function PartRequest() {
   const [status, setStatus] = useState("all");
   const [urgency, setUrgency] = useState("all");
+  const [region, setRegion] = useState("all");
   const [page, setPage] = useState(1);
 
   const user = useAuthStore((s) => s.user);
@@ -24,19 +25,21 @@ export default function PartRequest() {
     () => ({
       status: status !== "all" ? (status as PartRequestStatus) : undefined,
       urgency: urgency !== "all" ? (urgency as PartUrgency) : undefined,
+      region: region !== "all" ? (region as Region) : undefined,
       page,
       per_page: 20,
     }),
-    [status, urgency, page],
+    [status, urgency, region, page],
   );
 
   const { data, loading, error, pagination, refetch } = usePartRequests(filters);
 
-  const hasActiveFilters = status !== "all" || urgency !== "all";
+  const hasActiveFilters = status !== "all" || urgency !== "all" || region !== "all";
 
   const handleClearFilters = () => {
     setStatus("all");
     setUrgency("all");
+    setRegion("all");
     setPage(1);
   };
 
@@ -95,6 +98,9 @@ export default function PartRequest() {
         onStatusChange={(v) => { setStatus(v); setPage(1); }}
         urgency={urgency}
         onUrgencyChange={(v) => { setUrgency(v); setPage(1); }}
+        region={region}
+        onRegionChange={(v) => { setRegion(v); setPage(1); }}
+        userRole={userRole}
         onAdd={() => {}}
         onClearFilters={handleClearFilters}
         hasActiveFilters={hasActiveFilters}
