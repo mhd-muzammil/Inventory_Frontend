@@ -19,6 +19,7 @@ import {
   ShieldCheck,
   ShieldAlert,
   HardHat,
+  Coins,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/authStore";
@@ -36,6 +37,7 @@ const navLinks = [
   // { to: "/buffer-stock", label: "Buffer Stock Mgmt", icon: Layers },
   { to: "/purchase-order", label: "Purchase Order", icon: ShoppingCart },
   { to: "/reports", label: "Report", icon: BarChart3 },
+  { to: "/activity-charges", label: "Activity Charges", icon: Coins },
   { to: "/settings", label: "Settings", icon: Settings },
 ];
 

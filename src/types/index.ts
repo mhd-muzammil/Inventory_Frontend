@@ -689,3 +689,16 @@ export interface TransactionQueryParams {
   page?: number;
   per_page?: number;
 }
+
+export interface ActivityCharge {
+  id: number;
+  region: Region;
+  region_display: string;
+  activity_name: string;
+  amount: number;
+  remarks: string;
+  created_by: number | null;
+  created_by_detail: Pick<User, "id" | "full_name" | "role"> | null;
+  created_at: string;
+  updated_at: string;
+}
