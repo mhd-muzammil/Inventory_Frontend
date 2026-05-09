@@ -18,6 +18,7 @@ import ManagerManagement from "@/pages/ManagerManagement";
 import EngineerManagement from "@/pages/EngineerManagement";
 import TicketDetail from "@/pages/TicketDetail";
 import BufferStockManagement from "@/pages/BufferStockManagement";
+import ActivityCharges from "@/pages/ActivityCharges";
 
 export default function App() {
   return (
@@ -37,6 +38,7 @@ export default function App() {
           <Route path="/buffer-stock" element={<BufferStockManagement />} />
           <Route path="/purchase-order" element={<PurchaseOrder />} />
           <Route path="/reports" element={<Reports />} />
+          <Route path="/activity-charges" element={<ActivityCharges />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/engineers" element={<EngineerManagement />} />
           <Route path="/users" element={<UserManagement />} />
