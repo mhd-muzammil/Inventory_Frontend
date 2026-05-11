@@ -288,6 +288,7 @@ export default function ActivityCharges() {
               <thead>
                 <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/20 text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider">
                   <th className="px-6 py-4">Activity</th>
+                  <th className="px-6 py-4">Ticket No.</th>
                   <th className="px-6 py-4">Region</th>
                   <th className="px-6 py-4">Amount</th>
                   <th className="px-6 py-4">Logged By</th>
@@ -301,6 +302,9 @@ export default function ActivityCharges() {
                   <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors">
                     <td className="px-6 py-4 font-semibold text-slate-900 dark:text-white">
                       {item.activity_name}
+                    </td>
+                    <td className="px-6 py-4 text-indigo-600 dark:text-indigo-400 font-medium">
+                      {item.ticket_number || <span className="text-slate-400 text-xs italic">—</span>}
                     </td>
                     <td className="px-6 py-4">
                       <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200">
