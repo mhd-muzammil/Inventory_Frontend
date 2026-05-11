@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -55,6 +55,7 @@ interface QuotationFormDialogProps {
   onOpenChange: (open: boolean) => void;
   onSubmitQuotation?: (quotationData: any) => Promise<void>;
   initialStyle?: "classic" | "orange";
+  initialData?: any;
 }
 
 export function QuotationFormDialog({
@@ -62,6 +63,7 @@ export function QuotationFormDialog({
   onOpenChange,
   onSubmitQuotation,
   initialStyle = "classic",
+  initialData = null,
 }: QuotationFormDialogProps) {
   const [quotationStyle, setQuotationStyle] = useState<"classic" | "orange">(initialStyle);
   
@@ -161,6 +163,38 @@ export function QuotationFormDialog({
 
   const [saving, setSaving] = useState(false);
 
+  useEffect(() => {
+    if (initialData && open) {
+      if (initialData.style) setQuotationStyle(initialData.style);
+      setQuoteNumber(initialData.quoteNumber || "");
+      setIssueDate(initialData.issueDate || "");
+      setValidUntil(initialData.validUntil || "");
+      setPlaceOfSupply(initialData.placeOfSupply || "");
+      setCaseId(initialData.caseId || "");
+      setOrderNumber(initialData.orderNumber || "");
+      setSenderCompany(initialData.senderCompany || "");
+      setSenderAddress(initialData.senderAddress || "");
+      setSenderPhone(initialData.senderPhone || "");
+      setSenderEmail(initialData.senderEmail || "");
+      setSenderGSTIN(initialData.senderGSTIN || "");
+      setSenderPAN(initialData.senderPAN || "");
+      if (initialData.senderWebsite) setSenderWebsite(initialData.senderWebsite);
+      if (initialData.bankDetails) setBankDetails(initialData.bankDetails);
+      if (initialData.bankAc) setBankAc(initialData.bankAc);
+      if (initialData.bankIfsc) setBankIfsc(initialData.bankIfsc);
+      setQuoteToName(initialData.quoteToName || "");
+      if (initialData.quoteToEmail) setQuoteToEmail(initialData.quoteToEmail);
+      setQuoteToPhone(initialData.quoteToPhone || "");
+      setQuoteToAddress(initialData.quoteToAddress || "");
+      setQuoteToGSTIN(initialData.quoteToGSTIN || "");
+      setShipToName(initialData.shipToName || "");
+      setShipToPhone(initialData.shipToPhone || "");
+      setShipToAddress(initialData.shipToAddress || "");
+      setTerms(initialData.terms || "");
+      setItems(initialData.items || []);
+    }
+  }, [initialData, open]);
+
   // Calculations
   const calculatedItems = items.map((item) => {
     const qty = Number(item.qty) || 0;
@@ -233,7 +267,12 @@ export function QuotationFormDialog({
         senderEmail,
         senderGSTIN,
         senderPAN,
+        senderWebsite,
+        bankDetails,
+        bankAc,
+        bankIfsc,
         quoteToName,
+        quoteToEmail,
         quoteToPhone,
         quoteToAddress,
         quoteToGSTIN,
