@@ -34,7 +34,7 @@ export async function deleteBufferPart(id: number): Promise<void> {
 
 export async function transitionBufferPart(
   id: number,
-  payload: { engineer_name?: string; case_id?: string; remarks?: string }
+  payload: { engineer_name?: string; case_id?: string; remarks?: string; to_status?: string }
 ): Promise<BufferPart> {
   const { data } = await client.post<BufferPart>(`/buffer-parts/${id}/transition/`, payload);
   return data;
