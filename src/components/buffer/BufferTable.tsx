@@ -55,12 +55,21 @@ const STATUS_DOT_COLOR_MAP: Record<WorkflowStatus, string> = {
 };
 
 const STATUS_LABELS: Record<WorkflowStatus, string> = {
-  BUFFER_IN: "BUFFER_IN",
-  OUT: "OUT",
-  DEFECTIVE_RETURN: "DEFECTIVE_RETURN",
-  REORDER: "REORDER",
-  PART_RECEIVED: "PART_RECEIVED",
-  CLOSED: "CLOSED",
+  BUFFER_IN: "Buffer In",
+  OUT: "Out",
+  DEFECTIVE_RETURN: "Defective Return",
+  REORDER: "Reorder",
+  PART_RECEIVED: "Part Received",
+  CLOSED: "Closed",
+};
+
+const STATUS_STYLE_MAP: Record<WorkflowStatus, { bg: string; text: string; dot: string }> = {
+  BUFFER_IN: { bg: "bg-blue-50 dark:bg-blue-900/20", text: "text-blue-700 dark:text-blue-400", dot: "bg-blue-600" },
+  OUT: { bg: "bg-amber-50 dark:bg-amber-900/20", text: "text-amber-700 dark:text-amber-400", dot: "bg-amber-500" },
+  DEFECTIVE_RETURN: { bg: "bg-purple-50 dark:bg-purple-900/20", text: "text-purple-700 dark:text-purple-400", dot: "bg-purple-600" },
+  REORDER: { bg: "bg-emerald-50 dark:bg-emerald-900/20", text: "text-emerald-700 dark:text-emerald-400", dot: "bg-emerald-600" },
+  PART_RECEIVED: { bg: "bg-indigo-50 dark:bg-indigo-900/20", text: "text-indigo-700 dark:text-indigo-400", dot: "bg-indigo-600" },
+  CLOSED: { bg: "bg-slate-100 dark:bg-slate-800", text: "text-slate-700 dark:text-slate-300", dot: "bg-slate-500" },
 };
 
 const TRACK_STEPS: WorkflowStatus[] = ["BUFFER_IN", "OUT", "DEFECTIVE_RETURN", "REORDER", "PART_RECEIVED", "CLOSED"];
@@ -189,9 +198,16 @@ export function BufferTable({ data, loading, pagination, onPageChange, onEdit, o
                   {entry.region_display ? <Badge variant="outline">{entry.region_display}</Badge> : <span className="text-slate-400 italic">-</span>}
                 </TableCell>
                 <TableCell>
-                  <Badge variant="outline" className="text-[11px]">
-                    {STATUS_LABELS[entry.status || "BUFFER_IN"]}
-                  </Badge>
+                  {(() => {
+                    const s = entry.status || "BUFFER_IN";
+                    const st = STATUS_STYLE_MAP[s];
+                    return (
+                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${st.bg} ${st.text}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${st.dot}`} />
+                        {STATUS_LABELS[s]}
+                      </span>
+                    );
+                  })()}
                 </TableCell>
                 <TableCell>
                   {(entry.status || "BUFFER_IN") === "CLOSED" ? (
