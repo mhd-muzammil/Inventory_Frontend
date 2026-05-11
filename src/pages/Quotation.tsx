@@ -15,6 +15,7 @@ export default function Quotation() {
   const [status, setStatus] = useState("all");
   const [page, setPage] = useState(1);
   const [openDialog, setOpenDialog] = useState(false);
+  const [activeStyle, setActiveStyle] = useState<"classic" | "orange">("classic");
   const [localQuotations, setLocalQuotations] = useState<any[]>(() => {
     const saved = localStorage.getItem("localQuotations");
     return saved ? JSON.parse(saved) : [];
@@ -107,15 +108,18 @@ export default function Quotation() {
       <QuotationsToolbar
         status={status}
         onStatusChange={(v) => { setStatus(v); setPage(1); }}
-        onAdd={() => setOpenDialog(true)}
+        onAddClassic={() => { setActiveStyle("classic"); setOpenDialog(true); }}
+        onAddOrange={() => { setActiveStyle("orange"); setOpenDialog(true); }}
         onClearFilters={handleClearFilters}
         hasActiveFilters={hasActiveFilters}
       />
 
       <QuotationFormDialog
+        key={openDialog ? activeStyle : "closed"}
         open={openDialog}
         onOpenChange={setOpenDialog}
         onSubmitQuotation={handleSaveLocalQuotation}
+        initialStyle={activeStyle}
       />
 
       {!loading && data.length === 0 ? (
