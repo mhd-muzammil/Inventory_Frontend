@@ -116,6 +116,7 @@ export function TicketFormDialog({
       resolution_summary: "",
       explanation: "",
       customer_comments: "",
+      entry_charge: 0,
     },
   });
 
@@ -317,7 +318,7 @@ export function TicketFormDialog({
               <User className="w-4 h-4 text-indigo-500" /> Customer & Product Details
             </div>
 
-            <div className={`grid grid-cols-1 gap-4 ${isAdmin ? "sm:grid-cols-5" : "sm:grid-cols-4"}`}>
+            <div className={`grid grid-cols-1 gap-4 ${isAdmin ? "sm:grid-cols-3 lg:grid-cols-6" : "sm:grid-cols-2 lg:grid-cols-5"}`}>
               <div className="space-y-2">
                 <Label>Work Order</Label>
                 <Input {...register("work_order")} placeholder="WO number" />
@@ -329,6 +330,10 @@ export function TicketFormDialog({
               <div className="space-y-2">
                 <Label>CSO Date</Label>
                 <Input type="date" {...register("cso_date")} />
+              </div>
+              <div className="space-y-2">
+                <Label>CSO Entry Charge</Label>
+                <Input type="number" step="0.01" {...register("entry_charge")} placeholder="Amount" />
               </div>
               <div className="space-y-2">
                 <Label>Warranty Status *</Label>
@@ -565,6 +570,9 @@ export function TicketFormDialog({
                 <ReviewField label="Model" value={getValues("model_number")} />
                 <ReviewField label="Service" value={SERVICE_TYPE_LABELS[serviceTypeValue as keyof typeof SERVICE_TYPE_LABELS] || serviceTypeValue} />
                 <ReviewField label="Condition" value={getValues("condition_received")} />
+                {Number(getValues("entry_charge")) > 0 && (
+                  <ReviewField label="Entry Charge" value={`₹${getValues("entry_charge")}`} />
+                )}
               </div>
             </div>
 
