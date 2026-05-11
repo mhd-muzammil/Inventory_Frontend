@@ -18,46 +18,31 @@ import type { BufferPart, PaginationMeta } from "@/types";
 
 type WorkflowStatus = BufferPart["status"];
 
-const NEXT_STATUS_MAP: Record<WorkflowStatus, WorkflowStatus | null> = {
-  BUFFER_IN: "OUT",
-  OUT: "DEFECTIVE_RETURN",
-  DEFECTIVE_RETURN: "REORDER",
-  REORDER: "PART_RECEIVED",
-  PART_RECEIVED: "CLOSED",
-  CLOSED: null,
+const AVAILABLE_TRANSITIONS: Record<WorkflowStatus, WorkflowStatus[]> = {
+  BUFFER_IN: ["OUT"],
+  OUT: ["DEFECTIVE_RETURN", "UNUSED_RETURN"],
+  DEFECTIVE_RETURN: ["REORDER"],
+  UNUSED_RETURN: ["OUT"],
+  REORDER: ["PART_RECEIVED"],
+  PART_RECEIVED: ["CLOSED"],
+  CLOSED: [],
 };
 
-const NEXT_ACTION_MAP: Record<WorkflowStatus, string> = {
-  BUFFER_IN: "Mark Out",
-  OUT: "Defective Return",
-  DEFECTIVE_RETURN: "Reorder",
-  REORDER: "Part Received",
-  PART_RECEIVED: "Close Case",
-  CLOSED: "Completed",
-};
-
-const NEXT_ACTION_COLOR_MAP: Record<WorkflowStatus, string> = {
-  BUFFER_IN: "bg-blue-600 hover:bg-blue-700 text-white border-transparent dark:bg-blue-600 dark:hover:bg-blue-700 dark:text-white",
-  OUT: "bg-amber-500 hover:bg-amber-600 text-white border-transparent dark:bg-amber-500 dark:hover:bg-amber-600 dark:text-white",
-  DEFECTIVE_RETURN: "bg-purple-600 hover:bg-purple-700 text-white border-transparent dark:bg-purple-600 dark:hover:bg-purple-700 dark:text-white",
-  REORDER: "bg-emerald-600 hover:bg-emerald-700 text-white border-transparent dark:bg-emerald-600 dark:hover:bg-emerald-700 dark:text-white",
-  PART_RECEIVED: "bg-indigo-600 hover:bg-indigo-700 text-white border-transparent dark:bg-indigo-600 dark:hover:bg-indigo-700 dark:text-white",
-  CLOSED: "border-slate-200 text-slate-400 bg-transparent hover:bg-transparent",
-};
-
-const STATUS_DOT_COLOR_MAP: Record<WorkflowStatus, string> = {
-  BUFFER_IN: "bg-blue-600",
-  OUT: "bg-amber-500",
-  DEFECTIVE_RETURN: "bg-purple-600",
-  REORDER: "bg-emerald-600",
-  PART_RECEIVED: "bg-indigo-600",
-  CLOSED: "bg-slate-400",
+const TRANSITION_LABELS: Record<WorkflowStatus, string> = {
+  BUFFER_IN: "Return to Buffer",
+  OUT: "Mark Out",
+  DEFECTIVE_RETURN: "Defective Return",
+  UNUSED_RETURN: "Unused Return",
+  REORDER: "Reorder",
+  PART_RECEIVED: "Part Received",
+  CLOSED: "Close Case",
 };
 
 const STATUS_LABELS: Record<WorkflowStatus, string> = {
   BUFFER_IN: "Buffer In",
   OUT: "Out",
   DEFECTIVE_RETURN: "Defective Return",
+  UNUSED_RETURN: "Unused Return",
   REORDER: "Reorder",
   PART_RECEIVED: "Part Received",
   CLOSED: "Closed",
@@ -67,12 +52,13 @@ const STATUS_STYLE_MAP: Record<WorkflowStatus, { bg: string; text: string; dot: 
   BUFFER_IN: { bg: "bg-blue-50 dark:bg-blue-900/20", text: "text-blue-700 dark:text-blue-400", dot: "bg-blue-600" },
   OUT: { bg: "bg-amber-50 dark:bg-amber-900/20", text: "text-amber-700 dark:text-amber-400", dot: "bg-amber-500" },
   DEFECTIVE_RETURN: { bg: "bg-purple-50 dark:bg-purple-900/20", text: "text-purple-700 dark:text-purple-400", dot: "bg-purple-600" },
+  UNUSED_RETURN: { bg: "bg-teal-50 dark:bg-teal-900/20", text: "text-teal-700 dark:text-teal-400", dot: "bg-teal-600" },
   REORDER: { bg: "bg-emerald-50 dark:bg-emerald-900/20", text: "text-emerald-700 dark:text-emerald-400", dot: "bg-emerald-600" },
   PART_RECEIVED: { bg: "bg-indigo-50 dark:bg-indigo-900/20", text: "text-indigo-700 dark:text-indigo-400", dot: "bg-indigo-600" },
   CLOSED: { bg: "bg-slate-100 dark:bg-slate-800", text: "text-slate-700 dark:text-slate-300", dot: "bg-slate-500" },
 };
 
-const TRACK_STEPS: WorkflowStatus[] = ["BUFFER_IN", "OUT", "DEFECTIVE_RETURN", "REORDER", "PART_RECEIVED", "CLOSED"];
+const TRACK_STEPS: WorkflowStatus[] = ["BUFFER_IN", "OUT", "DEFECTIVE_RETURN", "UNUSED_RETURN", "REORDER", "PART_RECEIVED", "CLOSED"];
 
 interface BufferTableProps {
   data: BufferPart[];
@@ -88,12 +74,13 @@ export function BufferTable({ data, loading, pagination, onPageChange, onEdit, o
   const [transitionOpen, setTransitionOpen] = useState(false);
   const [trackOpen, setTrackOpen] = useState(false);
   const [activeRow, setActiveRow] = useState<BufferPart | null>(null);
+  const [pendingToStatus, setPendingToStatus] = useState<WorkflowStatus | null>(null);
   const [engineerName, setEngineerName] = useState("");
   const [caseId, setCaseId] = useState("");
   const [remarks, setRemarks] = useState("");
   const [savingTransition, setSavingTransition] = useState(false);
 
-  const isOutTransition = activeRow?.status === "BUFFER_IN";
+  const isOutTransition = pendingToStatus === "OUT";
   const canConfirm = useMemo(() => {
     if (!activeRow) return false;
     if (activeRow.status === "CLOSED") return false;
@@ -101,8 +88,9 @@ export function BufferTable({ data, loading, pagination, onPageChange, onEdit, o
     return true;
   }, [activeRow, caseId, engineerName, isOutTransition]);
 
-  const openTransition = (row: BufferPart) => {
+  const openTransition = (row: BufferPart, target: WorkflowStatus) => {
     setActiveRow(row);
+    setPendingToStatus(target);
     setEngineerName(row.engineer_name || "");
     setCaseId(row.case_id || "");
     setRemarks("");
@@ -122,6 +110,7 @@ export function BufferTable({ data, loading, pagination, onPageChange, onEdit, o
         engineer_name: engineerName.trim() || undefined,
         case_id: caseId.trim() || undefined,
         remarks: remarks.trim() || undefined,
+        to_status: pendingToStatus || undefined,
       });
       onRowUpdated(updated);
       setTransitionOpen(false);
@@ -228,13 +217,16 @@ export function BufferTable({ data, loading, pagination, onPageChange, onEdit, o
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="start" className="w-48">
-                        <DropdownMenuItem
-                          className="cursor-pointer gap-2 text-sm"
-                          onClick={() => openTransition(entry)}
-                        >
-                          <span className={`w-2 h-2 rounded-full ${STATUS_DOT_COLOR_MAP[entry.status || "BUFFER_IN"]}`} />
-                          {NEXT_ACTION_MAP[entry.status || "BUFFER_IN"]}
-                        </DropdownMenuItem>
+                        {AVAILABLE_TRANSITIONS[entry.status || "BUFFER_IN"].map((targetStatus) => (
+                          <DropdownMenuItem
+                            key={targetStatus}
+                            className="cursor-pointer gap-2 text-sm"
+                            onClick={() => openTransition(entry, targetStatus)}
+                          >
+                            <span className={`w-2 h-2 rounded-full ${STATUS_STYLE_MAP[targetStatus].dot}`} />
+                            {TRANSITION_LABELS[targetStatus]}
+                          </DropdownMenuItem>
+                        ))}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   )}
