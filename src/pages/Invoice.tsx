@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
-import { Receipt, AlertCircle, Plus } from "lucide-react";
+import { Receipt, AlertCircle, Plus, Trash2, FileText } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { InvoicesToolbar } from "@/components/invoices/InvoicesToolbar";
@@ -16,6 +16,18 @@ export default function Invoice() {
   const [status, setStatus] = useState("all");
   const [page, setPage] = useState(1);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [activeStyle, setActiveStyle] = useState<"classic" | "orange">("classic");
+  const [localInvoices, setLocalInvoices] = useState<any[]>(() => {
+    const saved = localStorage.getItem("localInvoices");
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const handleSaveLocalInvoice = async (invoiceData: any) => {
+    const newList = [invoiceData, ...localInvoices];
+    setLocalInvoices(newList);
+    localStorage.setItem("localInvoices", JSON.stringify(newList));
+    toast({ title: "Invoice saved successfully locally!" });
+  };
 
   const filters = useMemo(
     () => ({
@@ -79,7 +91,7 @@ export default function Invoice() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
     >
-      <div className="flex justify-between items-center mb-6">
+      <div className="mb-6">
         <div>
           <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">
             Invoices
@@ -88,15 +100,13 @@ export default function Invoice() {
             Manage and track invoices.
           </p>
         </div>
-        <Button onClick={() => setIsFormOpen(true)} className="gap-2">
-          <Plus className="w-4 h-4" /> New Invoice
-        </Button>
       </div>
 
       <InvoicesToolbar
         status={status}
         onStatusChange={(v) => { setStatus(v); setPage(1); }}
-        onAdd={() => setIsFormOpen(true)}
+        onAddClassic={() => { setActiveStyle("classic"); setIsFormOpen(true); }}
+        onAddOrange={() => { setActiveStyle("orange"); setIsFormOpen(true); }}
         onClearFilters={handleClearFilters}
         hasActiveFilters={hasActiveFilters}
       />
@@ -125,7 +135,67 @@ export default function Invoice() {
         />
       )}
 
-      <InvoiceFormDialog open={isFormOpen} onOpenChange={setIsFormOpen} />
+      {localInvoices.length > 0 && (
+        <div className="mt-12 space-y-4">
+          <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+            <FileText className="w-5 h-5 text-indigo-600" /> Manually Created Invoices
+          </h3>
+          <Card className="p-4 bg-white dark:bg-slate-900 overflow-hidden border border-slate-200 dark:border-slate-800">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-200 dark:border-slate-800 font-bold text-slate-500 text-xs">
+                    <th className="p-2">Inv No</th>
+                    <th className="p-2">Customer</th>
+                    <th className="p-2">Issue Date</th>
+                    <th className="p-2">Due Date</th>
+                    <th className="p-2 text-right">Amount</th>
+                    <th className="p-2 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40 text-slate-700 dark:text-slate-200 text-xs">
+                  {localInvoices.map((inv: any, i: number) => (
+                    <tr key={i} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                      <td className="p-2 font-medium text-slate-900 dark:text-white">{inv.invoiceNumber}</td>
+                      <td className="p-2">{inv.billToName}</td>
+                      <td className="p-2">{inv.issueDate}</td>
+                      <td className="p-2">{inv.dueDate}</td>
+                      <td className="p-2 text-right font-semibold">
+                        ₹{Number(inv.overallTotal).toLocaleString("en-IN", {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                      </td>
+                      <td className="p-2 text-right">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 text-xs text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 px-2"
+                          onClick={() => {
+                            const updated = localInvoices.filter((_: any, idx: number) => idx !== i);
+                            setLocalInvoices(updated);
+                            localStorage.setItem("localInvoices", JSON.stringify(updated));
+                          }}
+                        >
+                          <Trash2 className="w-3.5 h-3.5 mr-1" /> Delete
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      <InvoiceFormDialog 
+        key={isFormOpen ? activeStyle : "inactive"} 
+        open={isFormOpen} 
+        onOpenChange={setIsFormOpen} 
+        initialStyle={activeStyle}
+        onSubmitInvoice={handleSaveLocalInvoice}
+      />
     </motion.div>
   );
 }
