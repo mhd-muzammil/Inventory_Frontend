@@ -6,7 +6,8 @@ import { INVOICE_STATUS_LABELS } from "@/types";
 interface InvoicesToolbarProps {
   status: string;
   onStatusChange: (val: string) => void;
-  onAdd: () => void;
+  onAddClassic: () => void;
+  onAddOrange: () => void;
   onClearFilters: () => void;
   hasActiveFilters: boolean;
 }
@@ -14,7 +15,8 @@ interface InvoicesToolbarProps {
 export function InvoicesToolbar({
   status,
   onStatusChange,
-  onAdd,
+  onAddClassic,
+  onAddOrange,
   onClearFilters,
   hasActiveFilters,
 }: InvoicesToolbarProps) {
@@ -29,9 +31,13 @@ export function InvoicesToolbar({
               <X className="w-4 h-4" /> Clear
             </Button>
           )}
-          <Button onClick={onAdd} className="w-full sm:w-auto gap-2">
+          <Button onClick={onAddClassic} variant="outline" className="border-indigo-600 text-indigo-600 hover:bg-indigo-50 w-full sm:w-auto gap-2 font-semibold shadow-sm">
             <Plus className="w-4 h-4" />
-            New Invoice
+            RTPL (Bill Of Supply)
+          </Button>
+          <Button onClick={onAddOrange} className="bg-orange-600 hover:bg-orange-700 text-white w-full sm:w-auto gap-2 font-semibold shadow-sm">
+            <Plus className="w-4 h-4" />
+            RTPL (Tax Invoice)
           </Button>
         </div>
       </div>
