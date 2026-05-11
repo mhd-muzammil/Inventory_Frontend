@@ -20,6 +20,7 @@ interface InvoiceFormDialogProps {
   onOpenChange: (open: boolean) => void;
   onSubmitInvoice?: (invoiceData: any) => Promise<void>;
   initialStyle?: "classic" | "orange";
+  initialData?: any;
 }
 
 export function InvoiceFormDialog({
@@ -27,6 +28,7 @@ export function InvoiceFormDialog({
   onOpenChange,
   onSubmitInvoice,
   initialStyle = "classic",
+  initialData = null,
 }: InvoiceFormDialogProps) {
   const [invoiceStyle, setInvoiceStyle] = useState<"classic" | "orange">(initialStyle);
   const [invoiceNumber, setInvoiceNumber] = useState("RT/20-21-SAL-1254");
@@ -126,6 +128,32 @@ export function InvoiceFormDialog({
 
   const [terms, setTerms] = useState("Thanks for your support");
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (initialData && open) {
+      if (initialData.style) setInvoiceStyle(initialData.style);
+      setInvoiceNumber(initialData.invoiceNumber || "");
+      setIssueDate(initialData.issueDate || "");
+      setDueDate(initialData.dueDate || "");
+      setPlaceOfSupply(initialData.placeOfSupply || "");
+      setSenderCompany(initialData.senderCompany || "");
+      setSenderAddress(initialData.senderAddress || "");
+      setSenderPhone(initialData.senderPhone || "");
+      setSenderEmail(initialData.senderEmail || "");
+      setSenderGSTIN(initialData.senderGSTIN || "");
+      if (initialData.senderWebsite) setSenderWebsite(initialData.senderWebsite);
+      if (initialData.senderContactName) setSenderContactName(initialData.senderContactName);
+      setBillToName(initialData.billToName || "");
+      setBillToPhone(initialData.billToPhone || "");
+      setBillToAddress(initialData.billToAddress || "");
+      setBillToGSTIN(initialData.billToGSTIN || "");
+      setShipToName(initialData.shipToName || "");
+      setShipToPhone(initialData.shipToPhone || "");
+      setShipToAddress(initialData.shipToAddress || "");
+      setItems(initialData.items || []);
+      if (initialData.terms) setTerms(initialData.terms);
+    }
+  }, [initialData, open]);
 
   // Calculations
   const calculatedItems = items.map((item) => {
@@ -267,6 +295,8 @@ export function InvoiceFormDialog({
         senderPhone,
         senderEmail,
         senderGSTIN,
+        senderWebsite,
+        senderContactName,
         billToName,
         billToPhone,
         billToAddress,
