@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
-import { FileText, AlertCircle, Trash2 } from "lucide-react";
+import { FileText, AlertCircle, Trash2, Download } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { QuotationsToolbar } from "@/components/quotations/QuotationsToolbar";
@@ -20,6 +20,8 @@ export default function Quotation() {
     const saved = localStorage.getItem("localQuotations");
     return saved ? JSON.parse(saved) : [];
   });
+
+  const [editingQuotation, setEditingQuotation] = useState<any>(null);
 
   const handleSaveLocalQuotation = async (quotation: any) => {
     const newList = [quotation, ...localQuotations];
@@ -108,18 +110,19 @@ export default function Quotation() {
       <QuotationsToolbar
         status={status}
         onStatusChange={(v) => { setStatus(v); setPage(1); }}
-        onAddClassic={() => { setActiveStyle("classic"); setOpenDialog(true); }}
-        onAddOrange={() => { setActiveStyle("orange"); setOpenDialog(true); }}
+        onAddClassic={() => { setEditingQuotation(null); setActiveStyle("classic"); setOpenDialog(true); }}
+        onAddOrange={() => { setEditingQuotation(null); setActiveStyle("orange"); setOpenDialog(true); }}
         onClearFilters={handleClearFilters}
         hasActiveFilters={hasActiveFilters}
       />
 
       <QuotationFormDialog
-        key={openDialog ? activeStyle : "closed"}
+        key={openDialog ? (editingQuotation ? `edit-${editingQuotation.quoteNumber}` : `new-${activeStyle}`) : "closed"}
         open={openDialog}
         onOpenChange={setOpenDialog}
         onSubmitQuotation={handleSaveLocalQuotation}
         initialStyle={activeStyle}
+        initialData={editingQuotation}
       />
 
       {!loading && data.length === 0 ? (
@@ -174,7 +177,19 @@ export default function Quotation() {
                           maximumFractionDigits: 2,
                         })}
                       </td>
-                      <td className="p-2 text-right">
+                      <td className="p-2 text-right flex items-center justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 text-xs text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 px-2"
+                          onClick={() => {
+                            setEditingQuotation(q);
+                            setActiveStyle(q.style || "classic");
+                            setOpenDialog(true);
+                          }}
+                        >
+                          <Download className="w-3.5 h-3.5 mr-1" /> Download
+                        </Button>
                         <Button
                           variant="ghost"
                           size="sm"
