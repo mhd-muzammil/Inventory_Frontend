@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { BoxesIcon, Pencil, Trash2 } from "lucide-react";
+import { BoxesIcon, Pencil, Trash2, ArrowRight, ChevronDown } from "lucide-react";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -42,6 +43,15 @@ const NEXT_ACTION_COLOR_MAP: Record<WorkflowStatus, string> = {
   REORDER: "bg-emerald-600 hover:bg-emerald-700 text-white border-transparent dark:bg-emerald-600 dark:hover:bg-emerald-700 dark:text-white",
   PART_RECEIVED: "bg-indigo-600 hover:bg-indigo-700 text-white border-transparent dark:bg-indigo-600 dark:hover:bg-indigo-700 dark:text-white",
   CLOSED: "border-slate-200 text-slate-400 bg-transparent hover:bg-transparent",
+};
+
+const STATUS_DOT_COLOR_MAP: Record<WorkflowStatus, string> = {
+  BUFFER_IN: "bg-blue-600",
+  OUT: "bg-amber-500",
+  DEFECTIVE_RETURN: "bg-purple-600",
+  REORDER: "bg-emerald-600",
+  PART_RECEIVED: "bg-indigo-600",
+  CLOSED: "bg-slate-400",
 };
 
 const STATUS_LABELS: Record<WorkflowStatus, string> = {
@@ -184,15 +194,34 @@ export function BufferTable({ data, loading, pagination, onPageChange, onEdit, o
                   </Badge>
                 </TableCell>
                 <TableCell>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className={NEXT_ACTION_COLOR_MAP[entry.status || "BUFFER_IN"]}
-                    disabled={(entry.status || "BUFFER_IN") === "CLOSED"}
-                    onClick={() => openTransition(entry)}
-                  >
-                    {NEXT_ACTION_MAP[entry.status || "BUFFER_IN"]}
-                  </Button>
+                  {(entry.status || "BUFFER_IN") === "CLOSED" ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="border-slate-200 text-slate-400 bg-transparent hover:bg-transparent"
+                      disabled
+                    >
+                      Completed
+                    </Button>
+                  ) : (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button size="sm" className="gap-1 text-xs">
+                          <ArrowRight className="w-3.5 h-3.5" />
+                          Next Step <ChevronDown className="w-3 h-3 ml-0.5" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" className="w-48">
+                        <DropdownMenuItem
+                          className="cursor-pointer gap-2 text-sm"
+                          onClick={() => openTransition(entry)}
+                        >
+                          <span className={`w-2 h-2 rounded-full ${STATUS_DOT_COLOR_MAP[entry.status || "BUFFER_IN"]}`} />
+                          {NEXT_ACTION_MAP[entry.status || "BUFFER_IN"]}
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
                 </TableCell>
                 <TableCell>
                   <Button size="sm" variant="ghost" onClick={() => openTrack(entry)}>
