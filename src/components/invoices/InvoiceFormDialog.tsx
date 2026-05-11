@@ -10,20 +10,25 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Plus, Trash2, Download, Receipt, Loader2 } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import renderfulllogo from "@/assets/renderfulllogo.png";
 import renderlogo from "@/assets/renderlogo.png";
+import stampImg from "@/assets/stamp.png";
 
 interface InvoiceFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmitInvoice?: (invoiceData: any) => Promise<void>;
+  initialStyle?: "classic" | "orange";
 }
 
 export function InvoiceFormDialog({
   open,
   onOpenChange,
   onSubmitInvoice,
+  initialStyle = "classic",
 }: InvoiceFormDialogProps) {
+  const [invoiceStyle, setInvoiceStyle] = useState<"classic" | "orange">(initialStyle);
   const [invoiceNumber, setInvoiceNumber] = useState("RT/20-21-SAL-1254");
   const [issueDate, setIssueDate] = useState("2021-02-06");
   const [dueDate, setDueDate] = useState("2021-02-06");
@@ -119,6 +124,7 @@ export function InvoiceFormDialog({
     },
   ]);
 
+  const [terms, setTerms] = useState("Thanks for your support");
   const [saving, setSaving] = useState(false);
 
   // Calculations
@@ -273,6 +279,7 @@ export function InvoiceFormDialog({
         totalCGST,
         totalSGST,
         overallTotal,
+        style: invoiceStyle,
       });
       onOpenChange(false);
     } catch (err) {
@@ -293,6 +300,7 @@ export function InvoiceFormDialog({
         image: { type: "jpeg", quality: 1 },
         html2canvas: { scale: 2, useCORS: true, logging: false },
         jsPDF: { unit: "in", format: "a4", orientation: "portrait" },
+        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
       };
       (window as any).html2pdf().from(previewEl).set(opt).save();
     };
@@ -311,20 +319,32 @@ export function InvoiceFormDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[1200px] w-full max-h-[92vh] overflow-y-auto bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-0 overflow-x-hidden">
-        <DialogHeader className="p-4 border-b border-slate-200 dark:border-slate-800 flex flex-row items-center justify-between">
+        <DialogHeader className="p-4 border-b border-slate-200 dark:border-slate-800 flex flex-row items-center justify-between flex-wrap gap-2">
           <DialogTitle className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
             <Receipt className="w-5 h-5 text-indigo-600" /> Invoice Creator & Editor
           </DialogTitle>
-          <div className="flex gap-2">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">Template:</span>
+              <Select value={invoiceStyle} onValueChange={(val: any) => setInvoiceStyle(val)}>
+                <SelectTrigger className="h-8 w-36 text-xs bg-white dark:bg-slate-800">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="classic">100% Classic (B&W)</SelectItem>
+                  <SelectItem value="orange">Modern Orange</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <Button
               onClick={handleDownloadPDF}
               variant="default"
-              className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
+              className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm h-8"
             >
-              <Download className="w-4 h-4" /> Download Accurate PDF
+              <Download className="w-4 h-4" /> PDF
             </Button>
             {onSubmitInvoice && (
-              <Button onClick={handleSaveInvoice} disabled={saving}>
+              <Button onClick={handleSaveInvoice} disabled={saving} className="h-8">
                 {saving ? (
                   <Loader2 className="w-4 h-4 animate-spin mr-2" />
                 ) : null}
@@ -643,310 +663,502 @@ export function InvoiceFormDialog({
             </div>
           </div>
 
-          {/* Right Panel: Stunning Real Invoice Live Preview Section */}
-          <div className="lg:col-span-6 p-4 max-h-[calc(92vh-100px)] overflow-auto bg-slate-200 dark:bg-slate-800/20 flex justify-center items-start">
-            {/* The A4-like container exactly as provided in image */}
-            <div
-              id="invoice-preview-container"
-              className="bg-white text-black p-8 shadow-xl text-[12px] leading-relaxed relative flex flex-col justify-between select-none pointer-events-none"
-              style={{
-                fontFamily: "system-ui, -apple-system, Arial, sans-serif",
-                color: "#1a1a1a",
-                boxSizing: "border-box",
-                width: "794px",
-                height: "1123px",
-              }}
-            >
-              <div>
-                <div className="flex justify-between items-start mb-4">
-                  <div className="flex items-center gap-2">
-                    <img
-                      src={renderlogo}
-                      alt="Logo"
-                      className="h-10 w-auto object-contain select-none pointer-events-none"
-                    />
-                    <div>
-                      <div className="text-sm font-extrabold text-indigo-950 tracking-wide leading-none">
-                        RENDERWAYS TECHNOLOGY
-                      </div>
-                      <div className="text-[9px] font-bold text-pink-600 tracking-wider mt-0.5">
-                        PVT LTD
-                      </div>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <h1 className="text-base font-bold text-slate-800 leading-none">
-                      TAX INVOICE
-                    </h1>
-                    <p className="text-[9px] font-medium text-slate-500 mt-1">
-                      Original Copy
-                    </p>
-                    <p className="text-xs font-extrabold text-indigo-900 mt-1">
-                      {invoiceNumber}
-                    </p>
-                  </div>
-                </div>
-
-                {/* 2. Sender and Amount Due row */}
-                <div className="grid grid-cols-12 gap-3 mb-4">
-                  {/* Company contact info left */}
-                  <div className="col-span-6 text-[8px] leading-[13px] text-slate-700">
-                    <p className="font-extrabold text-[10px] text-indigo-950">
-                      {senderCompany}
-                    </p>
-                    <p>{senderAddress}</p>
-                    <p>Phone: {senderPhone}</p>
-                    <p>Email: {senderEmail}</p>
-                    <p className="font-bold">GSTIN: {senderGSTIN}</p>
-                    <p>Website: {senderWebsite}</p>
-                    <p>Contact Name: {senderContactName}</p>
-                  </div>
-
-                  {/* Date, place of supply, and bold Amount Due box right */}
-                  <div className="col-span-6 flex flex-col justify-between items-end text-[9px]">
-                    <div className="w-full bg-[#e46a25] text-white p-2 rounded-sm text-right flex justify-between items-center mb-2">
-                      <span className="text-[9px] font-bold">Amount Due:</span>
-                      <span className="text-xs font-black">
-                        ₹{overallTotal.toLocaleString("en-IN", {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2,
-                        })}
-                      </span>
-                    </div>
-                    <div className="w-full space-y-1 text-right text-slate-800">
-                      <p>
-                        <span className="font-bold text-slate-600">
-                          Issue Date:
-                        </span>{" "}
-                        {issueDate}
-                      </p>
-                      <p>
-                        <span className="font-bold text-slate-600">
-                          Due Date:
-                        </span>{" "}
-                        {dueDate}
-                      </p>
-                      <p>
-                        <span className="font-bold text-slate-600">
-                          Place of Supply:
-                        </span>{" "}
-                        {placeOfSupply}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* 3. Bill To & Ship To grids */}
-                <div className="grid grid-cols-2 gap-4 mb-4 border-t border-b py-2 border-slate-200">
+          {/* Right Panel: Invoice Live Preview Section */}
+          <div className="lg:col-span-6 p-4 max-h-[calc(92vh-100px)] overflow-y-auto bg-slate-200 dark:bg-slate-900/50 flex justify-center items-start overflow-x-hidden">
+            <div id="invoice-preview-container" className="flex flex-col gap-0 select-none pointer-events-none bg-white" style={{ width: "210mm", background: "#fff" }}>
+              
+              {invoiceStyle === "classic" ? (
+                <div
+                  className="bg-white text-black p-8 shadow-xl text-[12px] leading-relaxed relative flex flex-col justify-between"
+                  style={{
+                    fontFamily: "system-ui, -apple-system, Arial, sans-serif",
+                    color: "#1a1a1a",
+                    boxSizing: "border-box",
+                    width: "210mm",
+                    minHeight: "297mm",
+                  }}
+                >
                   <div>
-                    <h4 className="font-extrabold text-[10px] text-indigo-900 mb-0.5">
-                      Bill To
-                    </h4>
-                    <p className="font-black text-slate-800">{billToName}</p>
-                    <p className="text-[8px] text-slate-600">{billToPhone}</p>
-                    <p className="text-[8.5px] text-slate-600 leading-[12px]">
-                      {billToAddress}
-                    </p>
-                    <p className="font-bold text-[8.5px] text-indigo-950">
-                      GSTIN: {billToGSTIN}
-                    </p>
-                  </div>
-                  <div>
-                    <h4 className="font-extrabold text-[10px] text-indigo-900 mb-0.5">
-                      Ship To
-                    </h4>
-                    <p className="font-black text-slate-800">{shipToName}</p>
-                    <p className="text-[8px] text-slate-600">{shipToPhone}</p>
-                    <p className="text-[8.5px] text-slate-600 leading-[12px]">
-                      {shipToAddress}
-                    </p>
-                  </div>
-                </div>
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="flex items-center gap-2">
+                        <img
+                          src={renderlogo}
+                          alt="Logo"
+                          className="h-10 w-auto object-contain select-none pointer-events-none"
+                        />
+                        <div>
+                          <div className="text-sm font-extrabold text-indigo-950 tracking-wide leading-none">
+                            RENDERWAYS TECHNOLOGY
+                          </div>
+                          <div className="text-[9px] font-bold text-pink-600 tracking-wider mt-0.5">
+                            PVT LTD
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <h1 className="text-base font-bold text-slate-800 leading-none">
+                          TAX INVOICE
+                        </h1>
+                        <p className="text-[9px] font-medium text-slate-500 mt-1">
+                          Original Copy
+                        </p>
+                        <p className="text-xs font-extrabold text-indigo-900 mt-1">
+                          {invoiceNumber}
+                        </p>
+                      </div>
+                    </div>
 
-                {/* 4. Dynamic Items Table */}
-                <div className="mb-3 overflow-hidden border border-slate-300 rounded-sm">
-                  <table className="w-full text-left border-collapse text-[8px]">
-                    <thead>
-                      <tr className="bg-[#e46a25] text-white">
-                        <th className="p-1 font-bold text-center border-r border-slate-300 w-6">
-                          S.No
-                        </th>
-                        <th className="p-1 font-bold border-r border-slate-300">
-                          Item Description
-                        </th>
-                        <th className="p-1 font-bold border-r border-slate-300 text-center w-12">
-                          HSN/SAC
-                        </th>
-                        <th className="p-1 font-bold border-r border-slate-300 text-right w-12">
-                          Qty UoM
-                        </th>
-                        <th className="p-1 font-bold border-r border-slate-300 text-right w-14">
-                          Price (₹)
-                        </th>
-                        <th className="p-1 font-bold border-r border-slate-300 text-right w-14">
-                          Taxable (₹)
-                        </th>
-                        <th className="p-1 font-bold border-r border-slate-300 text-right w-14">
-                          CGST (₹)
-                        </th>
-                        <th className="p-1 font-bold border-r border-slate-300 text-right w-14">
-                          SGST (₹)
-                        </th>
-                        <th className="p-1 font-bold text-right w-14">
-                          Amount (₹)
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-200">
-                      {calculatedItems.map((item, i) => (
-                        <tr key={item.id} className="text-slate-800">
-                          <td className="p-1 border-r border-slate-200 text-center">
-                            {i + 1}
-                          </td>
-                          <td className="p-1 border-r border-slate-200 font-bold whitespace-pre-wrap leading-[12px]">
-                            {item.description}
-                          </td>
-                          <td className="p-1 border-r border-slate-200 text-center">
-                            {item.hsn}
-                          </td>
-                          <td className="p-1 border-r border-slate-200 text-right leading-[12px]">
-                            {item.qty} {item.uom && <span>{item.uom}</span>}
-                          </td>
-                          <td className="p-1 border-r border-slate-200 text-right">
-                            {item.price.toLocaleString("en-IN", {
-                              minimumFractionDigits: 2,
-                              maximumFractionDigits: 2,
-                            })}
-                          </td>
-                          <td className="p-1 border-r border-slate-200 text-right">
-                            {item.taxableValue.toLocaleString("en-IN", {
-                              minimumFractionDigits: 2,
-                              maximumFractionDigits: 2,
-                            })}
-                          </td>
-                          <td className="p-1 border-r border-slate-200 text-right leading-[10px]">
-                            {item.cgstAmount.toLocaleString("en-IN", {
-                              minimumFractionDigits: 2,
-                              maximumFractionDigits: 2,
-                            })}
-                            <div className="text-[7px] text-slate-500 font-medium">
-                              {item.cgstPercent}%
-                            </div>
-                          </td>
-                          <td className="p-1 border-r border-slate-200 text-right leading-[10px]">
-                            {item.sgstAmount.toLocaleString("en-IN", {
-                              minimumFractionDigits: 2,
-                              maximumFractionDigits: 2,
-                            })}
-                            <div className="text-[7px] text-slate-500 font-medium">
-                              {item.sgstPercent}%
-                            </div>
-                          </td>
-                          <td className="p-1 text-right font-bold">
-                            {item.totalAmount.toLocaleString("en-IN", {
-                              minimumFractionDigits: 2,
-                              maximumFractionDigits: 2,
-                            })}
-                          </td>
-                        </tr>
-                      ))}
+                    {/* 2. Sender and Amount Due row */}
+                    <div className="grid grid-cols-12 gap-3 mb-4">
+                      {/* Company contact info left */}
+                      <div className="col-span-6 text-[8px] leading-[13px] text-slate-700">
+                        <p className="font-extrabold text-[10px] text-indigo-950">
+                          {senderCompany}
+                        </p>
+                        <p>{senderAddress}</p>
+                        <p>Phone: {senderPhone}</p>
+                        <p>Email: {senderEmail}</p>
+                        <p className="font-bold">GSTIN: {senderGSTIN}</p>
+                        <p>Website: {senderWebsite}</p>
+                        <p>Contact Name: {senderContactName}</p>
+                      </div>
 
-                      {/* Totals Row inside table */}
-                      <tr className="font-extrabold text-slate-900 border-t-2 border-slate-300">
-                        <td
-                          colSpan={5}
-                          className="p-1 text-right border-r border-slate-200"
-                        >
-                          Total @18%
-                        </td>
-                        <td className="p-1 text-right border-r border-slate-200">
+                      {/* Date, place of supply, and bold Amount Due box right */}
+                      <div className="col-span-6 flex flex-col justify-between items-end text-[9px]">
+                        <div className="w-full bg-[#e46a25] text-white p-2 rounded-sm text-right flex justify-between items-center mb-2">
+                          <span className="text-[9px] font-bold">Amount Due:</span>
+                          <span className="text-xs font-black">
+                            ₹{overallTotal.toLocaleString("en-IN", {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2,
+                            })}
+                          </span>
+                        </div>
+                        <div className="w-full space-y-1 text-right text-slate-800">
+                          <p>
+                            <span className="font-bold text-slate-600">
+                              Issue Date:
+                            </span>{" "}
+                            {issueDate}
+                          </p>
+                          <p>
+                            <span className="font-bold text-slate-600">
+                              Due Date:
+                            </span>{" "}
+                            {dueDate}
+                          </p>
+                          <p>
+                            <span className="font-bold text-slate-600">
+                              Place of Supply:
+                            </span>{" "}
+                            {placeOfSupply}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 3. Bill To & Ship To grids */}
+                    <div className="grid grid-cols-2 gap-4 mb-4 border-t border-b py-2 border-slate-200">
+                      <div>
+                        <h4 className="font-extrabold text-[10px] text-indigo-900 mb-0.5">
+                          Bill To
+                        </h4>
+                        <p className="font-black text-slate-800">{billToName}</p>
+                        <p className="text-[8px] text-slate-600">{billToPhone}</p>
+                        <p className="text-[8.5px] text-slate-600 leading-[12px]">
+                          {billToAddress}
+                        </p>
+                        <p className="font-bold text-[8.5px] text-indigo-950">
+                          GSTIN: {billToGSTIN}
+                        </p>
+                      </div>
+                      <div>
+                        <h4 className="font-extrabold text-[10px] text-indigo-900 mb-0.5">
+                          Ship To
+                        </h4>
+                        <p className="font-black text-slate-800">{shipToName}</p>
+                        <p className="text-[8px] text-slate-600">{shipToPhone}</p>
+                        <p className="text-[8.5px] text-slate-600 leading-[12px]">
+                          {shipToAddress}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* 4. Dynamic Items Table */}
+                    <div className="mb-3 overflow-hidden border border-slate-300 rounded-sm">
+                      <table className="w-full text-left border-collapse text-[8px]">
+                        <thead>
+                          <tr className="bg-[#e46a25] text-white">
+                            <th className="p-1 font-bold text-center border-r border-slate-300 w-6">
+                              S.No
+                            </th>
+                            <th className="p-1 font-bold border-r border-slate-300">
+                              Item Description
+                            </th>
+                            <th className="p-1 font-bold border-r border-slate-300 text-center w-12">
+                              HSN/SAC
+                            </th>
+                            <th className="p-1 font-bold border-r border-slate-300 text-right w-12">
+                              Qty UoM
+                            </th>
+                            <th className="p-1 font-bold border-r border-slate-300 text-right w-14">
+                              Price (₹)
+                            </th>
+                            <th className="p-1 font-bold border-r border-slate-300 text-right w-14">
+                              Taxable (₹)
+                            </th>
+                            <th className="p-1 font-bold border-r border-slate-300 text-right w-14">
+                              CGST (₹)
+                            </th>
+                            <th className="p-1 font-bold border-r border-slate-300 text-right w-14">
+                              SGST (₹)
+                            </th>
+                            <th className="p-1 font-bold text-right w-14">
+                              Amount (₹)
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-200">
+                          {calculatedItems.map((item, i) => (
+                            <tr key={item.id} className="text-slate-800">
+                              <td className="p-1 border-r border-slate-200 text-center">
+                                {i + 1}
+                              </td>
+                              <td className="p-1 border-r border-slate-200 font-bold whitespace-pre-wrap leading-[12px]">
+                                {item.description}
+                              </td>
+                              <td className="p-1 border-r border-slate-200 text-center">
+                                {item.hsn}
+                              </td>
+                              <td className="p-1 border-r border-slate-200 text-right leading-[12px]">
+                                {item.qty} {item.uom && <span>{item.uom}</span>}
+                              </td>
+                              <td className="p-1 border-r border-slate-200 text-right">
+                                {item.price.toLocaleString("en-IN", {
+                                  minimumFractionDigits: 2,
+                                  maximumFractionDigits: 2,
+                                })}
+                              </td>
+                              <td className="p-1 border-r border-slate-200 text-right">
+                                {item.taxableValue.toLocaleString("en-IN", {
+                                  minimumFractionDigits: 2,
+                                  maximumFractionDigits: 2,
+                                })}
+                              </td>
+                              <td className="p-1 border-r border-slate-200 text-right leading-[10px]">
+                                {item.cgstAmount.toLocaleString("en-IN", {
+                                  minimumFractionDigits: 2,
+                                  maximumFractionDigits: 2,
+                                })}
+                                <div className="text-[7px] text-slate-500 font-medium">
+                                  {item.cgstPercent}%
+                                </div>
+                              </td>
+                              <td className="p-1 border-r border-slate-200 text-right leading-[10px]">
+                                {item.sgstAmount.toLocaleString("en-IN", {
+                                  minimumFractionDigits: 2,
+                                  maximumFractionDigits: 2,
+                                })}
+                                <div className="text-[7px] text-slate-500 font-medium">
+                                  {item.sgstPercent}%
+                                </div>
+                              </td>
+                              <td className="p-1 text-right font-bold">
+                                {item.totalAmount.toLocaleString("en-IN", {
+                                  minimumFractionDigits: 2,
+                                  maximumFractionDigits: 2,
+                                })}
+                              </td>
+                            </tr>
+                          ))}
+
+                          {/* Totals Row inside table */}
+                          <tr className="font-extrabold text-slate-900 border-t-2 border-slate-300">
+                            <td
+                              colSpan={5}
+                              className="p-1 text-right border-r border-slate-200"
+                            >
+                              Total @18%
+                            </td>
+                            <td className="p-1 text-right border-r border-slate-200">
+                              {totalTaxableValue.toLocaleString("en-IN", {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                              })}
+                            </td>
+                            <td className="p-1 text-right border-r border-slate-200">
+                              {totalCGST.toLocaleString("en-IN", {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                              })}
+                            </td>
+                            <td className="p-1 text-right border-r border-slate-200">
+                              {totalSGST.toLocaleString("en-IN", {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                              })}
+                            </td>
+                            <td className="p-1 text-right">
+                              {overallTotal.toLocaleString("en-IN", {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                              })}
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* 5. Direct Summary & Totals calculation below table */}
+                    <div className="flex flex-col items-end w-full space-y-1 mb-4 text-[9px] text-slate-800">
+                      <div className="flex justify-between w-64 border-b border-slate-200 pb-0.5">
+                        <span className="font-bold">Total Taxable Value</span>
+                        <span className="font-extrabold">
+                          ₹
                           {totalTaxableValue.toLocaleString("en-IN", {
                             minimumFractionDigits: 2,
                             maximumFractionDigits: 2,
                           })}
-                        </td>
-                        <td className="p-1 text-right border-r border-slate-200">
-                          {totalCGST.toLocaleString("en-IN", {
+                        </span>
+                      </div>
+                      <div className="flex justify-between w-64 border-b border-slate-200 pb-0.5">
+                        <span className="font-bold">Rounded Off</span>
+                        <span className="font-extrabold">
+                          {roundedOffValue < 0 ? "(-)" : "(+)"} ₹
+                          {Math.abs(roundedOffValue).toLocaleString("en-IN", {
                             minimumFractionDigits: 2,
                             maximumFractionDigits: 2,
                           })}
-                        </td>
-                        <td className="p-1 text-right border-r border-slate-200">
-                          {totalSGST.toLocaleString("en-IN", {
+                        </span>
+                      </div>
+                      <div className="flex justify-between w-64 border-b border-slate-200 pb-0.5">
+                        <span className="font-extrabold text-slate-900">
+                          Total Value (in figure)
+                        </span>
+                        <span className="font-black text-indigo-900 text-xs">
+                          ₹
+                          {totalRounded.toLocaleString("en-IN", {
                             minimumFractionDigits: 2,
                             maximumFractionDigits: 2,
                           })}
+                        </span>
+                      </div>
+                      <div className="flex justify-between w-full mt-1">
+                        <span className="font-bold text-slate-600">
+                          Total Value (in words):
+                        </span>
+                        <span className="font-black text-slate-900 text-[9.5px]">
+                          ₹ {numberToWords(totalRounded)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 6. Stamp/Signatory Area */}
+                  <div className="border-t border-slate-200 pt-3 flex justify-between items-end mt-2 select-none">
+                    <div className="flex flex-col items-center gap-1">
+                      <div className="w-20 h-11 border border-indigo-200 border-dashed rounded flex items-center justify-center text-[7.5px] text-indigo-400 font-bold opacity-60">
+                        Seal & Stamp
+                      </div>
+                    </div>
+                    <div className="text-right text-[8.5px] text-slate-600">
+                      <p className="mb-5 font-bold">Authorized Signatory</p>
+                      <p className="border-t border-slate-300 w-32 inline-block pt-0.5 mt-2">
+                        For {senderCompany}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                /* ------------------- MODERN ORANGE STYLE (TABLE BASED ROBUST REPLICA) ------------------- */
+                <div style={{ width: "210mm", minHeight: "297mm", padding: "12mm 15mm", boxSizing: "border-box", background: "#ffffff", color: "#222", fontFamily: "Arial, sans-serif" }}>
+                  {/* 1. Top Structural Table */}
+                  <table style={{ width: '100%', borderCollapse: 'collapse', border: 'none', marginBottom: '35px', tableLayout: 'fixed' }}>
+                    <tbody>
+                      <tr>
+                        {/* Left Region */}
+                        <td style={{ width: '55%', verticalAlign: 'top', paddingRight: '20px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '15px' }}>
+                            <img src={renderlogo} alt="Logo" style={{ height: '42px', objectFit: 'contain' }} />
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                              <div style={{ fontSize: '13px', fontWeight: 700, color: '#951c61', letterSpacing: '0.4px' }}>RENDERWAYS TECHNOLOGY</div>
+                              <div style={{ fontSize: '12px', fontWeight: 700, color: '#34225c', letterSpacing: '0.4px' }}>PVT LTD</div>
+                            </div>
+                          </div>
+                          
+                          <div style={{ fontSize: '11px', lineHeight: '1.5', color: '#333' }}>
+                            <div style={{ fontWeight: 'bold', fontSize: '12.5px', marginBottom: '3px', color: '#111' }}>{senderCompany}</div>
+                            <div style={{ whiteSpace: 'pre-line', marginBottom: '3px', wordWrap: 'break-word', overflowWrap: 'break-word' }}>{senderAddress}</div>
+                            <div style={{ marginBottom: '1px' }}>{senderPhone}</div>
+                            <div style={{ marginBottom: '1px' }}>{senderEmail}</div>
+                            <div style={{ fontWeight: 'bold', color: '#111' }}>GSTIN: {senderGSTIN}</div>
+                            {senderWebsite && <div>Website: {senderWebsite}</div>}
+                          </div>
                         </td>
-                        <td className="p-1 text-right">
-                          {overallTotal.toLocaleString("en-IN", {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
-                          })}
+                        
+                        {/* Right Region - Spine alignment */}
+                        <td style={{ width: '45%', verticalAlign: 'top' }}>
+                          <table style={{ width: '100%', borderCollapse: 'collapse', border: 'none', marginBottom: '25px' }}>
+                            <tbody>
+                              <tr style={{ height: '30px' }}>
+                                <td style={{ width: '120px', fontSize: '18px', fontWeight: 'bold', color: '#222', verticalAlign: 'bottom' }}>INVOICE</td>
+                                <td style={{ fontSize: '18px', fontWeight: 'bold', color: '#222', textAlign: 'right', verticalAlign: 'bottom' }}>{invoiceNumber}</td>
+                              </tr>
+                              <tr style={{ height: '20px' }}>
+                                <td style={{ fontSize: '12px', color: '#333', verticalAlign: 'middle' }}>Issue Date:</td>
+                                <td style={{ fontSize: '12px', color: '#333', textAlign: 'right', verticalAlign: 'middle' }}>{issueDate ? issueDate.split('-').reverse().join(' - ') : ''}</td>
+                              </tr>
+                              <tr style={{ height: '20px' }}>
+                                <td style={{ fontSize: '12px', color: '#333', verticalAlign: 'middle' }}>Due Date:</td>
+                                <td style={{ fontSize: '12px', color: '#333', textAlign: 'right', verticalAlign: 'middle' }}>{dueDate ? dueDate.split('-').reverse().join(' - ') : ''}</td>
+                              </tr>
+                              <tr style={{ height: '20px' }}>
+                                <td style={{ fontSize: '12px', color: '#333', verticalAlign: 'middle' }}>Place of Supply:</td>
+                                <td style={{ fontSize: '12px', color: '#333', textAlign: 'right', verticalAlign: 'middle' }}>{placeOfSupply}</td>
+                              </tr>
+                            </tbody>
+                          </table>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+
+                  {/* 2. Recipient Details Table */}
+                  <table style={{ width: '100%', borderCollapse: 'collapse', border: 'none', marginBottom: '25px', tableLayout: 'fixed' }}>
+                    <tbody>
+                      <tr>
+                        <td style={{ width: '55%', verticalAlign: 'top', fontSize: '12px', lineHeight: '1.5', paddingRight: '20px' }}>
+                          <div style={{ fontWeight: 'bold', fontSize: '12.5px', marginBottom: '3px' }}>Bill To</div>
+                          <div style={{ fontWeight: 'bold', fontSize: '13.5px', marginBottom: '1px' }}>{billToName}</div>
+                          {billToPhone && <div style={{ marginBottom: '1px' }}>{billToPhone}</div>}
+                          <div style={{ whiteSpace: 'pre-line', wordWrap: 'break-word', overflowWrap: 'break-word' }}>{billToAddress}</div>
+                          {billToGSTIN && <div style={{ fontWeight: 'bold', color: '#111', marginTop: '2px' }}>GSTIN: {billToGSTIN}</div>}
+                        </td>
+                        <td style={{ width: '45%', verticalAlign: 'top', fontSize: '12px', lineHeight: '1.5' }}>
+                          <div style={{ fontWeight: 'bold', fontSize: '12.5px', marginBottom: '3px' }}>Ship To</div>
+                          <div style={{ fontWeight: 'bold', fontSize: '13.5px', marginBottom: '1px' }}>{shipToName}</div>
+                          <div style={{ marginBottom: '1px' }}>{shipToPhone ? shipToPhone : ''}</div>
+                          <div style={{ whiteSpace: 'pre-line', wordWrap: 'break-word', overflowWrap: 'break-word' }}>{shipToAddress}</div>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+
+                  {/* 3. The Content Table */}
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '10.5px' }}>
+                    <thead>
+                      <tr style={{ backgroundColor: '#d9662c', color: '#ffffff' }}>
+                        <th style={{ padding: '8px 4px', fontWeight: '500', textAlign: 'center' }}>S.No</th>
+                        <th style={{ padding: '8px 6px', fontWeight: '500', textAlign: 'left' }}>Item Description</th>
+                        <th style={{ padding: '8px 4px', fontWeight: '500', textAlign: 'center' }}>HSN/SAC</th>
+                        <th style={{ padding: '8px 4px', fontWeight: '500', textAlign: 'center' }}>Qty<br/><span style={{ fontSize: '8.5px', fontWeight: 'normal' }}>UoM</span></th>
+                        <th style={{ padding: '8px 4px', fontWeight: '500', textAlign: 'right' }}>Price<br/><span style={{ fontSize: '8.5px', fontWeight: 'normal' }}>(INR)</span></th>
+                        <th style={{ padding: '8px 4px', fontWeight: '500', textAlign: 'right' }}>Taxable Value<br/><span style={{ fontSize: '8.5px', fontWeight: 'normal' }}>(INR)</span></th>
+                        <th style={{ padding: '8px 4px', fontWeight: '500', textAlign: 'right' }}>CGST<br/><span style={{ fontSize: '8.5px', fontWeight: 'normal' }}>(INR)</span></th>
+                        <th style={{ padding: '8px 4px', fontWeight: '500', textAlign: 'right' }}>SGST<br/><span style={{ fontSize: '8.5px', fontWeight: 'normal' }}>(INR)</span></th>
+                        <th style={{ padding: '8px 4px', fontWeight: '500', textAlign: 'right' }}>Amount<br/><span style={{ fontSize: '8.5px', fontWeight: 'normal' }}>(INR)</span></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {calculatedItems.map((item, idx) => (
+                        <tr key={item.id} style={{ verticalAlign: 'top' }}>
+                          <td style={{ padding: '8px 4px', border: '1px solid #e5e7eb', borderTop: idx === 0 ? '1px solid #e5e7eb' : 'none', textAlign: 'center' }}>{idx + 1}</td>
+                          <td style={{ padding: '8px 6px', border: '1px solid #e5e7eb', borderTop: idx === 0 ? '1px solid #e5e7eb' : 'none' }}>
+                            {item.description.split('\n').map((line: string, i: number) => (
+                              <div key={i} style={{ color: i === 0 ? '#0c63a3' : '#333', fontWeight: i === 0 ? '500' : 'normal', marginBottom: '1px' }}>{line}</div>
+                            ))}
+                          </td>
+                          <td style={{ padding: '8px 4px', border: '1px solid #e5e7eb', borderTop: idx === 0 ? '1px solid #e5e7eb' : 'none', textAlign: 'center' }}>{item.hsn}</td>
+                          <td style={{ padding: '8px 4px', border: '1px solid #e5e7eb', borderTop: idx === 0 ? '1px solid #e5e7eb' : 'none', textAlign: 'center' }}>
+                            <div>{item.qty}</div>
+                            {item.uom && <div style={{ fontSize: '8.5px', marginTop: '1px' }}>{item.uom}</div>}
+                          </td>
+                          <td style={{ padding: '8px 4px', border: '1px solid #e5e7eb', borderTop: idx === 0 ? '1px solid #e5e7eb' : 'none', textAlign: 'right' }}>
+                            {item.price.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </td>
+                          <td style={{ padding: '8px 4px', border: '1px solid #e5e7eb', borderTop: idx === 0 ? '1px solid #e5e7eb' : 'none', textAlign: 'right' }}>
+                            {item.taxableValue.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </td>
+                          <td style={{ padding: '8px 4px', border: '1px solid #e5e7eb', borderTop: idx === 0 ? '1px solid #e5e7eb' : 'none', textAlign: 'right' }}>
+                            <div>{item.cgstAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                            <div style={{ fontSize: '8.5px', marginTop: '1px', color: '#444' }}>{item.cgstPercent}%</div>
+                          </td>
+                          <td style={{ padding: '8px 4px', border: '1px solid #e5e7eb', borderTop: idx === 0 ? '1px solid #e5e7eb' : 'none', textAlign: 'right' }}>
+                            <div>{item.sgstAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                            <div style={{ fontSize: '8.5px', marginTop: '1px', color: '#444' }}>{item.sgstPercent}%</div>
+                          </td>
+                          <td style={{ padding: '8px 4px', border: '1px solid #e5e7eb', borderTop: idx === 0 ? '1px solid #e5e7eb' : 'none', textAlign: 'right' }}>
+                            {item.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </td>
+                        </tr>
+                      ))}
+                      <tr style={{ height: '35px' }}>
+                        <td colSpan={2} style={{ border: 'none', backgroundColor: 'transparent' }}></td>
+                        <td style={{ backgroundColor: '#f3f4f6', border: '1px solid #e5e7eb', textAlign: 'right', padding: '8px' }}>Total</td>
+                        <td style={{ backgroundColor: '#f3f4f6', border: '1px solid #e5e7eb', textAlign: 'center', padding: '8px 4px' }}>@{calculatedItems[0]?.cgstPercent || 0}%</td>
+                        <td style={{ backgroundColor: '#f3f4f6', border: '1px solid #e5e7eb' }}></td>
+                        <td style={{ backgroundColor: '#f3f4f6', border: '1px solid #e5e7eb', textAlign: 'right', padding: '8px 4px' }}>
+                          {totalTaxableValue.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </td>
+                        <td style={{ backgroundColor: '#f3f4f6', border: '1px solid #e5e7eb', textAlign: 'right', padding: '8px 4px' }}>
+                          {totalCGST.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </td>
+                        <td style={{ backgroundColor: '#f3f4f6', border: '1px solid #e5e7eb', textAlign: 'right', padding: '8px 4px' }}>
+                          {totalSGST.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </td>
+                        <td style={{ backgroundColor: '#f3f4f6', border: '1px solid #e5e7eb', textAlign: 'right', padding: '8px 4px' }}>
+                          {overallTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+
+                  {/* 4. Totals Block */}
+                  <table style={{ width: '100%', borderCollapse: 'collapse', border: 'none', marginTop: '20px', marginBottom: '25px' }}>
+                    <tbody>
+                      <tr>
+                        <td>
+                          <div style={{ fontSize: '11px', color: '#444' }}>
+                            <span style={{ fontWeight: 'bold' }}>Amount In Words:</span><br/>
+                            <span>INR {numberToWords(Math.round(overallTotal))}</span>
+                          </div>
+                        </td>
+                        <td style={{ width: '260px' }}>
+                          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                            <tbody>
+                              <tr style={{ height: '24px' }}>
+                                <td style={{ fontSize: '12px', fontWeight: 'bold' }}>Total Taxable Value</td>
+                                <td style={{ fontSize: '12px', fontWeight: 'bold', textAlign: 'right' }}>INR {totalTaxableValue.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                              </tr>
+                              <tr style={{ height: '24px' }}>
+                                <td style={{ fontSize: '12px', fontWeight: 'bold' }}>Total Value (in figure)</td>
+                                <td style={{ fontSize: '12px', fontWeight: 'bold', textAlign: 'right' }}>INR {Math.round(overallTotal).toLocaleString('en-IN')}</td>
+                              </tr>
+                            </tbody>
+                          </table>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+
+                  {/* 5. Final Bottom Block */}
+                  <table style={{ width: '100%', borderCollapse: 'collapse', border: 'none', marginTop: '30px' }}>
+                    <tbody>
+                      <tr>
+                        <td style={{ verticalAlign: 'bottom', fontSize: '12px' }}>
+                          <div style={{ fontWeight: 'bold', fontSize: '12px', marginBottom: '6px' }}>Terms & Conditions</div>
+                          <div style={{ fontStyle: 'italic', color: '#555' }}>{terms}</div>
+                        </td>
+                        <td style={{ width: '200px', textAlign: 'center', verticalAlign: 'bottom' }}>
+                          <img src={stampImg} alt="stamp" style={{ height: '45px', objectFit: 'contain', mixBlendMode: 'multiply', marginBottom: '2px' }} />
+                          <div style={{ width: '100%', height: '1px', backgroundColor: '#d1d5db', margin: '3px 0' }}></div>
+                          <div style={{ fontWeight: 'bold', fontSize: '12px', color: '#111' }}>Provider Signature</div>
                         </td>
                       </tr>
                     </tbody>
                   </table>
                 </div>
-
-                {/* 5. Direct Summary & Totals calculation below table */}
-                <div className="flex flex-col items-end w-full space-y-1 mb-4 text-[9px] text-slate-800">
-                  <div className="flex justify-between w-64 border-b border-slate-200 pb-0.5">
-                    <span className="font-bold">Total Taxable Value</span>
-                    <span className="font-extrabold">
-                      ₹
-                      {totalTaxableValue.toLocaleString("en-IN", {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      })}
-                    </span>
-                  </div>
-                  <div className="flex justify-between w-64 border-b border-slate-200 pb-0.5">
-                    <span className="font-bold">Rounded Off</span>
-                    <span className="font-extrabold">
-                      {roundedOffValue < 0 ? "(-)" : "(+)"} ₹
-                      {Math.abs(roundedOffValue).toLocaleString("en-IN", {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      })}
-                    </span>
-                  </div>
-                  <div className="flex justify-between w-64 border-b border-slate-200 pb-0.5">
-                    <span className="font-extrabold text-slate-900">
-                      Total Value (in figure)
-                    </span>
-                    <span className="font-black text-indigo-900 text-xs">
-                      ₹
-                      {totalRounded.toLocaleString("en-IN", {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      })}
-                    </span>
-                  </div>
-                  <div className="flex justify-between w-full mt-1">
-                    <span className="font-bold text-slate-600">
-                      Total Value (in words):
-                    </span>
-                    <span className="font-black text-slate-900 text-[9.5px]">
-                      ₹ {numberToWords(totalRounded)}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* 6. Stamp/Signatory Area */}
-              <div className="border-t border-slate-200 pt-3 flex justify-between items-end mt-2 select-none">
-                <div className="flex flex-col items-center gap-1">
-                  <div className="w-20 h-11 border border-indigo-200 border-dashed rounded flex items-center justify-center text-[7.5px] text-indigo-400 font-bold opacity-60">
-                    Seal & Stamp
-                  </div>
-                </div>
-                <div className="text-right text-[8.5px] text-slate-600">
-                  <p className="mb-5 font-bold">Authorized Signatory</p>
-                  <p className="border-t border-slate-300 w-32 inline-block pt-0.5 mt-2">
-                    For RENDERWAYS TECHNOLOGY
-                  </p>
-                </div>
-              </div>
+              )}
             </div>
           </div>
         </div>
