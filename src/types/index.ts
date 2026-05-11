@@ -694,6 +694,8 @@ export interface ActivityCharge {
   id: number;
   region: Region;
   region_display: string;
+  ticket?: number;
+  ticket_number?: string;
   activity_name: string;
   amount: number;
   remarks: string;
