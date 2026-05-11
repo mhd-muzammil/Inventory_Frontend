@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
-import { Receipt, AlertCircle, Plus, Trash2, FileText } from "lucide-react";
+import { Receipt, AlertCircle, Plus, Trash2, FileText, Download } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { InvoicesToolbar } from "@/components/invoices/InvoicesToolbar";
@@ -21,6 +21,8 @@ export default function Invoice() {
     const saved = localStorage.getItem("localInvoices");
     return saved ? JSON.parse(saved) : [];
   });
+
+  const [editingInvoice, setEditingInvoice] = useState<any>(null);
 
   const handleSaveLocalInvoice = async (invoiceData: any) => {
     const newList = [invoiceData, ...localInvoices];
@@ -105,8 +107,8 @@ export default function Invoice() {
       <InvoicesToolbar
         status={status}
         onStatusChange={(v) => { setStatus(v); setPage(1); }}
-        onAddClassic={() => { setActiveStyle("classic"); setIsFormOpen(true); }}
-        onAddOrange={() => { setActiveStyle("orange"); setIsFormOpen(true); }}
+        onAddClassic={() => { setEditingInvoice(null); setActiveStyle("classic"); setIsFormOpen(true); }}
+        onAddOrange={() => { setEditingInvoice(null); setActiveStyle("orange"); setIsFormOpen(true); }}
         onClearFilters={handleClearFilters}
         hasActiveFilters={hasActiveFilters}
       />
@@ -166,7 +168,19 @@ export default function Invoice() {
                           maximumFractionDigits: 2,
                         })}
                       </td>
-                      <td className="p-2 text-right">
+                      <td className="p-2 text-right flex items-center justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 text-xs text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 px-2"
+                          onClick={() => {
+                            setEditingInvoice(inv);
+                            setActiveStyle(inv.style || "classic");
+                            setIsFormOpen(true);
+                          }}
+                        >
+                          <Download className="w-3.5 h-3.5 mr-1" /> Download
+                        </Button>
                         <Button
                           variant="ghost"
                           size="sm"
@@ -190,10 +204,11 @@ export default function Invoice() {
       )}
 
       <InvoiceFormDialog 
-        key={isFormOpen ? activeStyle : "inactive"} 
+        key={isFormOpen ? (editingInvoice ? `edit-${editingInvoice.invoiceNumber}` : `new-${activeStyle}`) : "inactive"} 
         open={isFormOpen} 
         onOpenChange={setIsFormOpen} 
         initialStyle={activeStyle}
+        initialData={editingInvoice}
         onSubmitInvoice={handleSaveLocalInvoice}
       />
     </motion.div>
