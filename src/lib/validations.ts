@@ -46,6 +46,8 @@ export const ticketSchema = z.object({
   resolution_summary: z.string().optional().default(""),
   explanation: z.string().optional().default(""),
   customer_comments: z.string().optional().default(""),
+  // Virtual costs
+  entry_charge: z.coerce.number().min(0).optional().default(0),
 });
 
 export type TicketFormData = z.infer<typeof ticketSchema>;
