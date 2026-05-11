@@ -330,7 +330,7 @@ export interface BufferPart {
   general_name: string;
   region: Region | "";
   region_display: string;
-  status: "BUFFER_IN" | "OUT" | "DEFECTIVE_RETURN" | "REORDER" | "PART_RECEIVED" | "CLOSED";
+  status: "BUFFER_IN" | "OUT" | "DEFECTIVE_RETURN" | "UNUSED_RETURN" | "REORDER" | "PART_RECEIVED" | "CLOSED";
   engineer_name: string;
   case_id: string;
   transition_history: Array<{
