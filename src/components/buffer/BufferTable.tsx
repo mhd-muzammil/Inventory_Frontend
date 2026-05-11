@@ -24,8 +24,8 @@ const AVAILABLE_TRANSITIONS: Record<WorkflowStatus, WorkflowStatus[]> = {
   DEFECTIVE_RETURN: ["REORDER"],
   UNUSED_RETURN: ["OUT"],
   REORDER: ["PART_RECEIVED"],
-  PART_RECEIVED: ["CLOSED"],
-  CLOSED: [],
+  PART_RECEIVED: ["BUFFER_IN", "CLOSED"],
+  CLOSED: ["BUFFER_IN"],
 };
 
 const TRANSITION_LABELS: Record<WorkflowStatus, string> = {
@@ -199,16 +199,7 @@ export function BufferTable({ data, loading, pagination, onPageChange, onEdit, o
                   })()}
                 </TableCell>
                 <TableCell>
-                  {(entry.status || "BUFFER_IN") === "CLOSED" ? (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="border-slate-200 text-slate-400 bg-transparent hover:bg-transparent"
-                      disabled
-                    >
-                      Completed
-                    </Button>
-                  ) : (
+                  {AVAILABLE_TRANSITIONS[entry.status || "BUFFER_IN"].length > 0 ? (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button size="sm" className="gap-1 text-xs">
@@ -229,6 +220,8 @@ export function BufferTable({ data, loading, pagination, onPageChange, onEdit, o
                         ))}
                       </DropdownMenuContent>
                     </DropdownMenu>
+                  ) : (
+                    <Badge variant="outline" className="text-slate-400 border-slate-200">Completed</Badge>
                   )}
                 </TableCell>
                 <TableCell>
