@@ -1,6 +1,12 @@
 import client from "./client";
 import { buildParams } from "@/lib/utils";
-import type { Quotation, QuotationFilters, PaginatedResponse } from "@/types";
+import type { Quotation, QuotationFilters, PaginatedResponse, QuotationSummary } from "@/types";
+import { validators } from "tailwind-merge";
+
+export async function getQuotationSummary(): Promise<QuotationSummary> {
+  const { data } = await client.get<QuotationSummary>("/quotations/summary/");
+  return data;
+}
 
 export async function getQuotations(filters?: QuotationFilters): Promise<PaginatedResponse<Quotation>> {
   const params = buildParams(filters ?? {});
