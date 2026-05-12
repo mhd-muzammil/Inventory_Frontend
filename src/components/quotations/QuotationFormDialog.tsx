@@ -56,6 +56,7 @@ interface QuotationFormDialogProps {
   onSubmitQuotation?: (quotationData: any) => Promise<void>;
   initialStyle?: "classic" | "orange";
   initialData?: any;
+  defaultRegion?: string;
 }
 
 export function QuotationFormDialog({
@@ -64,6 +65,7 @@ export function QuotationFormDialog({
   onSubmitQuotation,
   initialStyle = "classic",
   initialData = null,
+  defaultRegion = "chennai",
 }: QuotationFormDialogProps) {
   const [quotationStyle, setQuotationStyle] = useState<"classic" | "orange">(initialStyle);
   
@@ -71,6 +73,7 @@ export function QuotationFormDialog({
   const [issueDate, setIssueDate] = useState(initialStyle === "classic" ? "2026-05-04" : "2025-12-09");
   const [validUntil, setValidUntil] = useState(initialStyle === "classic" ? "2026-05-09" : "2025-12-24");
   const [placeOfSupply, setPlaceOfSupply] = useState("TN (33)");
+  const [region, setRegion] = useState<string>(initialData?.region || defaultRegion || "chennai");
   
   // Global fields
   const [caseId, setCaseId] = useState(initialStyle === "classic" ? "5158956515" : "");
@@ -192,8 +195,12 @@ export function QuotationFormDialog({
       setShipToAddress(initialData.shipToAddress || "");
       setTerms(initialData.terms || "");
       setItems(initialData.items || []);
+      if (initialData.region) setRegion(initialData.region);
+    } else if (open) {
+      // If creating new, reset region to default user region
+      setRegion(defaultRegion || "chennai");
     }
-  }, [initialData, open]);
+  }, [initialData, open, defaultRegion]);
 
   // Calculations
   const calculatedItems = items.map((item) => {
@@ -286,6 +293,7 @@ export function QuotationFormDialog({
         overallTotal,
         terms,
         style: quotationStyle,
+        region,
       });
       onOpenChange(false);
     } catch (err) {
@@ -379,6 +387,21 @@ export function QuotationFormDialog({
                 <div className="space-y-1">
                   <Label className="text-xs">ORDER NUMBER</Label>
                   <Input className="h-8 text-xs" value={orderNumber} onChange={(e) => setOrderNumber(e.target.value)} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-indigo-600 font-semibold">Region (Filtering)</Label>
+                  <Select value={region} onValueChange={setRegion}>
+                    <SelectTrigger className="h-8 text-xs border-indigo-200">
+                      <SelectValue placeholder="Select Region" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="vellore">Vellore</SelectItem>
+                      <SelectItem value="salem">Salem</SelectItem>
+                      <SelectItem value="chennai">Chennai</SelectItem>
+                      <SelectItem value="kanchipuram">Kanchipuram</SelectItem>
+                      <SelectItem value="hosur">Hosur</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             </div>
