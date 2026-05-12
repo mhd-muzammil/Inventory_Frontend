@@ -548,8 +548,19 @@ export interface PartRequestFilters {
 export interface QuotationFilters {
   ticket_id?: number;
   status?: QuotationStatus;
+  region?: Region;
   page?: number;
   per_page?: number;
+}
+
+export interface QuotationRegionTotal {
+  region: string;
+  total: number;
+}
+
+export interface QuotationSummary {
+  regions: QuotationRegionTotal[];
+  total: number;
 }
 
 export interface POFilters {
