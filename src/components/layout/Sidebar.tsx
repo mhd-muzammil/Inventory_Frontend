@@ -1,6 +1,4 @@
-import { useState } from "react";
 import { NavLink } from "react-router-dom";
-import { motion } from "framer-motion";
 import {
   LayoutDashboard,
   Package,
@@ -14,8 +12,6 @@ import {
   ShoppingCart,
   BarChart3,
   Settings,
-  ChevronLeft,
-  ChevronRight,
   ShieldCheck,
   ShieldAlert,
   HardHat,
@@ -47,33 +43,25 @@ const superAdminLinks = [
 ];
 
 export function Sidebar() {
-  const [collapsed, setCollapsed] = useState(false);
   const user = useAuthStore((s) => s.user);
   const isSuperAdmin = user?.role === "super_admin";
 
   const links = isSuperAdmin ? [...navLinks, ...superAdminLinks] : navLinks;
 
   return (
-    <motion.aside
-      initial={{ x: -280 }}
-      animate={{ x: 0, width: collapsed ? 72 : 256 }}
-      transition={{ type: "spring", damping: 25, stiffness: 200 }}
-      className="hidden md:flex flex-col fixed left-0 top-0 bottom-0 z-30 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-r border-slate-200 dark:border-slate-700"
+    <aside
+      className="hidden md:flex flex-col fixed left-0 top-0 bottom-0 w-64 z-30 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-r border-slate-200 dark:border-slate-700"
     >
       {/* Logo */}
       <div className="flex items-center gap-3 px-5 h-16 border-b border-slate-200 dark:border-slate-700">
         <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-indigo-600 text-white flex-shrink-0">
           <Package className="w-5 h-5" />
         </div>
-        {!collapsed && (
-          <motion.span
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="text-lg font-bold text-slate-800 dark:text-white whitespace-nowrap"
-          >
-            RenderWays
-          </motion.span>
-        )}
+        <span
+          className="text-lg font-bold text-slate-800 dark:text-white whitespace-nowrap"
+        >
+          RenderWays
+        </span>
       </div>
 
       {/* Navigation */}
@@ -97,9 +85,9 @@ export function Sidebar() {
                 {isActive && (
                   <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-indigo-600 rounded-r-full" />
                 )}
-                <link.icon className={cn("w-5 h-5 flex-shrink-0", collapsed && "mx-auto")} />
-                {!collapsed && <span>{link.label}</span>}
-                {!collapsed && isActive && link.to === "/" && (
+                <link.icon className="w-5 h-5 flex-shrink-0" />
+                <span>{link.label}</span>
+                {isActive && link.to === "/" && (
                   <div className="ml-auto w-1.5 h-1.5 rounded-full bg-indigo-600" />
                 )}
               </>
@@ -107,16 +95,6 @@ export function Sidebar() {
           </NavLink>
         ))}
       </nav>
-
-      {/* Collapse toggle */}
-      <div className="p-3 border-t border-slate-200 dark:border-slate-700">
-        <button
-          onClick={() => setCollapsed(!collapsed)}
-          className="flex items-center justify-center w-full h-9 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
-        >
-          {collapsed ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
-        </button>
-      </div>
-    </motion.aside>
+    </aside>
   );
 }
