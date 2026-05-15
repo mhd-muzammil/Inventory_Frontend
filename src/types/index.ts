@@ -526,6 +526,7 @@ export interface PaginationMeta {
 export interface TicketFilters {
   search?: string;
   status?: TicketStatus;
+  is_closed?: boolean | string;
   priority?: TicketPriority;
   service_type?: ServiceType;
   sla_health?: SLAHealth;
