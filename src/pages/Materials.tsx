@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TicketFormDialog } from "@/components/tickets/TicketFormDialog";
 import { TicketsTable } from "@/components/tickets/TicketsTable";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { createTicket, getTickets } from "@/api/tickets";
 import { getRegionComparison } from "@/api/dashboard";
 import { toast } from "@/components/ui/use-toast";
@@ -23,6 +24,7 @@ export default function CSOEntry() {
   const [pagination, setPagination] = useState<PaginationMeta>({
     total: 0, page: 1, per_page: 20, pages: 1,
   });
+  const [activeTab, setActiveTab] = useState<"active" | "closed">("active");
 
   const user = useAuthStore((s) => s.user);
   const isAdmin = user?.role === "admin" || user?.role === "super_admin";
@@ -44,7 +46,13 @@ export default function CSOEntry() {
     setLoading(true);
     setError(null);
     try {
-      const res = await getTickets({ page, ordering, region: selectedRegion, per_page: 20 });
+      const res = await getTickets({
+        page,
+        ordering,
+        region: selectedRegion,
+        per_page: 20,
+        is_closed: activeTab === "closed",
+      });
       setData(res.items);
       setPagination({ total: res.total, page: res.page, per_page: res.per_page, pages: res.pages });
     } catch (err: any) {
@@ -53,7 +61,7 @@ export default function CSOEntry() {
     } finally {
       setLoading(false);
     }
-  }, [page, ordering, selectedRegion]);
+  }, [page, ordering, selectedRegion, activeTab]);
 
   useEffect(() => { fetchTickets(); }, [fetchTickets]);
   useEffect(() => { fetchRegionStats(); }, [fetchRegionStats]);
@@ -129,6 +137,26 @@ export default function CSOEntry() {
           </Card>
         </div>
       )}
+
+      <div className="flex justify-start mb-6">
+        <Tabs
+          value={activeTab}
+          onValueChange={(v) => {
+            setActiveTab(v as "active" | "closed");
+            setPage(1);
+          }}
+          className="w-full sm:w-[400px]"
+        >
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="active" className="text-sm font-medium">
+              Active Cases
+            </TabsTrigger>
+            <TabsTrigger value="closed" className="text-sm font-medium">
+              Closed Cases
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </div>
 
       {/* Error state */}
       {error && (
