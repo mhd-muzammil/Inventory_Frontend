@@ -155,10 +155,11 @@ export function BufferTable({ data, loading, pagination, onPageChange, onEdit, o
               <TableHead>Part Name</TableHead>
               <TableHead>General Name</TableHead>
               <TableHead>Quantity</TableHead>
+              <TableHead className="text-center">Usage Count</TableHead>
               <TableHead>Region</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Next Action</TableHead>
-              <TableHead>Track</TableHead>
+              <TableHead className="text-center">History</TableHead>
               <TableHead>Edit</TableHead>
             </TableRow>
           </TableHeader>
@@ -181,6 +182,11 @@ export function BufferTable({ data, loading, pagination, onPageChange, onEdit, o
                 </TableCell>
                 <TableCell>
                   <Badge variant="secondary">{entry.quantity}</Badge>
+                </TableCell>
+                <TableCell className="text-center">
+                  <Badge variant="outline" className="bg-indigo-50 text-indigo-700 dark:bg-indigo-900/20 dark:text-indigo-400 border-indigo-100 dark:border-indigo-900/50 font-semibold">
+                    {entry.usage_count || 0}
+                  </Badge>
                 </TableCell>
                 <TableCell>
                   {entry.region_display ? <Badge variant="outline">{entry.region_display}</Badge> : <span className="text-slate-400 italic">-</span>}
@@ -223,9 +229,9 @@ export function BufferTable({ data, loading, pagination, onPageChange, onEdit, o
                     <Badge variant="outline" className="text-slate-400 border-slate-200">Completed</Badge>
                   )}
                 </TableCell>
-                <TableCell>
-                  <Button size="sm" variant="ghost" onClick={() => openTrack(entry)}>
-                    View Track
+                <TableCell className="text-center">
+                  <Button size="sm" variant="ghost" className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:text-indigo-300" onClick={() => openTrack(entry)}>
+                    History
                   </Button>
                 </TableCell>
                 <TableCell>
@@ -295,8 +301,8 @@ export function BufferTable({ data, loading, pagination, onPageChange, onEdit, o
       <Dialog open={trackOpen} onOpenChange={setTrackOpen}>
         <DialogContent className="sm:max-w-[700px]">
           <DialogHeader>
-            <DialogTitle>Track</DialogTitle>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Workflow transition history</p>
+            <DialogTitle>Usage & Account History</DialogTitle>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Full transition records and case details</p>
           </DialogHeader>
           {activeRow && (
             <div className="space-y-6">
