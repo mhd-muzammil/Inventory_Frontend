@@ -83,7 +83,6 @@ export function BufferTable({ data, loading, pagination, onPageChange, onEdit, o
   const isOutTransition = pendingToStatus === "OUT";
   const canConfirm = useMemo(() => {
     if (!activeRow) return false;
-    if (activeRow.status === "CLOSED") return false;
     if (isOutTransition) return engineerName.trim().length > 0 && caseId.trim().length > 0;
     return true;
   }, [activeRow, caseId, engineerName, isOutTransition]);
