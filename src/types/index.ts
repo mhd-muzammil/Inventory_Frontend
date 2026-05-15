@@ -342,6 +342,7 @@ export interface BufferPart {
     engineer_name?: string;
     case_id?: string;
   }>;
+  usage_count: number;
   created_by: number | null;
   created_by_name: string | null;
   created_at: string;
