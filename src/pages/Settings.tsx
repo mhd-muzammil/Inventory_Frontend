@@ -44,7 +44,7 @@ export default function Settings() {
     <div className="max-w-6xl mx-auto space-y-8 px-4 md:px-6">
       {/* Header */}
       <div className="flex flex-col gap-1">
-        <h1 className="text-4xl font-black bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+        <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">
           Settings
         </h1>
         <p className="text-slate-500 dark:text-slate-400 font-medium">
@@ -312,7 +312,7 @@ export default function Settings() {
                       <div className="inline-flex items-center justify-center p-3 rounded-2xl bg-indigo-600 text-white mb-6 shadow-xl shadow-indigo-500/20">
                         <Monitor className="w-8 h-8" />
                       </div>
-                      <h3 className="text-3xl font-black text-slate-800 dark:text-slate-100">Inventory SaaS</h3>
+                      <h3 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Inventory SaaS</h3>
                       <p className="text-indigo-600 dark:text-indigo-400 font-bold tracking-tighter">VERSION 1.0.0-PRO</p>
                       
                       <p className="mt-6 text-slate-600 dark:text-slate-400 leading-relaxed max-w-2xl">
