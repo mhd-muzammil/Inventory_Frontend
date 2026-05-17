@@ -14,6 +14,14 @@ export interface HPStockItem {
   status: string;
   engineer_name: string;
   created_by_name?: string;
+  transition_history?: Array<{
+    from_status: string;
+    to_status: string;
+    comment: string;
+    updated_by: string;
+    timestamp: string;
+    engineer_name?: string;
+  }>;
   created_at: string;
   updated_at: string;
 }
@@ -67,4 +75,12 @@ export const updateHPStockItem = async (id: number, payload: Partial<HPStockItem
 
 export const deleteHPStockItem = async (id: number): Promise<void> => {
   await api.delete(`/hp-stock/items/${id}/`);
+};
+
+export const transitionHPStockItem = async (
+  id: number,
+  payload: { engineer_name?: string; remarks?: string; to_status?: string }
+): Promise<HPStockItem> => {
+  const { data } = await api.post(`/hp-stock/items/${id}/transition/`, payload);
+  return data;
 };
