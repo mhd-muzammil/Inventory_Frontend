@@ -224,6 +224,7 @@ export default function HPStock() {
           onPageChange={setPage}
           onEdit={(item) => setEditingItem(item)}
           onDelete={handleDelete}
+          onRowUpdated={handleMutated}
         />
       )}
 
