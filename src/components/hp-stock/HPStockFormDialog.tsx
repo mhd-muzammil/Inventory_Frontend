@@ -183,14 +183,7 @@ export function HPStockFormDialog({ open, onOpenChange, editing, onSuccess }: Pr
               </Select>
             </div>
 
-            <div className="space-y-2">
-              <Label>Engineer Name</Label>
-              <Input
-                value={formData.engineer_name}
-                onChange={(e) => setFormData({ ...formData, engineer_name: e.target.value })}
-                placeholder="Enter Engineer Name"
-              />
-            </div>
+
             <div className="space-y-2">
               <Label>Status</Label>
               <Select
@@ -204,7 +197,8 @@ export function HPStockFormDialog({ open, onOpenChange, editing, onSuccess }: Pr
                   <SelectItem value="PENDING">Pending</SelectItem>
                   <SelectItem value="RECEIVED">Received</SelectItem>
                   <SelectItem value="ISSUED">Issued</SelectItem>
-                  <SelectItem value="RETURNED">Returned</SelectItem>
+                  <SelectItem value="UNUSED_RETURN">Unused Return</SelectItem>
+                  <SelectItem value="DEFECTIVE_RETURN">Defective Return</SelectItem>
                   <SelectItem value="CLOSED">Closed</SelectItem>
                 </SelectContent>
               </Select>
