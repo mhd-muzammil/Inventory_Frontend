@@ -1,6 +1,9 @@
 import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { BoxesIcon, Pencil, Trash2, ArrowRight, ChevronDown } from "lucide-react";
+import {
+  BoxesIcon, Pencil, Trash2, ArrowRight, ChevronDown, Clock, Package, User,
+  AlertCircle, RotateCcw, RefreshCw, ClipboardCheck, ShieldCheck
+} from "lucide-react";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -51,11 +54,32 @@ const STATUS_LABELS: Record<WorkflowStatus, string> = {
 const STATUS_STYLE_MAP: Record<WorkflowStatus, { bg: string; text: string; dot: string }> = {
   BUFFER_IN: { bg: "bg-blue-50 dark:bg-blue-900/20", text: "text-blue-700 dark:text-blue-400", dot: "bg-blue-600" },
   OUT: { bg: "bg-amber-50 dark:bg-amber-900/20", text: "text-amber-700 dark:text-amber-400", dot: "bg-amber-500" },
-  DEFECTIVE_RETURN: { bg: "bg-purple-50 dark:bg-purple-900/20", text: "text-purple-700 dark:text-purple-400", dot: "bg-purple-600" },
+  DEFECTIVE_RETURN: { bg: "bg-rose-50 dark:bg-rose-900/20", text: "text-rose-700 dark:text-rose-400", dot: "bg-rose-600" },
   UNUSED_RETURN: { bg: "bg-teal-50 dark:bg-teal-900/20", text: "text-teal-700 dark:text-teal-400", dot: "bg-teal-600" },
-  REORDER: { bg: "bg-emerald-50 dark:bg-emerald-900/20", text: "text-emerald-700 dark:text-emerald-400", dot: "bg-emerald-600" },
+  REORDER: { bg: "bg-orange-50 dark:bg-orange-900/20", text: "text-orange-700 dark:text-orange-400", dot: "bg-orange-600" },
   PART_RECEIVED: { bg: "bg-indigo-50 dark:bg-indigo-900/20", text: "text-indigo-700 dark:text-indigo-400", dot: "bg-indigo-600" },
-  CLOSED: { bg: "bg-slate-100 dark:bg-slate-800", text: "text-slate-700 dark:text-slate-300", dot: "bg-slate-500" },
+  CLOSED: { bg: "bg-emerald-50 dark:bg-emerald-900/20", text: "text-emerald-700 dark:text-emerald-400", dot: "bg-emerald-600" },
+};
+
+const getStatusIcon = (status: WorkflowStatus) => {
+  switch (status) {
+    case "BUFFER_IN":
+      return <Package className="w-3.5 h-3.5" />;
+    case "OUT":
+      return <User className="w-3.5 h-3.5" />;
+    case "DEFECTIVE_RETURN":
+      return <AlertCircle className="w-3.5 h-3.5" />;
+    case "UNUSED_RETURN":
+      return <RotateCcw className="w-3.5 h-3.5" />;
+    case "REORDER":
+      return <RefreshCw className="w-3.5 h-3.5" />;
+    case "PART_RECEIVED":
+      return <ClipboardCheck className="w-3.5 h-3.5" />;
+    case "CLOSED":
+      return <ShieldCheck className="w-3.5 h-3.5" />;
+    default:
+      return <Clock className="w-3.5 h-3.5" />;
+  }
 };
 
 const TRACK_STEPS: WorkflowStatus[] = ["BUFFER_IN", "OUT", "DEFECTIVE_RETURN", "UNUSED_RETURN", "REORDER", "PART_RECEIVED", "CLOSED"];
@@ -306,72 +330,136 @@ export function BufferTable({ data, loading, pagination, onPageChange, onEdit, o
           </DialogHeader>
           {activeRow && (
             <div className="space-y-6">
-              <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
-                {TRACK_STEPS.map((step, idx) => {
-                  const currentIndex = TRACK_STEPS.indexOf(activeRow.status || "BUFFER_IN");
-                  const completed = idx < currentIndex;
-                  const current = idx === currentIndex;
-                  const formattedStep = step.split('_').map(w => w.charAt(0) + w.slice(1).toLowerCase()).join(' ');
-                  return (
-                    <div key={step} className={`rounded-xl border p-2.5 text-center transition-colors ${current ? "border-indigo-200 dark:border-indigo-800 bg-indigo-50/50 dark:bg-indigo-900/20" : "border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30"}`}>
-                      <div className={`h-2.5 w-2.5 rounded-full mx-auto mb-1.5 shadow-sm ${completed ? "bg-emerald-500" : current ? "bg-indigo-500 shadow-indigo-500/40" : "bg-slate-300 dark:bg-slate-700"}`} />
-                      <p className={`text-[11px] font-medium ${current ? "text-indigo-700 dark:text-indigo-300" : "text-slate-600 dark:text-slate-400"}`}>{formattedStep}</p>
-                    </div>
-                  );
-                })}
-              </div>
-              <div className="space-y-4 max-h-[380px] overflow-y-auto pr-2">
-                {(activeRow.transition_history || []).map((h, idx) => {
-                  const formatStatus = (s: string) => s.split('_').map(w => w.charAt(0) + w.slice(1).toLowerCase()).join(' ');
-                  const d = new Date(h.timestamp);
-                  const dateStr = d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-                  const timeStr = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "numeric", hour12: true });
-                  const formattedDate = `${dateStr} • ${timeStr}`;
+              {(() => {
+                const hasUnused = activeRow.status === "UNUSED_RETURN" || 
+                  (activeRow.transition_history || []).some(h => h.to_status === "UNUSED_RETURN" || h.from_status === "UNUSED_RETURN");
+                const hasDefective = activeRow.status === "DEFECTIVE_RETURN" || 
+                  (activeRow.transition_history || []).some(h => h.to_status === "DEFECTIVE_RETURN" || h.from_status === "DEFECTIVE_RETURN");
+                
+                const steps = ["BUFFER_IN", "OUT"];
+                if (hasUnused) {
+                  steps.push("UNUSED_RETURN");
+                } else if (hasDefective) {
+                  steps.push("DEFECTIVE_RETURN", "REORDER", "PART_RECEIVED");
+                } else {
+                  if (activeRow.status === "REORDER" || activeRow.status === "PART_RECEIVED") {
+                    steps.push("DEFECTIVE_RETURN", "REORDER", "PART_RECEIVED");
+                  } else {
+                    steps.push("UNUSED_RETURN");
+                  }
+                }
+                steps.push("CLOSED");
 
-                  return (
-                    <div key={`${h.timestamp}-${idx}`} className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/50 p-4 space-y-3 shadow-sm">
-                      <p className="font-semibold text-slate-900 dark:text-slate-50 text-sm">
-                        {formatStatus(h.from_status)} &rarr; {formatStatus(h.to_status)}
-                      </p>
-                      <div className="grid gap-2 text-sm">
-                        {h.engineer_name && (
-                          <div className="flex items-start gap-2">
-                            <span className="text-slate-500 dark:text-slate-400 w-24 shrink-0">Engineer</span>
-                            <span className="font-medium text-slate-800 dark:text-slate-200">{h.engineer_name}</span>
-                          </div>
-                        )}
-                        {h.case_id && (
-                          <div className="flex items-start gap-2">
-                            <span className="text-slate-500 dark:text-slate-400 w-24 shrink-0">Case ID</span>
-                            <span className="font-medium text-slate-800 dark:text-slate-200">{h.case_id}</span>
-                          </div>
-                        )}
-                        {h.comment && (
-                          <div className="flex items-start gap-2">
-                            <span className="text-slate-500 dark:text-slate-400 w-24 shrink-0">Comment</span>
-                            <span className="font-medium text-slate-800 dark:text-slate-200">{h.comment}</span>
-                          </div>
-                        )}
-                        {h.updated_by && (
-                          <div className="flex items-start gap-2">
-                            <span className="text-slate-500 dark:text-slate-400 w-24 shrink-0">Updated by</span>
-                            <span className="font-medium text-slate-800 dark:text-slate-200">{h.updated_by}</span>
-                          </div>
-                        )}
-                      </div>
-                      <div className="pt-3 border-t border-slate-100 dark:border-slate-800/60 mt-1">
-                        <p className="text-[11px] text-slate-400 dark:text-slate-500 font-medium">
-                          {formattedDate}
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })}
-                {(activeRow.transition_history || []).length === 0 && (
-                  <div className="text-center py-8">
-                    <p className="text-sm text-slate-500 dark:text-slate-400">No transitions yet.</p>
+                return (
+                  <div className={`grid grid-cols-2 md:grid-cols-${steps.length} gap-3`}>
+                    {steps.map((step, idx) => {
+                      const currentIndex = steps.indexOf(activeRow.status || "BUFFER_IN");
+                      const completed = idx < currentIndex;
+                      const current = idx === currentIndex;
+                      const formattedStep = step.split('_').map(w => w.charAt(0) + w.slice(1).toLowerCase()).join(' ');
+                      return (
+                        <div key={step} className={`rounded-xl border p-2.5 text-center transition-colors ${current ? "border-indigo-200 dark:border-indigo-800 bg-indigo-50/50 dark:bg-indigo-900/20" : "border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30"}`}>
+                          <div className={`h-2.5 w-2.5 rounded-full mx-auto mb-1.5 shadow-sm ${completed ? "bg-emerald-500" : current ? "bg-indigo-500 shadow-indigo-500/40" : "bg-slate-300 dark:bg-slate-700"}`} />
+                          <p className={`text-[11px] font-medium ${current ? "text-indigo-700 dark:text-indigo-300" : "text-slate-600 dark:text-slate-400"}`}>{formattedStep}</p>
+                        </div>
+                      );
+                    })}
                   </div>
-                )}
+                );
+              })()}
+
+              {/* Timeline Logs */}
+              <div className="relative max-h-[380px] overflow-y-auto pr-2 pl-10 py-2 space-y-6">
+                {/* Vertical Line */}
+                <div className="absolute left-[22px] top-2 bottom-2 w-0.5 bg-slate-200 dark:bg-slate-800" />
+                {(() => {
+                  const milestones = [
+                    {
+                      status: "BUFFER_IN" as WorkflowStatus,
+                      label: "Stock Entry / Buffer In",
+                      timestamp: activeRow.created_at,
+                      updated_by: activeRow.created_by_name || "System",
+                      comment: "Stock entry registered successfully in buffer.",
+                      engineer_name: "",
+                      case_id: "",
+                    }
+                  ];
+
+                  if (activeRow.transition_history && Array.isArray(activeRow.transition_history)) {
+                    activeRow.transition_history.forEach((h) => {
+                      milestones.push({
+                        status: h.to_status as WorkflowStatus,
+                        label: STATUS_LABELS[h.to_status] || h.to_status,
+                        timestamp: h.timestamp,
+                        updated_by: h.updated_by || "System",
+                        comment: h.comment || "",
+                        engineer_name: h.engineer_name || "",
+                        case_id: h.case_id || "",
+                      });
+                    });
+                  }
+
+                  return milestones.map((m, idx) => {
+                    const st = STATUS_STYLE_MAP[m.status] || STATUS_STYLE_MAP.BUFFER_IN;
+                    const d = new Date(m.timestamp);
+                    const dateStr = d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+                    const timeStr = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "numeric", hour12: true });
+                    const formattedDate = `${dateStr} • ${timeStr}`;
+
+                    return (
+                      <div key={`${m.timestamp}-${idx}`} className="relative group">
+                        {/* Timeline Dot */}
+                        <div className={`absolute -left-[30px] top-1.5 flex items-center justify-center w-6 h-6 rounded-full border-2 border-white dark:border-slate-900 ${st.bg} ${st.text} shadow-sm z-10 transition-transform group-hover:scale-110`}>
+                          {getStatusIcon(m.status)}
+                        </div>
+
+                        {/* Card Content */}
+                        <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/50 p-4 space-y-2.5 shadow-sm hover:shadow-md hover:border-slate-300 dark:hover:border-slate-700 transition-all duration-200 text-slate-900 dark:text-slate-100">
+                          <div className="flex items-center justify-between flex-wrap gap-2">
+                            <h4 className="font-semibold text-slate-900 dark:text-slate-50 text-sm">
+                              {m.label}
+                            </h4>
+                            <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold tracking-wide uppercase ${st.bg} ${st.text}`}>
+                              {m.status === "BUFFER_IN" && idx === 0 ? "Initiated" : "Completed"}
+                            </span>
+                          </div>
+
+                          <div className="grid gap-1.5 text-xs text-slate-600 dark:text-slate-400">
+                            {m.updated_by && (
+                              <div className="flex items-center gap-2">
+                                <span className="text-slate-400 dark:text-slate-500 w-24">Updated By:</span>
+                                <span className="font-medium text-slate-800 dark:text-slate-200">{m.updated_by}</span>
+                              </div>
+                            )}
+                            {m.engineer_name && (
+                              <div className="flex items-center gap-2">
+                                <span className="text-slate-400 dark:text-slate-500 w-24">Engineer:</span>
+                                <span className="font-medium text-slate-800 dark:text-slate-200">{m.engineer_name}</span>
+                              </div>
+                            )}
+                            {m.case_id && (
+                              <div className="flex items-center gap-2">
+                                <span className="text-slate-400 dark:text-slate-500 w-24">Case ID:</span>
+                                <span className="font-medium text-slate-800 dark:text-slate-200 font-mono">{m.case_id}</span>
+                              </div>
+                            )}
+                            {m.comment && (
+                              <div className="flex items-start gap-2 mt-1 pt-1.5 border-t border-slate-100 dark:border-slate-800/40">
+                                <span className="text-slate-400 dark:text-slate-500 w-24 shrink-0 font-medium">Remarks:</span>
+                                <span className="text-slate-700 dark:text-slate-300 italic">"{m.comment}"</span>
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="pt-2 border-t border-slate-100 dark:border-slate-800/40 mt-1 flex items-center gap-1.5 text-[10px] text-slate-400 dark:text-slate-500 font-medium">
+                            <Clock className="w-3.5 h-3.5" />
+                            <span>{formattedDate}</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  });
+                })()}
               </div>
             </div>
           )}
