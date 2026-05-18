@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { Edit, Trash2, ArrowRight, ChevronDown, CheckCircle, Clock } from "lucide-react";
+import { Edit, Trash2, ArrowRight, ChevronDown, CheckCircle, Clock, Package, ClipboardCheck, User, ShieldCheck, Activity, RotateCcw } from "lucide-react";
 import { format } from "date-fns";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -66,6 +66,29 @@ const STATUS_STYLE_MAP: Record<string, { bg: string; text: string; dot: string }
 };
 
 const TRACK_STEPS = ["PENDING", "STOCK_CHECK", "ISSUED", "WORK_STATUS", "UNUSED_RETURN", "DEFECTIVE_RETURN", "HANDOVER", "CLOSED"];
+
+const getStatusIcon = (status: string) => {
+  switch (status) {
+    case "PENDING":
+      return <Package className="w-3.5 h-3.5" />;
+    case "STOCK_CHECK":
+    case "RECEIVED":
+      return <ClipboardCheck className="w-3.5 h-3.5" />;
+    case "ISSUED":
+      return <User className="w-3.5 h-3.5" />;
+    case "WORK_STATUS":
+      return <Activity className="w-3.5 h-3.5" />;
+    case "UNUSED_RETURN":
+    case "DEFECTIVE_RETURN":
+      return <RotateCcw className="w-3.5 h-3.5" />;
+    case "HANDOVER":
+      return <User className="w-3.5 h-3.5" />;
+    case "CLOSED":
+      return <ShieldCheck className="w-3.5 h-3.5" />;
+    default:
+      return <Clock className="w-3.5 h-3.5" />;
+  }
+};
 
 interface Props {
   data: HPStockItem[];
@@ -356,53 +379,90 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
                 );
               })()}
               
-              {/* Logs */}
-              <div className="space-y-4 max-h-[380px] overflow-y-auto pr-2">
-                {(activeRow.transition_history || []).map((h, idx) => {
-                  const formatStatus = (s: string) => STATUS_LABELS[s] || s;
-                  const d = new Date(h.timestamp);
-                  const dateStr = d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-                  const timeStr = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "numeric", hour12: true });
-                  const formattedDate = `${dateStr} • ${timeStr}`;
+              {/* Timeline Logs */}
+              <div className="relative max-h-[380px] overflow-y-auto pr-2 pl-10 py-2 space-y-6">
+                {/* Vertical Line */}
+                <div className="absolute left-[22px] top-2 bottom-2 w-0.5 bg-slate-200 dark:bg-slate-800" />
+                {(() => {
+                  const milestones = [
+                    {
+                      status: "PENDING",
+                      label: STATUS_LABELS["PENDING"] || "Stock Entry",
+                      timestamp: activeRow.created_at,
+                      updated_by: activeRow.created_by_name || "System",
+                      comment: "Stock entry registered successfully.",
+                      engineer_name: "",
+                    }
+                  ];
 
-                  return (
-                    <div key={`${h.timestamp}-${idx}`} className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/50 p-4 space-y-3 shadow-sm">
-                      <p className="font-semibold text-slate-900 dark:text-slate-50 text-sm">
-                        {formatStatus(h.from_status)} &rarr; {formatStatus(h.to_status)}
-                      </p>
-                      <div className="grid gap-2 text-sm">
-                        {h.engineer_name && (
-                          <div className="flex items-start gap-2">
-                            <span className="text-slate-500 dark:text-slate-400 w-24 shrink-0">Engineer</span>
-                            <span className="font-medium text-slate-800 dark:text-slate-200">{h.engineer_name}</span>
+                  if (activeRow.transition_history && Array.isArray(activeRow.transition_history)) {
+                    activeRow.transition_history.forEach((h) => {
+                      milestones.push({
+                        status: h.to_status,
+                        label: STATUS_LABELS[h.to_status] || h.to_status,
+                        timestamp: h.timestamp,
+                        updated_by: h.updated_by || "System",
+                        comment: h.comment || "",
+                        engineer_name: h.engineer_name || "",
+                      });
+                    });
+                  }
+
+                  return milestones.map((m, idx) => {
+                    const st = STATUS_STYLE_MAP[m.status] || STATUS_STYLE_MAP.PENDING;
+                    const d = new Date(m.timestamp);
+                    const dateStr = d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+                    const timeStr = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "numeric", hour12: true });
+                    const formattedDate = `${dateStr} • ${timeStr}`;
+
+                    return (
+                      <div key={`${m.timestamp}-${idx}`} className="relative group">
+                        {/* Timeline Dot */}
+                        <div className={`absolute -left-[30px] top-1.5 flex items-center justify-center w-6 h-6 rounded-full border-2 border-white dark:border-slate-900 ${st.bg} ${st.text} shadow-sm z-10 transition-transform group-hover:scale-110`}>
+                          {getStatusIcon(m.status)}
+                        </div>
+
+                        {/* Card Content */}
+                        <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/50 p-4 space-y-2.5 shadow-sm hover:shadow-md hover:border-slate-300 dark:hover:border-slate-700 transition-all duration-200">
+                          <div className="flex items-center justify-between flex-wrap gap-2">
+                            <h4 className="font-semibold text-slate-900 dark:text-slate-50 text-sm">
+                              {m.label}
+                            </h4>
+                            <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold tracking-wide uppercase ${st.bg} ${st.text}`}>
+                              {m.status === "PENDING" ? "Initiated" : "Completed"}
+                            </span>
                           </div>
-                        )}
-                        {h.comment && (
-                          <div className="flex items-start gap-2">
-                            <span className="text-slate-500 dark:text-slate-400 w-24 shrink-0">Remarks</span>
-                            <span className="font-medium text-slate-800 dark:text-slate-200">{h.comment}</span>
+
+                          <div className="grid gap-1.5 text-xs text-slate-600 dark:text-slate-400">
+                            {m.updated_by && (
+                              <div className="flex items-center gap-2">
+                                <span className="text-slate-400 dark:text-slate-500 w-24">Updated By:</span>
+                                <span className="font-medium text-slate-800 dark:text-slate-200">{m.updated_by}</span>
+                              </div>
+                            )}
+                            {m.engineer_name && (
+                              <div className="flex items-center gap-2">
+                                <span className="text-slate-400 dark:text-slate-500 w-24">Engineer:</span>
+                                <span className="font-medium text-slate-800 dark:text-slate-200">{m.engineer_name}</span>
+                              </div>
+                            )}
+                            {m.comment && (
+                              <div className="flex items-start gap-2 mt-1 pt-1.5 border-t border-slate-100 dark:border-slate-800/40">
+                                <span className="text-slate-400 dark:text-slate-500 w-24 shrink-0 font-medium">Remarks:</span>
+                                <span className="text-slate-700 dark:text-slate-300 italic">"{m.comment}"</span>
+                              </div>
+                            )}
                           </div>
-                        )}
-                        {h.updated_by && (
-                          <div className="flex items-start gap-2">
-                            <span className="text-slate-500 dark:text-slate-400 w-24 shrink-0">Updated by</span>
-                            <span className="font-medium text-slate-800 dark:text-slate-200">{h.updated_by}</span>
+
+                          <div className="pt-2 border-t border-slate-100 dark:border-slate-800/40 mt-1 flex items-center gap-1.5 text-[10px] text-slate-400 dark:text-slate-500 font-medium">
+                            <Clock className="w-3.5 h-3.5" />
+                            <span>{formattedDate}</span>
                           </div>
-                        )}
+                        </div>
                       </div>
-                      <div className="pt-3 border-t border-slate-100 dark:border-slate-800/60 mt-1">
-                        <p className="text-[11px] text-slate-400 dark:text-slate-500 font-medium">
-                          {formattedDate}
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })}
-                {(activeRow.transition_history || []).length === 0 && (
-                  <div className="text-center py-8">
-                    <p className="text-sm text-slate-500 dark:text-slate-400">No transitions yet.</p>
-                  </div>
-                )}
+                    );
+                  });
+                })()}
               </div>
             </div>
           )}
