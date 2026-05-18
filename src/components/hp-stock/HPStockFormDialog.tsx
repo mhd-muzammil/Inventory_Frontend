@@ -194,12 +194,14 @@ export function HPStockFormDialog({ open, onOpenChange, editing, onSuccess }: Pr
                   <SelectValue placeholder="Select Status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="PENDING">Pending</SelectItem>
-                  <SelectItem value="RECEIVED">Received</SelectItem>
-                  <SelectItem value="ISSUED">Issued</SelectItem>
-                  <SelectItem value="UNUSED_RETURN">Unused Return</SelectItem>
-                  <SelectItem value="DEFECTIVE_RETURN">Defective Return</SelectItem>
-                  <SelectItem value="CLOSED">Closed</SelectItem>
+                  <SelectItem value="PENDING">Stock Entry</SelectItem>
+                  <SelectItem value="STOCK_CHECK">Stock Check</SelectItem>
+                  <SelectItem value="ISSUED">Part Taken by Engineer</SelectItem>
+                  <SelectItem value="WORK_STATUS">Work Status</SelectItem>
+                  <SelectItem value="UNUSED_RETURN">Unused Part</SelectItem>
+                  <SelectItem value="DEFECTIVE_RETURN">Old/Defective Part</SelectItem>
+                  <SelectItem value="HANDOVER">Handover by Engineer</SelectItem>
+                  <SelectItem value="CLOSED">Close the Case</SelectItem>
                 </SelectContent>
               </Select>
             </div>
