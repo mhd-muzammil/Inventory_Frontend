@@ -49,9 +49,7 @@ function MetricItem({ label, value, color }: MetricItemProps) {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Service summary card (Overall / Today)
-// ---------------------------------------------------------------------------
+
 interface ServiceCardProps {
   title: string;
   total: number;
