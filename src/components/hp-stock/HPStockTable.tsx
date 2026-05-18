@@ -304,20 +304,44 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
           {activeRow && (
             <div className="space-y-6">
               {/* Stepper Progress */}
-              <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
-                {TRACK_STEPS.map((step, idx) => {
-                  const currentIndex = TRACK_STEPS.indexOf(activeRow.status || "PENDING");
-                  const completed = idx < currentIndex;
-                  const current = idx === currentIndex;
-                  const formattedStep = STATUS_LABELS[step] || step;
-                  return (
-                    <div key={step} className={`rounded-xl border p-2.5 text-center transition-colors ${current ? "border-indigo-200 dark:border-indigo-800 bg-indigo-50/50 dark:bg-indigo-900/20" : "border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30"}`}>
-                      <div className={`h-2.5 w-2.5 rounded-full mx-auto mb-1.5 shadow-sm ${completed ? "bg-emerald-500" : current ? "bg-indigo-500 shadow-indigo-500/40" : "bg-slate-300 dark:bg-slate-700"}`} />
-                      <p className={`text-[11px] font-medium ${current ? "text-indigo-700 dark:text-indigo-300" : "text-slate-600 dark:text-slate-400"}`}>{formattedStep}</p>
-                    </div>
-                  );
-                })}
-              </div>
+              {(() => {
+                const hasUnused = activeRow.status === "UNUSED_RETURN" || 
+                  (activeRow.transition_history || []).some(h => h.to_status === "UNUSED_RETURN" || h.from_status === "UNUSED_RETURN");
+                const hasDefective = activeRow.status === "DEFECTIVE_RETURN" || 
+                  (activeRow.transition_history || []).some(h => h.to_status === "DEFECTIVE_RETURN" || h.from_status === "DEFECTIVE_RETURN");
+                
+                const steps = ["PENDING", "RECEIVED", "ISSUED"];
+                if (hasUnused) {
+                  steps.push("UNUSED_RETURN");
+                }
+                if (hasDefective) {
+                  steps.push("DEFECTIVE_RETURN");
+                }
+                steps.push("CLOSED");
+
+                const colsClass = steps.length === 4 
+                  ? "grid grid-cols-2 md:grid-cols-4 gap-3" 
+                  : steps.length === 5 
+                  ? "grid grid-cols-2 md:grid-cols-5 gap-3" 
+                  : "grid grid-cols-2 md:grid-cols-6 gap-3";
+
+                return (
+                  <div className={colsClass}>
+                    {steps.map((step, idx) => {
+                      const currentIndex = steps.indexOf(activeRow.status || "PENDING");
+                      const completed = idx < currentIndex;
+                      const current = idx === currentIndex;
+                      const formattedStep = STATUS_LABELS[step] || step;
+                      return (
+                        <div key={step} className={`rounded-xl border p-2.5 text-center transition-colors ${current ? "border-indigo-200 dark:border-indigo-800 bg-indigo-50/50 dark:bg-indigo-900/20" : "border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30"}`}>
+                          <div className={`h-2.5 w-2.5 rounded-full mx-auto mb-1.5 shadow-sm ${completed ? "bg-emerald-500" : current ? "bg-indigo-500 shadow-indigo-500/40" : "bg-slate-300 dark:bg-slate-700"}`} />
+                          <p className={`text-[11px] font-medium ${current ? "text-indigo-700 dark:text-indigo-300" : "text-slate-600 dark:text-slate-400"}`}>{formattedStep}</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
               
               {/* Logs */}
               <div className="space-y-4 max-h-[380px] overflow-y-auto pr-2">
