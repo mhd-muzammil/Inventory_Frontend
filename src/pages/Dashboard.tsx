@@ -33,9 +33,7 @@ import { REGION_LABELS } from "@/types";
 import type { Region } from "@/types";
 import { cn } from "@/lib/utils";
 
-// ---------------------------------------------------------------------------
-// Metric row item inside a service card
-// ---------------------------------------------------------------------------
+
 interface MetricItemProps {
   label: string;
   value: number;
