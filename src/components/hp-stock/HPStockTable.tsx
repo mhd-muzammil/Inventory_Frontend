@@ -22,41 +22,50 @@ import { REGION_LABELS } from "@/types";
 type WorkflowStatus = HPStockItem["status"];
 
 const AVAILABLE_TRANSITIONS: Record<string, string[]> = {
-  PENDING: ["RECEIVED"],
-  RECEIVED: ["ISSUED"],
-  ISSUED: ["UNUSED_RETURN", "DEFECTIVE_RETURN"],
-  UNUSED_RETURN: ["CLOSED"],
-  DEFECTIVE_RETURN: ["CLOSED"],
+  PENDING: ["STOCK_CHECK"],
+  STOCK_CHECK: ["ISSUED"],
+  ISSUED: ["WORK_STATUS"],
+  WORK_STATUS: ["UNUSED_RETURN", "DEFECTIVE_RETURN"],
+  UNUSED_RETURN: ["HANDOVER"],
+  DEFECTIVE_RETURN: ["HANDOVER"],
+  HANDOVER: ["CLOSED"],
 };
 
 const TRANSITION_LABELS: Record<string, string> = {
-  PENDING: "Return to Pending",
-  RECEIVED: "Mark Received",
-  ISSUED: "Issue to Engineer",
-  UNUSED_RETURN: "Mark Unused Return",
-  DEFECTIVE_RETURN: "Mark Defective Return",
-  CLOSED: "Close Case",
+  STOCK_CHECK: "Perform Stock Check",
+  ISSUED: "Part Taken by Engineer",
+  WORK_STATUS: "Verify Work Status",
+  UNUSED_RETURN: "Mark as Unused Part",
+  DEFECTIVE_RETURN: "Mark as Old/Defective Part",
+  HANDOVER: "Record Engineer Handover",
+  CLOSED: "Close the Case",
 };
 
 const STATUS_LABELS: Record<string, string> = {
-  PENDING: "Entry Created",
-  RECEIVED: "Part Received",
-  ISSUED: "Picked Up by Engineer",
-  UNUSED_RETURN: "Unused Return",
-  DEFECTIVE_RETURN: "Defective Return",
-  CLOSED: "Closed",
+  PENDING: "Stock Entry",
+  STOCK_CHECK: "Stock Check",
+  RECEIVED: "Stock Check",
+  ISSUED: "Part Taken by Engineer",
+  WORK_STATUS: "Work Status",
+  UNUSED_RETURN: "Unused Part",
+  DEFECTIVE_RETURN: "Old/Defective Part",
+  HANDOVER: "Handover by Engineer",
+  CLOSED: "Close the Case",
 };
 
 const STATUS_STYLE_MAP: Record<string, { bg: string; text: string; dot: string }> = {
   PENDING: { bg: "bg-blue-50 dark:bg-blue-900/20", text: "text-blue-700 dark:text-blue-400", dot: "bg-blue-600" },
-  RECEIVED: { bg: "bg-amber-50 dark:bg-amber-900/20", text: "text-amber-700 dark:text-amber-400", dot: "bg-amber-500" },
+  STOCK_CHECK: { bg: "bg-yellow-50 dark:bg-yellow-900/20", text: "text-yellow-700 dark:text-yellow-400", dot: "bg-yellow-500" },
+  RECEIVED: { bg: "bg-yellow-50 dark:bg-yellow-900/20", text: "text-yellow-700 dark:text-yellow-400", dot: "bg-yellow-500" },
   ISSUED: { bg: "bg-purple-50 dark:bg-purple-900/20", text: "text-purple-700 dark:text-purple-400", dot: "bg-purple-600" },
+  WORK_STATUS: { bg: "bg-orange-50 dark:bg-orange-900/20", text: "text-orange-700 dark:text-orange-400", dot: "bg-orange-600" },
   UNUSED_RETURN: { bg: "bg-teal-50 dark:bg-teal-900/20", text: "text-teal-700 dark:text-teal-400", dot: "bg-teal-600" },
   DEFECTIVE_RETURN: { bg: "bg-rose-50 dark:bg-rose-900/20", text: "text-rose-700 dark:text-rose-400", dot: "bg-rose-600" },
-  CLOSED: { bg: "bg-slate-100 dark:bg-slate-800", text: "text-slate-700 dark:text-slate-300", dot: "bg-slate-500" },
+  HANDOVER: { bg: "bg-indigo-50 dark:bg-indigo-900/20", text: "text-indigo-700 dark:text-indigo-400", dot: "bg-indigo-600" },
+  CLOSED: { bg: "bg-emerald-50 dark:bg-emerald-900/20", text: "text-emerald-700 dark:text-emerald-400", dot: "bg-emerald-600" },
 };
 
-const TRACK_STEPS = ["PENDING", "RECEIVED", "ISSUED", "UNUSED_RETURN", "DEFECTIVE_RETURN", "CLOSED"];
+const TRACK_STEPS = ["PENDING", "STOCK_CHECK", "ISSUED", "WORK_STATUS", "UNUSED_RETURN", "DEFECTIVE_RETURN", "HANDOVER", "CLOSED"];
 
 interface Props {
   data: HPStockItem[];
@@ -77,12 +86,12 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
   const [remarks, setRemarks] = useState("");
   const [savingTransition, setSavingTransition] = useState(false);
 
-  const isIssuedTransition = pendingToStatus === "ISSUED";
+  const showEngineerField = pendingToStatus === "ISSUED" || pendingToStatus === "HANDOVER";
   const canConfirm = useMemo(() => {
     if (!activeRow) return false;
-    if (isIssuedTransition) return engineerName.trim().length > 0;
+    if (showEngineerField) return engineerName.trim().length > 0;
     return true;
-  }, [activeRow, engineerName, isIssuedTransition]);
+  }, [activeRow, engineerName, showEngineerField]);
 
   const openTransition = (row: HPStockItem, target: string) => {
     setActiveRow(row);
@@ -272,7 +281,7 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
             <DialogTitle>Transition HP Stock Status</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            {isIssuedTransition && (
+            {showEngineerField && (
               <div className="space-y-2">
                 <Label>Engineer Name *</Label>
                 <Input value={engineerName} onChange={(e) => setEngineerName(e.target.value)} placeholder="Enter Engineer Name" />
@@ -310,25 +319,29 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
                 const hasDefective = activeRow.status === "DEFECTIVE_RETURN" || 
                   (activeRow.transition_history || []).some(h => h.to_status === "DEFECTIVE_RETURN" || h.from_status === "DEFECTIVE_RETURN");
                 
-                const steps = ["PENDING", "RECEIVED", "ISSUED"];
+                const steps = ["PENDING", "STOCK_CHECK", "ISSUED", "WORK_STATUS"];
                 if (hasUnused) {
                   steps.push("UNUSED_RETURN");
-                }
-                if (hasDefective) {
+                } else if (hasDefective) {
                   steps.push("DEFECTIVE_RETURN");
+                } else {
+                  steps.push("UNUSED_RETURN");
                 }
-                steps.push("CLOSED");
+                steps.push("HANDOVER", "CLOSED");
 
-                const colsClass = steps.length === 4 
-                  ? "grid grid-cols-2 md:grid-cols-4 gap-3" 
-                  : steps.length === 5 
-                  ? "grid grid-cols-2 md:grid-cols-5 gap-3" 
-                  : "grid grid-cols-2 md:grid-cols-6 gap-3";
+                const colsClass = steps.length === 6 
+                  ? "grid grid-cols-2 md:grid-cols-6 gap-3" 
+                  : "grid grid-cols-2 md:grid-cols-7 gap-3";
 
                 return (
                   <div className={colsClass}>
                     {steps.map((step, idx) => {
-                      const currentIndex = steps.indexOf(activeRow.status || "PENDING");
+                      const normalizeStatusForStepper = (status: string) => {
+                        if (status === "RECEIVED") return "STOCK_CHECK";
+                        return status;
+                      };
+                      const normalizedCurrentStatus = normalizeStatusForStepper(activeRow.status || "PENDING");
+                      const currentIndex = steps.indexOf(normalizedCurrentStatus);
                       const completed = idx < currentIndex;
                       const current = idx === currentIndex;
                       const formattedStep = STATUS_LABELS[step] || step;
