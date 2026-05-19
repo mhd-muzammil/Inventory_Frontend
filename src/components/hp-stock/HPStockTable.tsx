@@ -15,6 +15,7 @@ import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuIte
 import { transitionHPStockItem, sendHPStockOTP } from "@/api/hpStock";
 import { extractApiError } from "@/api/client";
 import { toast } from "@/components/ui/use-toast";
+import { useAuthStore } from "@/store/authStore";
 import type { HPStockItem } from "@/api/hpStock";
 import type { PaginationMeta, Region } from "@/types";
 import { REGION_LABELS } from "@/types";
@@ -101,6 +102,8 @@ interface Props {
 }
 
 export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, onDelete, onRowUpdated }: Props) {
+  const user = useAuthStore((s) => s.user);
+  const isSubAdmin = user?.role === "sub_admin";
   const [transitionOpen, setTransitionOpen] = useState(false);
   const [trackOpen, setTrackOpen] = useState(false);
   const [activeRow, setActiveRow] = useState<HPStockItem | null>(null);
@@ -316,9 +319,11 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
                       <Button variant="ghost" size="icon" onClick={() => onEdit(item)} className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/50">
                         <Edit className="w-4 h-4" />
                       </Button>
-                      <Button variant="ghost" size="icon" onClick={() => onDelete(item.id)} className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/50">
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                      {!isSubAdmin && (
+                        <Button variant="ghost" size="icon" onClick={() => onDelete(item.id)} className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/50">
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>
