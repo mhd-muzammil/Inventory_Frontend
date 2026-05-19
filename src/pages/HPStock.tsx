@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { AlertCircle, Plus, Search, MapPin, Globe, BarChart3, Layers } from "lucide-react";
 import { Card } from "@/components/ui/card";
@@ -32,6 +32,11 @@ export default function HPStock() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [data, setData] = useState<HPStockItem[]>([]);
+  const dataRef = useRef(data);
+  useEffect(() => {
+    dataRef.current = data;
+  }, [data]);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pagination, setPagination] = useState<PaginationMeta>({ total: 0, page: 1, per_page: 20, pages: 1 });
@@ -54,7 +59,9 @@ export default function HPStock() {
   }, [viewMode, isAdmin]);
 
   const fetchData = useCallback(async () => {
-    setLoading(true);
+    if (dataRef.current.length === 0) {
+      setLoading(true);
+    }
     setError(null);
     try {
       const apiView = isAdmin ? "overall" : viewMode;

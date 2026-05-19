@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { motion } from "framer-motion";
 import { Layers, AlertCircle, Plus, Search, MapPin, Globe, BarChart3, Package } from "lucide-react";
 import { Card } from "@/components/ui/card";
@@ -21,7 +21,6 @@ import { useDebounce } from "@/hooks/useDebounce";
 import { useAuthStore } from "@/store/authStore";
 import { REGION_LABELS } from "@/types";
 import type { BufferPart, PaginationMeta, Region } from "@/types";
-import { useEffect, useCallback } from "react";
 
 export default function Buffer() {
   const user = useAuthStore((s) => s.user);
@@ -33,6 +32,11 @@ export default function Buffer() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [data, setData] = useState<BufferPart[]>([]);
+  const dataRef = useRef(data);
+  useEffect(() => {
+    dataRef.current = data;
+  }, [data]);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pagination, setPagination] = useState<PaginationMeta>({ total: 0, page: 1, per_page: 20, pages: 1 });
@@ -56,7 +60,9 @@ export default function Buffer() {
   }, [viewMode, isAdmin]);
 
   const fetchData = useCallback(async () => {
-    setLoading(true);
+    if (dataRef.current.length === 0) {
+      setLoading(true);
+    }
     setError(null);
     try {
       const apiView = isAdmin ? "overall" : viewMode;

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { motion } from "framer-motion";
 import { Ticket as TicketIcon, Plus, AlertCircle, MapPin, BarChart3 } from "lucide-react";
 import { Card } from "@/components/ui/card";
@@ -17,6 +17,11 @@ import type { Ticket, PaginationMeta, Region, RegionStats } from "@/types";
 export default function CSOEntry() {
   const [formOpen, setFormOpen] = useState(false);
   const [data, setData] = useState<Ticket[]>([]);
+  const dataRef = useRef(data);
+  useEffect(() => {
+    dataRef.current = data;
+  }, [data]);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
@@ -42,7 +47,9 @@ export default function CSOEntry() {
   }, []);
 
   const fetchTickets = useCallback(async () => {
-    setLoading(true);
+    if (dataRef.current.length === 0) {
+      setLoading(true);
+    }
     setError(null);
     try {
       const res = await getTickets({

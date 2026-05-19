@@ -160,7 +160,7 @@ export interface TimelineEntry {
   metadata: Record<string, unknown>;
   entered_at: string;
   exited_at: string | null;
-  duration_mins: number | null;
+  duration_minutes: number | null;
   sla_minutes: number | null;
   is_breached: boolean;
   breach_minutes: number;
