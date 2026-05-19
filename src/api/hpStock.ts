@@ -13,6 +13,7 @@ export interface HPStockItem {
   region: string;
   status: string;
   engineer_name: string;
+  engineer_phone?: string;
   created_by_name?: string;
   transition_history?: Array<{
     from_status: string;
@@ -21,6 +22,7 @@ export interface HPStockItem {
     updated_by: string;
     timestamp: string;
     engineer_name?: string;
+    engineer_phone?: string;
   }>;
   created_at: string;
   updated_at: string;
@@ -79,8 +81,16 @@ export const deleteHPStockItem = async (id: number): Promise<void> => {
 
 export const transitionHPStockItem = async (
   id: number,
-  payload: { engineer_name?: string; remarks?: string; to_status?: string }
+  payload: { engineer_name?: string; engineer_phone?: string; otp?: string; remarks?: string; to_status?: string }
 ): Promise<HPStockItem> => {
   const { data } = await api.post(`/hp-stock/items/${id}/transition/`, payload);
+  return data;
+};
+
+export const sendHPStockOTP = async (
+  id: number,
+  payload: { phone: string; to_status: string }
+): Promise<{ otp: string; whatsapp_url: string; detail: string }> => {
+  const { data } = await api.post(`/hp-stock/items/${id}/send_otp/`, payload);
   return data;
 };
