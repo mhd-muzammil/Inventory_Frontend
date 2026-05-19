@@ -32,8 +32,8 @@ export function TicketTimeline({ timeline, currentStatus, requiresParts, assigne
           // Latest timeline entry for this status
           const entry = [...timeline].reverse().find((e) => e.to_status === status);
           // Position-based: before current = completed, at current = current, after = pending
-          const isCompleted = currentIndex >= 0 ? idx < currentIndex : !!entry?.exited_at;
           const isCurrent = status === currentStatus;
+          const isCompleted = isCurrent ? false : (!!entry || (currentIndex >= 0 && idx < currentIndex));
           const isPending = !isCompleted && !isCurrent;
           const config = STATUS_CONFIG[status];
 
@@ -106,11 +106,11 @@ export function TicketTimeline({ timeline, currentStatus, requiresParts, assigne
                     </div>
 
                     {/* Duration */}
-                    {entry.duration_mins != null && (
+                    {entry.duration_minutes != null && (
                       <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
                         <Clock className="w-3 h-3" />
                         <span>
-                          Duration: {formatDuration(entry.duration_mins)}
+                          Duration: {formatDuration(entry.duration_minutes)}
                           {entry.sla_minutes && (
                             <span className="text-slate-400 dark:text-slate-500"> / SLA: {formatDuration(entry.sla_minutes)}</span>
                           )}
