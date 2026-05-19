@@ -42,6 +42,7 @@ const DEFAULT_FORM = {
   region: "",
   status: "PENDING",
   engineer_name: "",
+  engineer_phone: "",
 };
 
 export function HPStockFormDialog({ open, onOpenChange, editing, onSuccess }: Props) {
@@ -64,6 +65,7 @@ export function HPStockFormDialog({ open, onOpenChange, editing, onSuccess }: Pr
           region: editing.region || "",
           status: editing.status || "PENDING",
           engineer_name: editing.engineer_name || "",
+          engineer_phone: editing.engineer_phone || "",
         });
       } else {
         setFormData({
@@ -204,6 +206,24 @@ export function HPStockFormDialog({ open, onOpenChange, editing, onSuccess }: Pr
                   <SelectItem value="CLOSED">Close the Case</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Engineer Name</Label>
+              <Input
+                value={formData.engineer_name}
+                onChange={(e) => setFormData({ ...formData, engineer_name: e.target.value })}
+                placeholder="Enter Engineer Name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Engineer Phone</Label>
+              <Input
+                value={formData.engineer_phone}
+                onChange={(e) => setFormData({ ...formData, engineer_phone: e.target.value })}
+                placeholder="Enter Engineer Phone"
+                maxLength={10}
+              />
             </div>
           </div>
 
