@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
-import { transitionHPStockItem } from "@/api/hpStock";
+import { transitionHPStockItem, sendHPStockOTP } from "@/api/hpStock";
 import { extractApiError } from "@/api/client";
 import { toast } from "@/components/ui/use-toast";
 import type { HPStockItem } from "@/api/hpStock";
@@ -106,21 +106,37 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
   const [activeRow, setActiveRow] = useState<HPStockItem | null>(null);
   const [pendingToStatus, setPendingToStatus] = useState<string | null>(null);
   const [engineerName, setEngineerName] = useState("");
+  const [engineerPhone, setEngineerPhone] = useState("");
+  const [otp, setOtp] = useState("");
+  const [otpSent, setOtpSent] = useState(false);
+  const [sendingOtp, setSendingOtp] = useState(false);
+  const [generatedOtp, setGeneratedOtp] = useState("");
   const [remarks, setRemarks] = useState("");
   const [savingTransition, setSavingTransition] = useState(false);
 
   const showEngineerField = pendingToStatus === "ISSUED" || pendingToStatus === "HANDOVER";
+  
   const canConfirm = useMemo(() => {
     if (!activeRow) return false;
-    if (showEngineerField) return engineerName.trim().length > 0;
+    if (showEngineerField) {
+      return (
+        engineerName.trim().length > 0 &&
+        engineerPhone.trim().length === 10 &&
+        otp.trim().length === 6
+      );
+    }
     return true;
-  }, [activeRow, engineerName, showEngineerField]);
+  }, [activeRow, engineerName, engineerPhone, otp, showEngineerField]);
 
   const openTransition = (row: HPStockItem, target: string) => {
     setActiveRow(row);
     setPendingToStatus(target);
     setEngineerName(row.engineer_name || "");
+    setEngineerPhone(row.engineer_phone || "");
     setRemarks("");
+    setOtp("");
+    setOtpSent(false);
+    setGeneratedOtp("");
     setTransitionOpen(true);
   };
 
@@ -129,18 +145,47 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
     setTrackOpen(true);
   };
 
+  const handleSendOTP = async () => {
+    if (!activeRow || !engineerPhone || engineerPhone.trim().length !== 10) {
+      toast({ title: "Please enter a valid 10-digit Indian phone number first", variant: "destructive" });
+      return;
+    }
+    setSendingOtp(true);
+    try {
+      const res = await sendHPStockOTP(activeRow.id, {
+        phone: engineerPhone.trim(),
+        to_status: pendingToStatus || "",
+      });
+      setOtpSent(true);
+      setGeneratedOtp(res.otp);
+      
+      // Open prefilled WhatsApp URL in new window
+      if (res.whatsapp_url) {
+        window.open(res.whatsapp_url, "_blank");
+      }
+      
+      toast({ title: "OTP generated! Pre-filled WhatsApp tab opened to send the code." });
+    } catch (err) {
+      toast({ title: extractApiError(err), variant: "destructive" });
+    } finally {
+      setSendingOtp(false);
+    }
+  };
+
   const handleTransition = async () => {
     if (!activeRow || !canConfirm) return;
     setSavingTransition(true);
     try {
       const updated = await transitionHPStockItem(activeRow.id, {
         engineer_name: engineerName.trim() || undefined,
+        engineer_phone: showEngineerField ? engineerPhone.trim() : undefined,
+        otp: showEngineerField ? otp.trim() : undefined,
         remarks: remarks.trim() || undefined,
         to_status: pendingToStatus || undefined,
       });
       onRowUpdated(updated);
       setTransitionOpen(false);
-      toast({ title: "HP Stock status updated" });
+      toast({ title: "HP Stock status updated and verified successfully" });
     } catch (err) {
       toast({ title: extractApiError(err), variant: "destructive" });
     } finally {
@@ -217,7 +262,10 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
                       <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 w-fit">
                         {REGION_LABELS[item.region as Region] || item.region || "No Region"}
                       </span>
-                      <span className="text-xs text-slate-500">{item.engineer_name || "Unassigned"}</span>
+                      <span className="text-xs text-slate-500">
+                        {item.engineer_name || "Unassigned"}
+                        {item.engineer_phone && ` (${item.engineer_phone})`}
+                      </span>
                     </div>
                   </TableCell>
                   <TableCell>
@@ -305,9 +353,61 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
           </DialogHeader>
           <div className="space-y-4">
             {showEngineerField && (
-              <div className="space-y-2">
-                <Label>Engineer Name *</Label>
-                <Input value={engineerName} onChange={(e) => setEngineerName(e.target.value)} placeholder="Enter Engineer Name" />
+              <div className="space-y-4 border-l-2 border-indigo-500 pl-3 py-1">
+                <h4 className="text-xs font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+                  Engineer WhatsApp Verification
+                </h4>
+                <div className="space-y-2">
+                  <Label>Engineer Name *</Label>
+                  <Input 
+                    value={engineerName} 
+                    onChange={(e) => setEngineerName(e.target.value)} 
+                    placeholder="Enter Engineer Name" 
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Engineer Phone (10 digits) *</Label>
+                  <div className="flex gap-2">
+                    <Input 
+                      value={engineerPhone} 
+                      onChange={(e) => setEngineerPhone(e.target.value)} 
+                      placeholder="e.g. 9876543210" 
+                      maxLength={10}
+                      disabled={otpSent}
+                    />
+                    <Button 
+                      type="button" 
+                      onClick={handleSendOTP} 
+                      disabled={sendingOtp || engineerPhone.trim().length !== 10}
+                      className="bg-indigo-600 hover:bg-indigo-700 whitespace-nowrap"
+                    >
+                      {sendingOtp ? "Sending..." : otpSent ? "Resend OTP" : "Send OTP"}
+                    </Button>
+                  </div>
+                </div>
+
+                {otpSent && (
+                  <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                    <Label className="text-emerald-600 dark:text-emerald-400 font-medium">
+                      Enter 6-Digit OTP *
+                    </Label>
+                    <Input 
+                      value={otp} 
+                      onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))} 
+                      placeholder="Enter 6-digit OTP code" 
+                      maxLength={6}
+                      className="border-emerald-500 focus-visible:ring-emerald-500 text-center tracking-widest font-mono text-lg font-bold"
+                    />
+                    <p className="text-[11px] text-slate-500 mt-1">
+                      WhatsApp pre-filled tab launched. Ask the engineer for the OTP to complete this action.
+                    </p>
+                    {generatedOtp && (
+                      <span className="inline-block mt-1 text-[11px] bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded text-slate-600 font-mono">
+                        Testing fallback OTP: <strong className="text-indigo-600 dark:text-indigo-400">{generatedOtp}</strong>
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
             )}
             <div className="space-y-2">
@@ -392,6 +492,7 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
                       updated_by: activeRow.created_by_name || "System",
                       comment: "Stock entry registered successfully.",
                       engineer_name: "",
+                      engineer_phone: "",
                     }
                   ];
 
@@ -404,6 +505,7 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
                         updated_by: h.updated_by || "System",
                         comment: h.comment || "",
                         engineer_name: h.engineer_name || "",
+                        engineer_phone: h.engineer_phone || "",
                       });
                     });
                   }
@@ -443,7 +545,9 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
                             {m.engineer_name && (
                               <div className="flex items-center gap-2">
                                 <span className="text-slate-400 dark:text-slate-500 w-24">Engineer:</span>
-                                <span className="font-medium text-slate-800 dark:text-slate-200">{m.engineer_name}</span>
+                                <span className="font-medium text-slate-800 dark:text-slate-200">
+                                  {m.engineer_name} {m.engineer_phone && `(${m.engineer_phone})`}
+                                </span>
                               </div>
                             )}
                             {m.comment && (
