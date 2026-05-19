@@ -17,6 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { transitionBufferPart } from "@/api/bufferParts";
 import { extractApiError } from "@/api/client";
 import { toast } from "@/components/ui/use-toast";
+import { useAuthStore } from "@/store/authStore";
 import type { BufferPart, PaginationMeta } from "@/types";
 
 type WorkflowStatus = BufferPart["status"];
@@ -95,6 +96,8 @@ interface BufferTableProps {
 }
 
 export function BufferTable({ data, loading, pagination, onPageChange, onEdit, onDelete, onRowUpdated }: BufferTableProps) {
+  const user = useAuthStore((s) => s.user);
+  const isSubAdmin = user?.role === "sub_admin";
   const [transitionOpen, setTransitionOpen] = useState(false);
   const [trackOpen, setTrackOpen] = useState(false);
   const [activeRow, setActiveRow] = useState<BufferPart | null>(null);
@@ -263,9 +266,11 @@ export function BufferTable({ data, loading, pagination, onPageChange, onEdit, o
                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onEdit(entry)}>
                       <Pencil className="w-4 h-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-600" onClick={() => onDelete(entry.id)}>
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
+                    {!isSubAdmin && (
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-600" onClick={() => onDelete(entry.id)}>
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    )}
                   </div>
                 </TableCell>
               </motion.tr>
