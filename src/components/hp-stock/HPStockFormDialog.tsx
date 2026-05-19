@@ -207,24 +207,6 @@ export function HPStockFormDialog({ open, onOpenChange, editing, onSuccess }: Pr
                 </SelectContent>
               </Select>
             </div>
-
-            <div className="space-y-2">
-              <Label>Engineer Name</Label>
-              <Input
-                value={formData.engineer_name}
-                onChange={(e) => setFormData({ ...formData, engineer_name: e.target.value })}
-                placeholder="Enter Engineer Name"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Engineer Phone</Label>
-              <Input
-                value={formData.engineer_phone}
-                onChange={(e) => setFormData({ ...formData, engineer_phone: e.target.value })}
-                placeholder="Enter Engineer Phone"
-                maxLength={10}
-              />
-            </div>
           </div>
 
           <DialogFooter className="pt-4">
