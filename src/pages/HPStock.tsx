@@ -11,6 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { HPStockTable } from "@/components/hp-stock/HPStockTable";
 import { HPStockFormDialog } from "@/components/hp-stock/HPStockFormDialog";
 import { getHPStockItems, deleteHPStockItem, getHPStockSummary } from "@/api/hpStock";
@@ -31,6 +32,7 @@ export default function HPStock() {
   const [selectedRegion, setSelectedRegion] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const [activeTab, setActiveTab] = useState<"active" | "closed">("active");
   const [data, setData] = useState<HPStockItem[]>([]);
   const dataRef = useRef(data);
   useEffect(() => {
@@ -72,6 +74,7 @@ export default function HPStock() {
         region: apiRegion,
         page,
         per_page: 20,
+        is_closed: activeTab === "closed",
       });
       setData(res.items);
       setPagination({ total: res.total, page: res.page, per_page: res.per_page, pages: res.pages });
@@ -80,7 +83,7 @@ export default function HPStock() {
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, viewMode, page, isAdmin, selectedRegion]);
+  }, [debouncedSearch, viewMode, page, isAdmin, selectedRegion, activeTab]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
   useEffect(() => { fetchSummary(); }, [fetchSummary]);
@@ -139,7 +142,17 @@ export default function HPStock() {
                 <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">
                   {REGION_LABELS[r.region as Region] || r.region}
                 </span>
-                <span className="text-xl font-bold text-slate-800 dark:text-slate-100">{r.total}</span>
+                <div className="flex items-center gap-2 mt-1.5">
+                  <div className="text-center">
+                    <span className="text-sm font-semibold text-slate-800 dark:text-slate-100">{r.active || 0}</span>
+                    <div className="text-[9px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">Active</div>
+                  </div>
+                  <div className="w-[1px] h-6 bg-slate-200 dark:bg-slate-700/50 mx-0.5" />
+                  <div className="text-center">
+                    <span className="text-sm font-semibold text-slate-500 dark:text-slate-400">{r.closed || 0}</span>
+                    <div className="text-[9px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">Closed</div>
+                  </div>
+                </div>
               </Card>
             );
           })}
@@ -153,7 +166,21 @@ export default function HPStock() {
             <span className="text-xs font-medium text-indigo-600 dark:text-indigo-400 uppercase tracking-wide">
               Total
             </span>
-            <span className="text-xl font-bold text-indigo-700 dark:text-indigo-300">{summary.total}</span>
+            <div className="flex items-center gap-2 mt-1.5">
+              <div className="text-center">
+                <span className="text-sm font-semibold text-indigo-700 dark:text-indigo-300">
+                  {summary.active_total || 0}
+                </span>
+                <div className="text-[9px] font-medium text-indigo-600/70 dark:text-indigo-400/70 uppercase tracking-wider">Active</div>
+              </div>
+              <div className="w-[1px] h-6 bg-indigo-200 dark:bg-indigo-800/50 mx-0.5" />
+              <div className="text-center">
+                <span className="text-sm font-semibold text-indigo-600/80 dark:text-indigo-400/80">
+                  {summary.closed_total || 0}
+                </span>
+                <div className="text-[9px] font-medium text-indigo-600/70 dark:text-indigo-400/70 uppercase tracking-wider">Closed</div>
+              </div>
+            </div>
           </Card>
         </div>
       )}
@@ -214,6 +241,26 @@ export default function HPStock() {
         <Button onClick={() => setAddDialogOpen(true)} className="gap-2 ml-auto">
           <Plus className="w-4 h-4" /> Add Record
         </Button>
+      </div>
+
+      <div className="flex justify-start mb-6">
+        <Tabs
+          value={activeTab}
+          onValueChange={(v) => {
+            setActiveTab(v as "active" | "closed");
+            setPage(1);
+          }}
+          className="w-full sm:w-[400px]"
+        >
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="active" className="text-sm font-medium">
+              Active Cases
+            </TabsTrigger>
+            <TabsTrigger value="closed" className="text-sm font-medium">
+              Closed Cases
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
       </div>
 
       {!loading && data.length === 0 && !debouncedSearch ? (
