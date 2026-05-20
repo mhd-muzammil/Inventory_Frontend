@@ -18,7 +18,9 @@ import { transitionBufferPart } from "@/api/bufferParts";
 import { extractApiError } from "@/api/client";
 import { toast } from "@/components/ui/use-toast";
 import { useAuthStore } from "@/store/authStore";
+import { getEngineersForAssignment } from "@/api/engineers";
 import type { BufferPart, PaginationMeta } from "@/types";
+import type { Engineer } from "@/types";
 
 type WorkflowStatus = BufferPart["status"];
 
@@ -169,8 +171,23 @@ export function BufferTable({ data, loading, pagination, onPageChange, onEdit, o
   const [caseId, setCaseId] = useState("");
   const [remarks, setRemarks] = useState("");
   const [savingTransition, setSavingTransition] = useState(false);
+  const [engineers, setEngineers] = useState<Engineer[]>([]);
+  const [loadingEngineers, setLoadingEngineers] = useState(false);
 
   const isOutTransition = pendingToStatus === "OUT";
+
+  const fetchEngineers = async (region?: string) => {
+    setLoadingEngineers(true);
+    try {
+      const data = await getEngineersForAssignment(region);
+      setEngineers(data.filter((e) => e.status === "active"));
+    } catch {
+      setEngineers([]);
+    } finally {
+      setLoadingEngineers(false);
+    }
+  };
+
   const canConfirm = useMemo(() => {
     if (!activeRow) return false;
     if (isOutTransition) return engineerName.trim().length > 0 && caseId.trim().length > 0;
@@ -184,6 +201,9 @@ export function BufferTable({ data, loading, pagination, onPageChange, onEdit, o
     setCaseId(row.case_id || "");
     setRemarks("");
     setTransitionOpen(true);
+    if (target === "OUT") {
+      fetchEngineers(row.region || undefined);
+    }
   };
 
   const openTrack = (row: BufferPart) => {
@@ -388,8 +408,23 @@ export function BufferTable({ data, loading, pagination, onPageChange, onEdit, o
             {isOutTransition && (
               <>
                 <div className="space-y-2">
-                  <Label>Engineer Name *</Label>
-                  <Input value={engineerName} onChange={(e) => setEngineerName(e.target.value)} />
+                  <Label>Select Engineer *</Label>
+                  {loadingEngineers ? (
+                    <div className="text-xs text-slate-400 py-2">Loading engineers...</div>
+                  ) : (
+                    <select
+                      className="flex h-10 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                      value={engineerName}
+                      onChange={(e) => setEngineerName(e.target.value)}
+                    >
+                      <option value="">Select engineer...</option>
+                      {engineers.map((eng) => (
+                        <option key={eng.id} value={eng.name}>
+                          {eng.name}{eng.phone ? ` — ${eng.phone}` : ""}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label>Case ID *</Label>
