@@ -30,7 +30,9 @@ export interface HPStockItem {
 
 export interface HPStockSummary {
   total: number;
-  regions: { region: string; total: number }[];
+  active_total?: number;
+  closed_total?: number;
+  regions: { region: string; total: number; active?: number; closed?: number }[];
 }
 
 export interface GetHPStockParams {
@@ -39,6 +41,7 @@ export interface GetHPStockParams {
   search?: string;
   region?: string;
   view?: 'my_region' | 'overall';
+  is_closed?: boolean;
 }
 
 export interface GetHPStockResponse {
