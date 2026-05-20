@@ -91,6 +91,69 @@ const getStatusIcon = (status: string) => {
   }
 };
 
+const getTransitionNote = (status: string) => {
+  switch (status) {
+    case "STOCK_CHECK":
+      return {
+        title: "Verify Stock Availability",
+        message: "Check the stock room to ensure the physical part matches the case specifications before updating the status.",
+        icon: <ClipboardCheck className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />,
+        bg: "bg-yellow-50/80 dark:bg-yellow-950/20 border-yellow-200 dark:border-yellow-800/60",
+        text: "text-yellow-800 dark:text-yellow-300",
+      };
+    case "ISSUED":
+      return {
+        title: "Engineer Part Issue Verification",
+        message: "Verify the engineer's identity. A 6-digit WhatsApp OTP is required to officially assign this part to the engineer.",
+        icon: <User className="w-5 h-5 text-purple-600 dark:text-purple-400" />,
+        bg: "bg-purple-50/80 dark:bg-purple-950/20 border-purple-200 dark:border-purple-800/60",
+        text: "text-purple-800 dark:text-purple-300",
+      };
+    case "WORK_STATUS":
+      return {
+        title: "Verify Work Execution",
+        message: "Confirm the current field progress with the engineer. Ensure the physical installation or service has commenced.",
+        icon: <Activity className="w-5 h-5 text-orange-600 dark:text-orange-400" />,
+        bg: "bg-orange-50/80 dark:bg-orange-950/20 border-orange-200 dark:border-orange-800/60",
+        text: "text-orange-800 dark:text-orange-300",
+      };
+    case "UNUSED_RETURN":
+      return {
+        title: "Reconcile Unused Part",
+        message: "Confirm the unused part has been returned in original, salable packaging and successfully added back to inventory.",
+        icon: <RotateCcw className="w-5 h-5 text-teal-600 dark:text-teal-400" />,
+        bg: "bg-teal-50/80 dark:bg-teal-950/20 border-teal-200 dark:border-teal-800/60",
+        text: "text-teal-800 dark:text-teal-300",
+      };
+    case "DEFECTIVE_RETURN":
+      return {
+        title: "Reconcile Defective Part",
+        message: "Confirm receipt of the customer's defective/old part. Match the serial numbers to prepare for HP RMA dispatch.",
+        icon: <RotateCcw className="w-5 h-5 text-rose-600 dark:text-rose-400" />,
+        bg: "bg-rose-50/80 dark:bg-rose-950/20 border-rose-200 dark:border-rose-800/60",
+        text: "text-rose-800 dark:text-rose-300",
+      };
+    case "HANDOVER":
+      return {
+        title: "Engineer Handover Verification",
+        message: "Record the formal return handover from the engineer. WhatsApp OTP verification is mandatory for security tracking.",
+        icon: <User className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />,
+        bg: "bg-indigo-50/80 dark:bg-indigo-950/20 border-indigo-200 dark:border-indigo-800/60",
+        text: "text-indigo-800 dark:text-indigo-300",
+      };
+    case "CLOSED":
+      return {
+        title: "Final Case Closure",
+        message: "Make sure all paperwork, OTP validations, and part logistics are 100% reconciled before closing the case forever.",
+        icon: <CheckCircle className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />,
+        bg: "bg-emerald-50/80 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/60",
+        text: "text-emerald-800 dark:text-emerald-300",
+      };
+    default:
+      return null;
+  }
+};
+
 interface Props {
   data: HPStockItem[];
   loading: boolean;
@@ -357,6 +420,29 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
             <DialogTitle>Transition HP Stock Status</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            {(() => {
+              const note = pendingToStatus ? getTransitionNote(pendingToStatus) : null;
+              if (!note) return null;
+              return (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className={`p-3.5 rounded-xl border flex gap-3 items-start shadow-sm backdrop-blur-sm ${note.bg}`}
+                >
+                  <div className="p-1 rounded-lg bg-white/60 dark:bg-slate-900/60 shadow-sm border border-slate-100 dark:border-slate-800 flex-shrink-0 mt-0.5">
+                    {note.icon}
+                  </div>
+                  <div className="space-y-1">
+                    <h4 className={`text-sm font-semibold tracking-wide ${note.text}`}>
+                      {note.title}
+                    </h4>
+                    <p className="text-xs opacity-90 leading-relaxed text-slate-600 dark:text-slate-300">
+                      {note.message}
+                    </p>
+                  </div>
+                </motion.div>
+              );
+            })()}
             {showEngineerField && (
               <div className="space-y-4 border-l-2 border-indigo-500 pl-3 py-1">
                 <h4 className="text-xs font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
