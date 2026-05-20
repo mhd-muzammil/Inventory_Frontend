@@ -13,6 +13,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { transitionHPStockItem, sendHPStockOTP } from "@/api/hpStock";
+import { getEngineersForAssignment } from "@/api/engineers";
+import type { Engineer } from "@/types";
 import { extractApiError } from "@/api/client";
 import { toast } from "@/components/ui/use-toast";
 import { useAuthStore } from "@/store/authStore";
@@ -179,8 +181,22 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
   const [generatedOtp, setGeneratedOtp] = useState("");
   const [remarks, setRemarks] = useState("");
   const [savingTransition, setSavingTransition] = useState(false);
+  const [engineers, setEngineers] = useState<Engineer[]>([]);
+  const [loadingEngineers, setLoadingEngineers] = useState(false);
 
   const showEngineerField = pendingToStatus === "ISSUED" || pendingToStatus === "HANDOVER";
+
+  const fetchEngineers = async (region?: string) => {
+    setLoadingEngineers(true);
+    try {
+      const data = await getEngineersForAssignment(region);
+      setEngineers(data.filter((e) => e.status === "active"));
+    } catch {
+      setEngineers([]);
+    } finally {
+      setLoadingEngineers(false);
+    }
+  };
   
   const canConfirm = useMemo(() => {
     if (!activeRow) return false;
@@ -204,6 +220,9 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
     setOtpSent(false);
     setGeneratedOtp("");
     setTransitionOpen(true);
+    if (target === "ISSUED" || target === "HANDOVER") {
+      fetchEngineers(row.region || undefined);
+    }
   };
 
   const openTrack = (row: HPStockItem) => {
@@ -449,12 +468,30 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
                   Engineer WhatsApp Verification
                 </h4>
                 <div className="space-y-2">
-                  <Label>Engineer Name *</Label>
-                  <Input 
-                    value={engineerName} 
-                    onChange={(e) => setEngineerName(e.target.value)} 
-                    placeholder="Enter Engineer Name" 
-                  />
+                  <Label>Select Engineer *</Label>
+                  {loadingEngineers ? (
+                    <div className="text-xs text-slate-400 py-2">Loading engineers...</div>
+                  ) : (
+                    <select
+                      className="flex h-10 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                      value={engineerName}
+                      onChange={(e) => {
+                        const selected = engineers.find((eng) => eng.name === e.target.value);
+                        setEngineerName(e.target.value);
+                        setEngineerPhone(selected?.phone || "");
+                        setOtp("");
+                        setOtpSent(false);
+                        setGeneratedOtp("");
+                      }}
+                    >
+                      <option value="">Select engineer...</option>
+                      {engineers.map((eng) => (
+                        <option key={eng.id} value={eng.name}>
+                          {eng.name}{eng.phone ? ` — ${eng.phone}` : ""}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label>Engineer Phone (10 digits) *</Label>
