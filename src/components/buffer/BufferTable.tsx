@@ -83,6 +83,69 @@ const getStatusIcon = (status: WorkflowStatus) => {
   }
 };
 
+const getTransitionNote = (status: WorkflowStatus) => {
+  switch (status) {
+    case "BUFFER_IN":
+      return {
+        title: "Return Part to Buffer",
+        message: "Confirm the part is physically placed back in the buffer stock cabinet and inventory counts are successfully updated.",
+        icon: <Package className="w-5 h-5 text-blue-600 dark:text-blue-400" />,
+        bg: "bg-blue-50/80 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800/60",
+        text: "text-blue-800 dark:text-blue-300",
+      };
+    case "OUT":
+      return {
+        title: "Mark Part Out from Buffer",
+        message: "Enter the engineer's name and case ID to officially issue this part out of buffer stock for an active service case.",
+        icon: <User className="w-5 h-5 text-amber-600 dark:text-amber-400" />,
+        bg: "bg-amber-50/80 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800/60",
+        text: "text-amber-800 dark:text-amber-300",
+      };
+    case "DEFECTIVE_RETURN":
+      return {
+        title: "Defective Return Verification",
+        message: "Ensure the defective/faulty part has been received back from the engineer and labeled correctly for return logistics.",
+        icon: <AlertCircle className="w-5 h-5 text-rose-600 dark:text-rose-400" />,
+        bg: "bg-rose-50/80 dark:bg-rose-950/20 border-rose-200 dark:border-rose-800/60",
+        text: "text-rose-800 dark:text-rose-300",
+      };
+    case "UNUSED_RETURN":
+      return {
+        title: "Reconcile Unused Part",
+        message: "Confirm the unused part has been returned in its original, undamaged packaging and successfully returned to inventory.",
+        icon: <RotateCcw className="w-5 h-5 text-teal-600 dark:text-teal-400" />,
+        bg: "bg-teal-50/80 dark:bg-teal-950/20 border-teal-200 dark:border-teal-800/60",
+        text: "text-teal-800 dark:text-teal-300",
+      };
+    case "REORDER":
+      return {
+        title: "Trigger Part Reorder",
+        message: "Request a replenishment order for this part to restore buffer stock levels. Keep track of order details in comments.",
+        icon: <RefreshCw className="w-5 h-5 text-orange-600 dark:text-orange-400" />,
+        bg: "bg-orange-50/80 dark:bg-orange-950/20 border-orange-200 dark:border-orange-800/60",
+        text: "text-orange-800 dark:text-orange-300",
+      };
+    case "PART_RECEIVED":
+      return {
+        title: "Verify Replenished Part Receipt",
+        message: "Confirm physical delivery of the replenished part. Check serial numbers and part specifications before adding to stock.",
+        icon: <ClipboardCheck className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />,
+        bg: "bg-indigo-50/80 dark:bg-indigo-950/20 border-indigo-200 dark:border-indigo-800/60",
+        text: "text-indigo-800 dark:text-indigo-300",
+      };
+    case "CLOSED":
+      return {
+        title: "Final Case Closure",
+        message: "Close the lifecycle of this buffer part. Make sure all log files, return handovers, and replenishments are fully completed.",
+        icon: <ShieldCheck className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />,
+        bg: "bg-emerald-50/80 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/60",
+        text: "text-emerald-800 dark:text-emerald-300",
+      };
+    default:
+      return null;
+  }
+};
+
 const TRACK_STEPS: WorkflowStatus[] = ["BUFFER_IN", "OUT", "DEFECTIVE_RETURN", "UNUSED_RETURN", "REORDER", "PART_RECEIVED", "CLOSED"];
 
 interface BufferTableProps {
@@ -299,6 +362,29 @@ export function BufferTable({ data, loading, pagination, onPageChange, onEdit, o
             <DialogTitle>Transition Ticket</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            {(() => {
+              const note = pendingToStatus ? getTransitionNote(pendingToStatus) : null;
+              if (!note) return null;
+              return (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className={`p-3.5 rounded-xl border flex gap-3 items-start shadow-sm backdrop-blur-sm ${note.bg}`}
+                >
+                  <div className="p-1 rounded-lg bg-white/60 dark:bg-slate-900/60 shadow-sm border border-slate-100 dark:border-slate-800 flex-shrink-0 mt-0.5">
+                    {note.icon}
+                  </div>
+                  <div className="space-y-1">
+                    <h4 className={`text-sm font-semibold tracking-wide ${note.text}`}>
+                      {note.title}
+                    </h4>
+                    <p className="text-xs opacity-90 leading-relaxed text-slate-600 dark:text-slate-300">
+                      {note.message}
+                    </p>
+                  </div>
+                </motion.div>
+              );
+            })()}
             {isOutTransition && (
               <>
                 <div className="space-y-2">
