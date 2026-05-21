@@ -213,8 +213,9 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
   const openTransition = (row: HPStockItem, target: string) => {
     setActiveRow(row);
     setPendingToStatus(target);
-    setEngineerName(row.engineer_name || "");
-    setEngineerPhone(row.engineer_phone || "");
+    const isEngineerStep = target === "ISSUED" || target === "HANDOVER";
+    setEngineerName(isEngineerStep ? (row.engineer_name || "") : "");
+    setEngineerPhone(isEngineerStep ? (row.engineer_phone || "") : "");
     setRemarks("");
     setOtp("");
     setOtpSent(false);
@@ -262,7 +263,7 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
     setSavingTransition(true);
     try {
       const updated = await transitionHPStockItem(activeRow.id, {
-        engineer_name: engineerName.trim() || undefined,
+        engineer_name: showEngineerField ? engineerName.trim() || undefined : undefined,
         engineer_phone: showEngineerField ? engineerPhone.trim() : undefined,
         otp: showEngineerField ? otp.trim() : undefined,
         remarks: remarks.trim() || undefined,
@@ -487,7 +488,7 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
                       <option value="">Select engineer...</option>
                       {engineers.map((eng) => (
                         <option key={eng.id} value={eng.name}>
-                          {eng.name}{eng.phone ? ` — ${eng.phone}` : ""}
+                          {eng.name}
                         </option>
                       ))}
                     </select>
