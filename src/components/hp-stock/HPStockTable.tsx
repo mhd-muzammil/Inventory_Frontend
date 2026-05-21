@@ -28,9 +28,10 @@ const AVAILABLE_TRANSITIONS: Record<string, string[]> = {
   PENDING: ["STOCK_CHECK"],
   STOCK_CHECK: ["ISSUED"],
   ISSUED: ["WORK_STATUS"],
-  WORK_STATUS: ["UNUSED_RETURN", "DEFECTIVE_RETURN"],
+  WORK_STATUS: ["UNUSED_RETURN", "DEFECTIVE_RETURN", "DOA"],
   UNUSED_RETURN: ["HANDOVER"],
   DEFECTIVE_RETURN: ["HANDOVER"],
+  DOA: ["HANDOVER"],
   HANDOVER: ["CLOSED"],
 };
 
@@ -40,6 +41,7 @@ const TRANSITION_LABELS: Record<string, string> = {
   WORK_STATUS: "Verify Work Status",
   UNUSED_RETURN: "Mark as Unused Part",
   DEFECTIVE_RETURN: "Mark as Old/Defective Part",
+  DOA: "Death on Arrival",
   HANDOVER: "Record Engineer Handover",
   CLOSED: "Close the Case",
 };
@@ -52,6 +54,7 @@ const STATUS_LABELS: Record<string, string> = {
   WORK_STATUS: "Work Status",
   UNUSED_RETURN: "Unused Part",
   DEFECTIVE_RETURN: "Old/Defective Part",
+  DOA: "Death on Arrival",
   HANDOVER: "Handover by Engineer",
   CLOSED: "Close the Case",
 };
@@ -64,11 +67,12 @@ const STATUS_STYLE_MAP: Record<string, { bg: string; text: string; dot: string }
   WORK_STATUS: { bg: "bg-orange-50 dark:bg-orange-900/20", text: "text-orange-700 dark:text-orange-400", dot: "bg-orange-600" },
   UNUSED_RETURN: { bg: "bg-teal-50 dark:bg-teal-900/20", text: "text-teal-700 dark:text-teal-400", dot: "bg-teal-600" },
   DEFECTIVE_RETURN: { bg: "bg-rose-50 dark:bg-rose-900/20", text: "text-rose-700 dark:text-rose-400", dot: "bg-rose-600" },
+  DOA: { bg: "bg-red-50 dark:bg-red-900/20", text: "text-red-700 dark:text-red-400", dot: "bg-red-600" },
   HANDOVER: { bg: "bg-indigo-50 dark:bg-indigo-900/20", text: "text-indigo-700 dark:text-indigo-400", dot: "bg-indigo-600" },
   CLOSED: { bg: "bg-emerald-50 dark:bg-emerald-900/20", text: "text-emerald-700 dark:text-emerald-400", dot: "bg-emerald-600" },
 };
 
-const TRACK_STEPS = ["PENDING", "STOCK_CHECK", "ISSUED", "WORK_STATUS", "UNUSED_RETURN", "DEFECTIVE_RETURN", "HANDOVER", "CLOSED"];
+const TRACK_STEPS = ["PENDING", "STOCK_CHECK", "ISSUED", "WORK_STATUS", "UNUSED_RETURN", "DEFECTIVE_RETURN", "DOA", "HANDOVER", "CLOSED"];
 
 const getStatusIcon = (status: string) => {
   switch (status) {
@@ -84,6 +88,8 @@ const getStatusIcon = (status: string) => {
     case "UNUSED_RETURN":
     case "DEFECTIVE_RETURN":
       return <RotateCcw className="w-3.5 h-3.5" />;
+    case "DOA":
+      return <Activity className="w-3.5 h-3.5" />;
     case "HANDOVER":
       return <User className="w-3.5 h-3.5" />;
     case "CLOSED":
@@ -134,6 +140,14 @@ const getTransitionNote = (status: string) => {
         icon: <RotateCcw className="w-5 h-5 text-rose-600 dark:text-rose-400" />,
         bg: "bg-rose-50/80 dark:bg-rose-950/20 border-rose-200 dark:border-rose-800/60",
         text: "text-rose-800 dark:text-rose-300",
+      };
+    case "DOA":
+      return {
+        title: "Death on Arrival",
+        message: "The part was found dead/non-functional on arrival. Document the issue and prepare for RMA or replacement processing.",
+        icon: <Activity className="w-5 h-5 text-red-600 dark:text-red-400" />,
+        bg: "bg-red-50/80 dark:bg-red-950/20 border-red-200 dark:border-red-800/60",
+        text: "text-red-800 dark:text-red-300",
       };
     case "HANDOVER":
       return {
@@ -570,12 +584,16 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
                   (activeRow.transition_history || []).some(h => h.to_status === "UNUSED_RETURN" || h.from_status === "UNUSED_RETURN");
                 const hasDefective = activeRow.status === "DEFECTIVE_RETURN" || 
                   (activeRow.transition_history || []).some(h => h.to_status === "DEFECTIVE_RETURN" || h.from_status === "DEFECTIVE_RETURN");
+                const hasDOA = activeRow.status === "DOA" || 
+                  (activeRow.transition_history || []).some(h => h.to_status === "DOA" || h.from_status === "DOA");
                 
                 const steps = ["PENDING", "STOCK_CHECK", "ISSUED", "WORK_STATUS"];
                 if (hasUnused) {
                   steps.push("UNUSED_RETURN");
                 } else if (hasDefective) {
                   steps.push("DEFECTIVE_RETURN");
+                } else if (hasDOA) {
+                  steps.push("DOA");
                 } else {
                   steps.push("UNUSED_RETURN");
                 }
