@@ -47,6 +47,9 @@ export interface User {
   is_active: boolean;
 }
 
+// [x] Modify backend `customer` views to query `Ticket` model with role and region-based scoping (mirrored after HP Stock RMA workflow logic) <!-- id: 2 -->
+// [/] Update frontend types in `index.ts` to include case/ticket details in `Customer` interface <!-- id: 3 -->
+
 export interface AuthResponse {
   access: string;
   refresh: string;
@@ -592,6 +595,8 @@ export interface CustomerQueryParams {
   search?: string;
   page?: number;
   per_page?: number;
+  is_closed?: boolean | string;
+  region?: string;
 }
 
 // ============================================================
@@ -673,12 +678,16 @@ export const INVOICE_STATUS_LABELS: Record<InvoiceStatus, string> = {
 
 // Legacy compat for existing Customer/Transaction code
 export interface Customer {
-  id: string;
+  id: string | number;
   name: string;
   email: string;
   phone: string;
   company: string;
   total_transactions: number;
+  region?: Region;
+  status?: TicketStatus;
+  ticket_number?: string;
+  form_number?: string | null;
   created_at: string;
 }
 
