@@ -22,11 +22,57 @@ export async function getTicket(id: number | string): Promise<Ticket> {
 }
 
 export async function createTicket(payload: Record<string, unknown>): Promise<Ticket> {
+  const containsFile = Object.values(payload).some(val => val instanceof File);
+  if (containsFile) {
+    const formData = new FormData();
+    Object.entries(payload).forEach(([key, val]) => {
+      if (val !== undefined && val !== null) {
+        if (val instanceof File) {
+          formData.append(key, val);
+        } else {
+          formData.append(key, typeof val === "object" ? JSON.stringify(val) : String(val));
+        }
+      }
+    });
+    const { data } = await client.post<Ticket>("/tickets/", formData, {
+      headers: { "Content-Type": "multipart/form-data" }
+    });
+    return data;
+  }
   const { data } = await client.post<Ticket>("/tickets/", payload);
   return data;
 }
 
 export async function updateTicket(id: number | string, payload: Record<string, unknown>): Promise<Ticket> {
+  const containsFile = Object.values(payload).some(
+    val => val instanceof File || (Array.isArray(val) && val.some(item => item instanceof File))
+  );
+  if (containsFile) {
+    const formData = new FormData();
+    Object.entries(payload).forEach(([key, val]) => {
+      if (val !== undefined && val !== null) {
+        if (val instanceof File) {
+          formData.append(key, val);
+        } else if (Array.isArray(val)) {
+          if (val.some(item => item instanceof File)) {
+            val.forEach((item) => {
+              if (item instanceof File) {
+                formData.append(key, item);
+              }
+            });
+          } else {
+            formData.append(key, JSON.stringify(val));
+          }
+        } else {
+          formData.append(key, typeof val === "object" ? JSON.stringify(val) : String(val));
+        }
+      }
+    });
+    const { data } = await client.put<Ticket>(`/tickets/${id}/`, formData, {
+      headers: { "Content-Type": "multipart/form-data" }
+    });
+    return data;
+  }
   const { data } = await client.put<Ticket>(`/tickets/${id}/`, payload);
   return data;
 }
