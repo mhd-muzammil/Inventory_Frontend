@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import {
   ChevronLeft,
@@ -20,6 +20,8 @@ import {
   ExternalLink,
   Download,
   Wrench,
+  Send,
+  MessageSquare,
 } from "lucide-react";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -27,9 +29,10 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import type { PartRequest, PaginationMeta, UserRole } from "@/types";
+import type { PartRequest, PaginationMeta, UserRole, PartRequestMessage } from "@/types";
 import { PART_REQUEST_STATUS_LABELS } from "@/types";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { getPartRequest, addPartRequestMessage } from "@/api/partRequests";
 
 interface PartRequestsTableProps {
   data: PartRequest[];
@@ -69,6 +72,52 @@ function PartRequestDetailDialog({
 }: PartRequestDetailDialogProps) {
   const [activeDocIndex, setActiveDocIndex] = useState(0);
   const [activeDocType, setActiveDocType] = useState<"cso" | "part">("part");
+  const [messages, setMessages] = useState<PartRequestMessage[]>([]);
+  const [newMessage, setNewMessage] = useState("");
+  const [loadingMessages, setLoadingMessages] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  useEffect(() => {
+    if (request?.id) {
+      setMessages(request.messages || []);
+      setLoadingMessages(true);
+      getPartRequest(request.id)
+        .then((data) => {
+          if (data.messages) {
+            setMessages(data.messages);
+          }
+        })
+        .catch((err) => console.error("Error loading messages:", err))
+        .finally(() => setLoadingMessages(false));
+    } else {
+      setMessages([]);
+    }
+  }, [request?.id]);
+
+  const handleSendMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newMessage.trim() || submitting || !request?.id) return;
+
+    setSubmitting(true);
+    try {
+      const sentMsg = await addPartRequestMessage(request.id, newMessage.trim());
+      setMessages((prev) => [...prev, sentMsg]);
+      setNewMessage("");
+    } catch (err) {
+      console.error("Failed to send message:", err);
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   useEffect(() => {
     setActiveDocIndex(0);
@@ -289,9 +338,9 @@ function PartRequestDetailDialog({
               </div>
             </div>
 
-            {/* Right Column - Beautiful Scan / Document Gallery */}
+            {/* Right Column - Beautiful Scan / Document Gallery & Premium Discussion Feed */}
             <div className="space-y-4">
-              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-5 shadow-sm flex flex-col h-full">
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-5 shadow-sm flex flex-col">
                 <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100 border-b border-slate-200 dark:border-slate-700 pb-2 flex items-center gap-2 mb-3">
                   <FileText className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
                   Document Scans / Image Entry
@@ -402,6 +451,133 @@ function PartRequestDetailDialog({
                     </Button>
                   </div>
                 )}
+              </div>
+
+              {/* Chat / Discussion Card */}
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-5 shadow-sm flex flex-col h-[400px]">
+                <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100 border-b border-slate-200 dark:border-slate-700 pb-2 flex items-center gap-2 mb-3 flex-shrink-0">
+                  <MessageSquare className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                  Discussion & History
+                </h3>
+
+                {/* Scrollable messages container */}
+                <div className="flex-1 overflow-y-auto space-y-4 mb-3 pr-1 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-800 scroll-smooth">
+                  {loadingMessages && messages.length === 0 ? (
+                    <div className="flex flex-col gap-3 py-2">
+                      <div className="flex gap-2">
+                        <Skeleton className="h-8 w-8 rounded-full" />
+                        <div className="flex-1 space-y-1.5">
+                          <Skeleton className="h-3.5 w-24" />
+                          <Skeleton className="h-10 w-2/3 rounded-xl rounded-tl-none" />
+                        </div>
+                      </div>
+                      <div className="flex gap-2 justify-end self-end w-full">
+                        <div className="flex-1 flex flex-col items-end space-y-1.5">
+                          <Skeleton className="h-3.5 w-24" />
+                          <Skeleton className="h-10 w-2/3 rounded-xl rounded-tr-none" />
+                        </div>
+                        <Skeleton className="h-8 w-8 rounded-full" />
+                      </div>
+                    </div>
+                  ) : messages.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-full py-8 text-slate-400 text-center">
+                      <MessageSquare className="w-10 h-10 text-slate-300 dark:text-slate-600 mb-2 opacity-60" />
+                      <p className="text-xs font-semibold text-slate-600 dark:text-slate-350">No discussions yet</p>
+                      <p className="text-[11px] text-slate-400 max-w-[200px] mt-1 leading-normal">
+                        Ask a question or post an update about this part request.
+                      </p>
+                    </div>
+                  ) : (
+                    messages.map((msg) => {
+                      const role = msg.sender.role.toLowerCase();
+                      const isSuperAdmin = role.includes("super admin") || role === "super_admin";
+                      const isSubAdmin = role.includes("sub admin") || role === "sub_admin";
+                      const isManager = (role.includes("manager") || role === "manager" || role.includes("admin") || role === "admin") && !isSubAdmin && !isSuperAdmin;
+
+                      let roleBadgeClass = "bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700";
+                      if (isSuperAdmin) {
+                        roleBadgeClass = "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-400 dark:border-red-900/50";
+                      } else if (isManager) {
+                        roleBadgeClass = "bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-400 dark:border-indigo-900/50";
+                      } else if (isSubAdmin) {
+                        roleBadgeClass = "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-900/50";
+                      }
+
+                      const getInitials = (name: string) => {
+                        return name
+                          .split(" ")
+                          .map((n) => n[0])
+                          .join("")
+                          .slice(0, 2)
+                          .toUpperCase();
+                      };
+                      const initials = getInitials(msg.sender.full_name);
+
+                      return (
+                        <div key={msg.id} className="flex items-start gap-2.5 text-xs">
+                          {/* Avatar Circle */}
+                          <div className={cn(
+                            "w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold flex-shrink-0 shadow-inner border",
+                            isSubAdmin
+                              ? "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-900"
+                              : isSuperAdmin || isManager
+                              ? "bg-indigo-100 text-indigo-800 border-indigo-200 dark:bg-indigo-950/60 dark:text-indigo-300 dark:border-indigo-900"
+                              : "bg-slate-100 text-slate-800 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700"
+                          )}>
+                            {initials}
+                          </div>
+
+                          {/* Message Body */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-2 mb-1">
+                              <span className="font-semibold text-slate-700 dark:text-slate-350 flex items-center gap-1.5 truncate">
+                                {msg.sender.full_name}
+                                <span className={cn("text-[9px] font-bold px-1.5 py-0.5 rounded-full border tracking-wide uppercase flex-shrink-0", roleBadgeClass)}>
+                                  {msg.sender.role}
+                                </span>
+                              </span>
+                              <span className="text-[10px] text-slate-400 dark:text-slate-500 flex-shrink-0">
+                                {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            </div>
+                            <div className={cn(
+                              "p-3 rounded-2xl border text-sm text-slate-850 dark:text-slate-200 leading-relaxed break-words shadow-sm",
+                              isSubAdmin
+                                ? "bg-amber-50/20 border-amber-100/50 dark:bg-amber-950/10 dark:border-amber-900/20 rounded-tl-none"
+                                : isSuperAdmin || isManager
+                                ? "bg-indigo-50/20 border-indigo-100/50 dark:bg-indigo-950/10 dark:border-indigo-900/20 rounded-tl-none"
+                                : "bg-slate-50/40 border-slate-100/50 dark:bg-slate-800/20 dark:border-slate-800 rounded-tl-none"
+                            )}>
+                              {msg.message}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                  {/* Scroll target anchor */}
+                  <div ref={messagesEndRef} />
+                </div>
+
+                {/* Input form footer */}
+                <form onSubmit={handleSendMessage} className="flex items-center gap-2 border-t border-slate-150 dark:border-slate-800 pt-3 flex-shrink-0">
+                  <input
+                    type="text"
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                    placeholder="Ask a question or reply..."
+                    className="flex-1 bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 dark:text-white transition-all placeholder-slate-400"
+                    disabled={submitting}
+                  />
+                  <Button
+                    type="submit"
+                    size="icon"
+                    className="h-9 w-9 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl flex-shrink-0 flex items-center justify-center shadow-md transition-all active:scale-95 disabled:opacity-50 disabled:pointer-events-none"
+                    disabled={!newMessage.trim() || submitting}
+                  >
+                    <Send className="w-4 h-4" />
+                  </Button>
+                </form>
               </div>
             </div>
           </div>
