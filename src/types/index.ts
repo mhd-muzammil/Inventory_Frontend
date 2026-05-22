@@ -184,6 +184,17 @@ export interface AvailableTransition {
 // PART REQUESTS
 // ============================================================
 
+export interface PartRequestMessage {
+  id: number;
+  sender: {
+    id: number;
+    full_name: string;
+    role: string;
+  };
+  message: string;
+  created_at: string;
+}
+
 export interface PartRequest {
   id: number;
   ticket_id: number;
@@ -204,6 +215,7 @@ export interface PartRequest {
   created_at: string;
   updated_at: string;
   ticket_details?: Ticket;
+  messages?: PartRequestMessage[];
 }
 
 // ============================================================
