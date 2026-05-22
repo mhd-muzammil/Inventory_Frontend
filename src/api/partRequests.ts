@@ -1,6 +1,6 @@
 import client from "./client";
 import { buildParams } from "@/lib/utils";
-import type { PartRequest, PartRequestFilters, PaginatedResponse } from "@/types";
+import type { PartRequest, PartRequestFilters, PaginatedResponse, PartRequestMessage } from "@/types";
 
 export async function getPartRequests(filters?: PartRequestFilters): Promise<PaginatedResponse<PartRequest>> {
   const params = buildParams(filters ?? {});
@@ -37,3 +37,9 @@ export async function getPendingPartRequests(): Promise<PaginatedResponse<PartRe
   const { data } = await client.get<PaginatedResponse<PartRequest>>("/part-requests/pending/");
   return data;
 }
+
+export async function addPartRequestMessage(id: number | string, message: string): Promise<PartRequestMessage> {
+  const { data } = await client.post<PartRequestMessage>(`/part-requests/${id}/messages/`, { message });
+  return data;
+}
+
