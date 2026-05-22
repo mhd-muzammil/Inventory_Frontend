@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Dialog,
   DialogContent,
@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, Download, FileText, Loader2 } from "lucide-react";
+import { Plus, Trash2, Printer, FileText, Loader2 } from "lucide-react";
 import renderlogo from "@/assets/renderlogo.png";
 import bobQr from "@/assets/bob_qr.png";
 import stampImg from "@/assets/stamp.png";
@@ -165,6 +165,7 @@ export function QuotationFormDialog({
   );
 
   const [saving, setSaving] = useState(false);
+  const printRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (initialData && open) {
@@ -303,31 +304,33 @@ export function QuotationFormDialog({
     }
   };
 
-  const handleDownloadPDF = () => {
-    const previewEl = document.getElementById("quotation-preview-container");
+  const handlePrint = () => {
+    const previewEl = printRef.current;
     if (!previewEl) return;
 
-    const exportPDF = () => {
-      const opt = {
-        margin: 0,
-        filename: `${quoteNumber || "Quotation"}.pdf`,
-        image: { type: "jpeg", quality: 1 },
-        html2canvas: { scale: 2, useCORS: true, logging: false },
-        jsPDF: { unit: "in", format: "a4", orientation: "portrait" },
-        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
-      };
-      (window as any).html2pdf().from(previewEl).set(opt).save();
-    };
+    const printWindow = window.open("", "_blank", "width=800,height=1100");
+    if (!printWindow) return;
 
-    if (!(window as any).html2pdf) {
-      const script = document.createElement("script");
-      script.src =
-        "https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js";
-      script.onload = exportPDF;
-      document.head.appendChild(script);
-    } else {
-      exportPDF();
-    }
+    const styles = Array.from(
+      document.querySelectorAll('style, link[rel="stylesheet"]')
+    )
+      .map((node) => node.outerHTML)
+      .join("\n");
+
+    printWindow.document.write(`<!DOCTYPE html><html><head><title>Quotation - ${quoteNumber || "New"}</title>
+      ${styles}
+      <style>
+        @page{size:A4;margin:0}
+        *{box-sizing:border-box}
+        body{margin:0;background:#fff;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+        .print-root{width:210mm;margin:0 auto;background:#fff}
+        .print-root .shadow-xl{box-shadow:none!important}
+        .print-page-break{break-after:page;page-break-after:always}
+      </style></head><body>
+      <div class="print-root">${previewEl.outerHTML}</div>
+      <script>window.onload=function(){window.focus();window.onafterprint=function(){window.close()};window.print();}</script>
+    </body></html>`);
+    printWindow.document.close();
   };
 
   return (
@@ -351,11 +354,11 @@ export function QuotationFormDialog({
               </Select>
             </div>
             <Button
-              onClick={handleDownloadPDF}
+              onClick={handlePrint}
               variant="default"
               className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm h-8"
             >
-              <Download className="w-4 h-4" /> PDF
+              <Printer className="w-4 h-4" /> Print
             </Button>
             {onSubmitQuotation && (
               <Button onClick={handleSaveQuotation} disabled={saving} className="h-8">
@@ -368,7 +371,7 @@ export function QuotationFormDialog({
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-0">
           {/* Left Panel */}
-          <div className="lg:col-span-5 p-4 border-r border-slate-200 dark:border-slate-800 max-h-[calc(92vh-70px)] overflow-y-auto space-y-5 bg-white dark:bg-slate-900/40">
+          <div className="lg:col-span-12 p-4 max-h-[calc(92vh-70px)] overflow-y-auto space-y-5 bg-white dark:bg-slate-900/40">
             <div className="space-y-3">
               <h3 className="font-bold text-indigo-600 text-sm border-b pb-1">Quotation Reference</h3>
               <div className="grid grid-cols-2 gap-3">
@@ -472,9 +475,9 @@ export function QuotationFormDialog({
             )}
           </div>
 
-          {/* Right Panel: The Preview Container */}
-          <div className="lg:col-span-7 bg-slate-300/40 dark:bg-slate-900 p-4 overflow-y-auto flex justify-center max-h-[calc(92vh-70px)] overflow-x-hidden">
-            <div id="quotation-preview-container" className="flex flex-col gap-0 select-none pointer-events-none bg-white" style={{ width: "210mm", background: "#fff" }}>
+          {/* Hidden print source */}
+          <div className="hidden">
+            <div ref={printRef} id="quotation-preview-container" className="flex flex-col gap-0 select-none pointer-events-none bg-white" style={{ width: "210mm", background: "#fff" }}>
               
               {quotationStyle === "classic" ? (
                 /* ------------------- CLASSIC BLACK & WHITE STYLE (100% ACCURATE) ------------------- */
@@ -634,8 +637,8 @@ export function QuotationFormDialog({
 
                   </div>
 
-                  {/* PAGE BREAK IN PDF */}
-                  <div className="html2pdf__page-break" style={{ height: 0 }}></div>
+                  {/* Print page break */}
+                  <div className="print-page-break" style={{ height: 0 }}></div>
 
                   {/* Page 2 Container: Terms & Conditions */}
                   <div style={{ width: "210mm", minHeight: "297mm", padding: "20mm 20mm", boxSizing: "border-box", background: "#ffffff", color: "#000000", fontFamily: "Arial, sans-serif" }}>
@@ -682,7 +685,7 @@ export function QuotationFormDialog({
                 /* ------------------- EXISTING MODERN ORANGE STYLE (ACCURATE REDESIGN) ------------------- */
                 <div style={{ width: "210mm", minHeight: "297mm", padding: "12mm 15mm", boxSizing: "border-box", background: "#ffffff", color: "#222", fontFamily: "Arial, sans-serif" }}>
                   
-                  {/* 1. Top Structural Table replacing Grid for 100% robust PDF support */}
+                  {/* 1. Top Structural Table replacing Grid for robust print support */}
                   <table style={{ width: '100%', borderCollapse: 'collapse', border: 'none', marginBottom: '35px', tableLayout: 'fixed' }}>
                     <tbody>
                       <tr>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Dialog,
   DialogContent,
@@ -9,7 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, Trash2, Download, Receipt, Loader2 } from "lucide-react";
+import { Plus, Trash2, Printer, Receipt, Loader2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import renderfulllogo from "@/assets/renderfulllogo.png";
 import renderlogo from "@/assets/renderlogo.png";
@@ -128,6 +128,7 @@ export function InvoiceFormDialog({
 
   const [terms, setTerms] = useState("Thanks for your support");
   const [saving, setSaving] = useState(false);
+  const printRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (initialData && open) {
@@ -319,31 +320,32 @@ export function InvoiceFormDialog({
     }
   };
 
-  const handleDownloadPDF = () => {
-    const previewEl = document.getElementById("invoice-preview-container");
+  const handlePrint = () => {
+    const previewEl = printRef.current;
     if (!previewEl) return;
 
-    const exportPDF = () => {
-      const opt = {
-        margin: 0,
-        filename: `${invoiceNumber || "Invoice"}.pdf`,
-        image: { type: "jpeg", quality: 1 },
-        html2canvas: { scale: 2, useCORS: true, logging: false },
-        jsPDF: { unit: "in", format: "a4", orientation: "portrait" },
-        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
-      };
-      (window as any).html2pdf().from(previewEl).set(opt).save();
-    };
+    const printWindow = window.open("", "_blank", "width=800,height=1100");
+    if (!printWindow) return;
 
-    if (!(window as any).html2pdf) {
-      const script = document.createElement("script");
-      script.src =
-        "https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js";
-      script.onload = exportPDF;
-      document.head.appendChild(script);
-    } else {
-      exportPDF();
-    }
+    const styles = Array.from(
+      document.querySelectorAll('style, link[rel="stylesheet"]')
+    )
+      .map((node) => node.outerHTML)
+      .join("\n");
+
+    printWindow.document.write(`<!DOCTYPE html><html><head><title>Invoice - ${invoiceNumber || "New"}</title>
+      ${styles}
+      <style>
+        @page{size:A4;margin:0}
+        *{box-sizing:border-box}
+        body{margin:0;background:#fff;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+        .print-root{width:210mm;margin:0 auto;background:#fff}
+        .print-root .shadow-xl{box-shadow:none!important}
+      </style></head><body>
+      <div class="print-root">${previewEl.outerHTML}</div>
+      <script>window.onload=function(){window.focus();window.onafterprint=function(){window.close()};window.print();}</script>
+    </body></html>`);
+    printWindow.document.close();
   };
 
   return (
@@ -367,11 +369,11 @@ export function InvoiceFormDialog({
               </Select>
             </div>
             <Button
-              onClick={handleDownloadPDF}
+              onClick={handlePrint}
               variant="default"
               className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm h-8"
             >
-              <Download className="w-4 h-4" /> PDF
+              <Printer className="w-4 h-4" /> Print
             </Button>
             {onSubmitInvoice && (
               <Button onClick={handleSaveInvoice} disabled={saving} className="h-8">
@@ -386,7 +388,7 @@ export function InvoiceFormDialog({
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-0">
           {/* Left Panel: Form Section */}
-          <div className="lg:col-span-6 p-4 border-r border-slate-200 dark:border-slate-800 max-h-[calc(92vh-100px)] overflow-y-auto space-y-5 bg-white dark:bg-slate-900/40">
+          <div className="lg:col-span-12 p-4 max-h-[calc(92vh-100px)] overflow-y-auto space-y-5 bg-white dark:bg-slate-900/40">
             {/* INVOICE DETAILS */}
             <div className="space-y-3">
               <h3 className="font-bold text-slate-700 dark:text-slate-200 text-sm border-b pb-1">
@@ -693,9 +695,9 @@ export function InvoiceFormDialog({
             </div>
           </div>
 
-          {/* Right Panel: Invoice Live Preview Section */}
-          <div className="lg:col-span-6 p-4 max-h-[calc(92vh-100px)] overflow-y-auto bg-slate-200 dark:bg-slate-900/50 flex justify-center items-start overflow-x-hidden">
-            <div id="invoice-preview-container" className="flex flex-col gap-0 select-none pointer-events-none bg-white" style={{ width: "210mm", background: "#fff" }}>
+          {/* Hidden print source */}
+          <div className="hidden">
+            <div ref={printRef} id="invoice-preview-container" className="flex flex-col gap-0 select-none pointer-events-none bg-white" style={{ width: "210mm", background: "#fff" }}>
               
               {invoiceStyle === "classic" ? (
                 <div
