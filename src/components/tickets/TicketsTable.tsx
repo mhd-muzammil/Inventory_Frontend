@@ -132,9 +132,9 @@ export function TicketsTable({
               <TableHead>Warranty</TableHead>
               <TableHead>Complaint</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead>Actions</TableHead>
               <TableHead>Delay / SLA</TableHead>
               <TableHead>Engineer</TableHead>
-              <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -218,6 +218,53 @@ export function TicketsTable({
                       <StatusBadge status={ticket.current_status} />
                     </TableCell>
 
+                    {/* Actions */}
+                    <TableCell>
+                      <div className="flex items-center gap-1.5">
+                        {ticket.current_status === "cso_created" && (
+                          <Button variant="outline" size="sm" className="gap-1 text-xs" onClick={() => { setAssignTicketId(ticket.id); setAssignTicketRegion(ticket.region); setAssignDialogOpen(true); }}>
+                            <UserPlus className="w-3.5 h-3.5" /> Assign
+                          </Button>
+                        )}
+
+                        {ticket.current_status !== "cso_created" && transitions.length > 0 && (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button size="sm" className="gap-1 text-xs" disabled={isTransitioning}>
+                                {isTransitioning ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ArrowRight className="w-3.5 h-3.5" />}
+                                Next Step <ChevronDown className="w-3 h-3 ml-0.5" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-56">
+                              {transitions.map((t) => (
+                                <DropdownMenuItem
+                                  key={t.to_status}
+                                  className="cursor-pointer gap-2 text-sm"
+                                  onClick={() => t.requires_comment ? handleTransitionWithComment(ticket.id, t) : handleQuickTransition(ticket.id, t.to_status)}
+                                >
+                                  <span className={`w-2 h-2 rounded-full flex-shrink-0 ${STATUS_CONFIG[t.to_status]?.dotClass || "bg-slate-400"}`} />
+                                  {t.label}
+                                  {t.requires_comment && <MessageSquare className="w-3 h-3 ml-auto text-slate-400" />}
+                                </DropdownMenuItem>
+                              ))}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
+
+                        <Link to={`/tickets/${ticket.id}`}>
+                          <Button variant="ghost" size="sm" className="gap-1 text-xs">
+                            <Eye className="w-3.5 h-3.5" />
+                          </Button>
+                        </Link>
+
+                        {(userRole === "super_admin" || userRole === "admin") && (
+                          <Button variant="ghost" size="sm" className="gap-1 text-xs text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/50" onClick={() => handleDeleteTicket(ticket.id)}>
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+
                     {/* Delay / SLA */}
                     <TableCell>
                       {ticket.current_status === "closed" ? (
@@ -227,7 +274,7 @@ export function TicketsTable({
                       ) : (() => {
                         const elapsed = ticket.current_stage_elapsed_mins ?? 0;
                         const sla = DEFAULT_SLAS.find((s) => s.status === ticket.current_status);
-                        const slaMin = sla?.sla_minutes ?? 0;
+                        const slaMin = sla?.slate_minutes ?? sla?.sla_minutes ?? 0;
                         const isBreached = slaMin > 0 && elapsed > slaMin;
                         const isWarning = slaMin > 0 && !isBreached && elapsed > slaMin * 0.75;
                         const delayMin = isBreached ? elapsed - slaMin : 0;
@@ -283,53 +330,6 @@ export function TicketsTable({
                           ?? (<span className="text-slate-400 dark:text-slate-500 italic">Unassigned</span>)
                         }
                       </span>
-                    </TableCell>
-
-                    {/* Actions */}
-                    <TableCell>
-                      <div className="flex items-center gap-1.5">
-                        {ticket.current_status === "cso_created" && (
-                          <Button variant="outline" size="sm" className="gap-1 text-xs" onClick={() => { setAssignTicketId(ticket.id); setAssignTicketRegion(ticket.region); setAssignDialogOpen(true); }}>
-                            <UserPlus className="w-3.5 h-3.5" /> Assign
-                          </Button>
-                        )}
-
-                        {ticket.current_status !== "cso_created" && transitions.length > 0 && (
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button size="sm" className="gap-1 text-xs" disabled={isTransitioning}>
-                                {isTransitioning ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ArrowRight className="w-3.5 h-3.5" />}
-                                Next Step <ChevronDown className="w-3 h-3 ml-0.5" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-56">
-                              {transitions.map((t) => (
-                                <DropdownMenuItem
-                                  key={t.to_status}
-                                  className="cursor-pointer gap-2 text-sm"
-                                  onClick={() => t.requires_comment ? handleTransitionWithComment(ticket.id, t) : handleQuickTransition(ticket.id, t.to_status)}
-                                >
-                                  <span className={`w-2 h-2 rounded-full flex-shrink-0 ${STATUS_CONFIG[t.to_status]?.dotClass || "bg-slate-400"}`} />
-                                  {t.label}
-                                  {t.requires_comment && <MessageSquare className="w-3 h-3 ml-auto text-slate-400" />}
-                                </DropdownMenuItem>
-                              ))}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        )}
-
-                        <Link to={`/tickets/${ticket.id}`}>
-                          <Button variant="ghost" size="sm" className="gap-1 text-xs">
-                            <Eye className="w-3.5 h-3.5" />
-                          </Button>
-                        </Link>
-
-                        {(userRole === "super_admin" || userRole === "admin") && (
-                          <Button variant="ghost" size="sm" className="gap-1 text-xs text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/50" onClick={() => handleDeleteTicket(ticket.id)}>
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </Button>
-                        )}
-                      </div>
                     </TableCell>
                   </motion.tr>
                 );

@@ -269,7 +269,7 @@ export async function receiveReplenishment(id: number): Promise<ReplenishmentOrd
 // ─── Audit Logs ────────────────────────────────────────────────────────────
 
 export async function getAuditLogs(
-  filters?: { action?: string; entity_type?: string; region?: string; page?: number; per_page?: number },
+  filters?: { action?: string; entity_type?: string; region?: string; page?: number; per_page?: number; entity_id?: number },
 ): Promise<PaginatedResponse<BufferAuditLog>> {
   const { data } = await client.get<PaginatedResponse<BufferAuditLog>>(
     `${BASE}/audit-logs/`,

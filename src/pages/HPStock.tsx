@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import { Layers, AlertCircle, Plus, Search, MapPin, Globe, BarChart3, Package } from "lucide-react";
+import { AlertCircle, Plus, Search, MapPin, Globe, BarChart3, Layers } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,18 +11,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { BufferTable } from "@/components/buffer/BufferTable";
-import { BufferFormDialog } from "@/components/buffer/BufferFormDialog";
-import { getBufferParts, deleteBufferPart, getBufferPartSummary } from "@/api/bufferParts";
-import type { BufferPartSummary } from "@/api/bufferParts";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { HPStockTable } from "@/components/hp-stock/HPStockTable";
+import { HPStockFormDialog } from "@/components/hp-stock/HPStockFormDialog";
+import { getHPStockItems, deleteHPStockItem, getHPStockSummary } from "@/api/hpStock";
+import type { HPStockItem, HPStockSummary } from "@/api/hpStock";
 import { extractApiError } from "@/api/client";
 import { toast } from "@/components/ui/use-toast";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useAuthStore } from "@/store/authStore";
 import { REGION_LABELS } from "@/types";
-import type { BufferPart, PaginationMeta, Region } from "@/types";
+import type { PaginationMeta, Region } from "@/types";
 
-export default function Buffer() {
+export default function HPStock() {
   const user = useAuthStore((s) => s.user);
   const isAdmin = user?.role === "admin" || user?.role === "super_admin" || user?.role === "manager";
   const showToggle = !isAdmin && !!user?.region;
@@ -31,7 +32,8 @@ export default function Buffer() {
   const [selectedRegion, setSelectedRegion] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
-  const [data, setData] = useState<BufferPart[]>([]);
+  const [activeTab, setActiveTab] = useState<"active" | "closed">("active");
+  const [data, setData] = useState<HPStockItem[]>([]);
   const dataRef = useRef(data);
   useEffect(() => {
     dataRef.current = data;
@@ -42,20 +44,19 @@ export default function Buffer() {
   const [pagination, setPagination] = useState<PaginationMeta>({ total: 0, page: 1, per_page: 20, pages: 1 });
 
   const [addDialogOpen, setAddDialogOpen] = useState(false);
-  const [editingItem, setEditingItem] = useState<BufferPart | null>(null);
+  const [editingItem, setEditingItem] = useState<HPStockItem | null>(null);
 
-  // Summary state
-  const [summary, setSummary] = useState<BufferPartSummary | null>(null);
+  const [summary, setSummary] = useState<HPStockSummary | null>(null);
 
   const debouncedSearch = useDebounce(search, 400);
 
   const fetchSummary = useCallback(async () => {
     try {
       const apiView = isAdmin ? "overall" : viewMode;
-      const res = await getBufferPartSummary(apiView, undefined);
+      const res = await getHPStockSummary(apiView, undefined);
       setSummary(res);
     } catch {
-      // silent — summary is supplementary
+      // silent fail for summary
     }
   }, [viewMode, isAdmin]);
 
@@ -67,12 +68,13 @@ export default function Buffer() {
     try {
       const apiView = isAdmin ? "overall" : viewMode;
       const apiRegion = isAdmin && selectedRegion !== "all" ? selectedRegion : undefined;
-      const res = await getBufferParts({
+      const res = await getHPStockItems({
         search: debouncedSearch || undefined,
         view: apiView,
         region: apiRegion,
         page,
         per_page: 20,
+        is_closed: activeTab === "closed",
       });
       setData(res.items);
       setPagination({ total: res.total, page: res.page, per_page: res.per_page, pages: res.pages });
@@ -81,7 +83,7 @@ export default function Buffer() {
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, viewMode, page, isAdmin, selectedRegion]);
+  }, [debouncedSearch, viewMode, page, isAdmin, selectedRegion, activeTab]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
   useEffect(() => { fetchSummary(); }, [fetchSummary]);
@@ -92,9 +94,10 @@ export default function Buffer() {
   };
 
   const handleDelete = async (id: number) => {
+    if (!window.confirm("Are you sure you want to delete this item?")) return;
     try {
-      await deleteBufferPart(id);
-      toast({ title: "Buffer part deleted" });
+      await deleteHPStockItem(id);
+      toast({ title: "HP stock deleted successfully" });
       handleMutated();
     } catch (err) {
       toast({ title: extractApiError(err), variant: "destructive" });
@@ -106,7 +109,7 @@ export default function Buffer() {
       <div className="flex flex-col items-center justify-center py-20">
         <Card className="p-8 text-center max-w-md">
           <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-          <p className="text-slate-800 dark:text-slate-100 font-medium mb-2">Failed to load buffer parts</p>
+          <p className="text-slate-800 dark:text-slate-100 font-medium mb-2">Failed to load HP stock</p>
           <p className="text-sm text-slate-500 mb-4">{error}</p>
           <Button onClick={fetchData}>Try Again</Button>
         </Card>
@@ -117,11 +120,10 @@ export default function Buffer() {
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Buffer</h1>
-        <p className="text-slate-500 dark:text-slate-400 mt-1">Manage buffer parts inventory.</p>
+        <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">HP Stock RMA Workflow</h1>
+        <p className="text-slate-500 dark:text-slate-400 mt-1">Manage HP stock and logistics.</p>
       </div>
 
-      {/* ── Summary Cards ──────────────────────────────────────── */}
       {summary && summary.regions.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 mb-6">
           {summary.regions.map((r) => {
@@ -140,7 +142,17 @@ export default function Buffer() {
                 <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">
                   {REGION_LABELS[r.region as Region] || r.region}
                 </span>
-                <span className="text-xl font-bold text-slate-800 dark:text-slate-100">{r.total}</span>
+                <div className="flex items-center gap-2 mt-1.5">
+                  <div className="text-center">
+                    <span className="text-sm font-semibold text-slate-800 dark:text-slate-100">{r.active || 0}</span>
+                    <div className="text-[9px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">Active</div>
+                  </div>
+                  <div className="w-[1px] h-6 bg-slate-200 dark:bg-slate-700/50 mx-0.5" />
+                  <div className="text-center">
+                    <span className="text-sm font-semibold text-slate-500 dark:text-slate-400">{r.closed || 0}</span>
+                    <div className="text-[9px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">Closed</div>
+                  </div>
+                </div>
               </Card>
             );
           })}
@@ -154,12 +166,25 @@ export default function Buffer() {
             <span className="text-xs font-medium text-indigo-600 dark:text-indigo-400 uppercase tracking-wide">
               Total
             </span>
-            <span className="text-xl font-bold text-indigo-700 dark:text-indigo-300">{summary.total}</span>
+            <div className="flex items-center gap-2 mt-1.5">
+              <div className="text-center">
+                <span className="text-sm font-semibold text-indigo-700 dark:text-indigo-300">
+                  {summary.active_total || 0}
+                </span>
+                <div className="text-[9px] font-medium text-indigo-600/70 dark:text-indigo-400/70 uppercase tracking-wider">Active</div>
+              </div>
+              <div className="w-[1px] h-6 bg-indigo-200 dark:bg-indigo-800/50 mx-0.5" />
+              <div className="text-center">
+                <span className="text-sm font-semibold text-indigo-600/80 dark:text-indigo-400/80">
+                  {summary.closed_total || 0}
+                </span>
+                <div className="text-[9px] font-medium text-indigo-600/70 dark:text-indigo-400/70 uppercase tracking-wider">Closed</div>
+              </div>
+            </div>
           </Card>
         </div>
       )}
 
-      {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-3 mb-6">
         {showToggle && (
           <div className="flex items-center rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
@@ -183,7 +208,7 @@ export default function Buffer() {
               }`}
             >
               <Globe className="w-4 h-4" />
-              Overall Stock
+              Overall
             </button>
           </div>
         )}
@@ -207,39 +232,57 @@ export default function Buffer() {
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
           <Input
-            placeholder="Search parts..."
+            placeholder="Search HP Stock..."
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
             className="pl-9"
           />
         </div>
         <Button onClick={() => setAddDialogOpen(true)} className="gap-2 ml-auto">
-          <Plus className="w-4 h-4" /> Add Part
+          <Plus className="w-4 h-4" /> Add Record
         </Button>
+      </div>
+
+      <div className="flex justify-start mb-6">
+        <Tabs
+          value={activeTab}
+          onValueChange={(v) => {
+            setActiveTab(v as "active" | "closed");
+            setPage(1);
+          }}
+          className="w-full sm:w-[400px]"
+        >
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="active" className="text-sm font-medium">
+              Active Cases
+            </TabsTrigger>
+            <TabsTrigger value="closed" className="text-sm font-medium">
+              Closed Cases
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
       </div>
 
       {!loading && data.length === 0 && !debouncedSearch ? (
         <Card className="p-12 text-center">
           <Layers className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-          <p className="text-slate-800 dark:text-slate-100 font-medium mb-1">No buffer parts</p>
-          <p className="text-sm text-slate-500 mb-4">Add parts to the buffer to get started.</p>
-          <Button onClick={() => setAddDialogOpen(true)}>Add Part</Button>
+          <p className="text-slate-800 dark:text-slate-100 font-medium mb-1">No records found</p>
+          <p className="text-sm text-slate-500 mb-4">Add HP stock records to get started.</p>
+          <Button onClick={() => setAddDialogOpen(true)}>Add Record</Button>
         </Card>
       ) : (
-        <BufferTable
+        <HPStockTable
           data={data}
           loading={loading}
           pagination={pagination}
           onPageChange={setPage}
           onEdit={(item) => setEditingItem(item)}
           onDelete={handleDelete}
-          onRowUpdated={(updated) => {
-            setData((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
-          }}
+          onRowUpdated={handleMutated}
         />
       )}
 
-      <BufferFormDialog
+      <HPStockFormDialog
         open={addDialogOpen || !!editingItem}
         onOpenChange={(v) => { if (!v) { setAddDialogOpen(false); setEditingItem(null); } }}
         editing={editingItem}
@@ -248,4 +291,3 @@ export default function Buffer() {
     </motion.div>
   );
 }
-

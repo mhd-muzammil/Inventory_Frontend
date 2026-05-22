@@ -48,6 +48,9 @@ export const ticketSchema = z.object({
   customer_comments: z.string().optional().default(""),
   // Virtual costs
   entry_charge: z.coerce.number().min(0).optional().default(0),
+  // CSO Entry Image
+  cso_image: z.any().optional(),
+  part_request_image: z.any().optional(),
 });
 
 export type TicketFormData = z.infer<typeof ticketSchema>;

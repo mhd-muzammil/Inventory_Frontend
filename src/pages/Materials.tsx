@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { motion } from "framer-motion";
 import { Ticket as TicketIcon, Plus, AlertCircle, MapPin, BarChart3 } from "lucide-react";
 import { Card } from "@/components/ui/card";
@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TicketFormDialog } from "@/components/tickets/TicketFormDialog";
 import { TicketsTable } from "@/components/tickets/TicketsTable";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { createTicket, getTickets } from "@/api/tickets";
 import { getRegionComparison } from "@/api/dashboard";
 import { toast } from "@/components/ui/use-toast";
@@ -16,6 +17,11 @@ import type { Ticket, PaginationMeta, Region, RegionStats } from "@/types";
 export default function CSOEntry() {
   const [formOpen, setFormOpen] = useState(false);
   const [data, setData] = useState<Ticket[]>([]);
+  const dataRef = useRef(data);
+  useEffect(() => {
+    dataRef.current = data;
+  }, [data]);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
@@ -23,6 +29,7 @@ export default function CSOEntry() {
   const [pagination, setPagination] = useState<PaginationMeta>({
     total: 0, page: 1, per_page: 20, pages: 1,
   });
+  const [activeTab, setActiveTab] = useState<"active" | "closed">("active");
 
   const user = useAuthStore((s) => s.user);
   const isAdmin = user?.role === "admin" || user?.role === "super_admin";
@@ -31,20 +38,27 @@ export default function CSOEntry() {
   const [selectedRegion, setSelectedRegion] = useState<Region | undefined>(undefined);
 
   const fetchRegionStats = useCallback(async () => {
-    if (!isAdmin) return;
     try {
       const res = await getRegionComparison();
       setRegionStats(res);
     } catch {
       // silent
     }
-  }, [isAdmin]);
+  }, []);
 
   const fetchTickets = useCallback(async () => {
-    setLoading(true);
+    if (dataRef.current.length === 0) {
+      setLoading(true);
+    }
     setError(null);
     try {
-      const res = await getTickets({ page, ordering, region: selectedRegion, per_page: 20 });
+      const res = await getTickets({
+        page,
+        ordering,
+        region: selectedRegion,
+        per_page: 20,
+        is_closed: activeTab === "closed",
+      });
       setData(res.items);
       setPagination({ total: res.total, page: res.page, per_page: res.per_page, pages: res.pages });
     } catch (err: any) {
@@ -53,7 +67,7 @@ export default function CSOEntry() {
     } finally {
       setLoading(false);
     }
-  }, [page, ordering, selectedRegion]);
+  }, [page, ordering, selectedRegion, activeTab]);
 
   useEffect(() => { fetchTickets(); }, [fetchTickets]);
   useEffect(() => { fetchRegionStats(); }, [fetchRegionStats]);
@@ -109,7 +123,17 @@ export default function CSOEntry() {
                 <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">
                   {REGION_LABELS[r.region as Region] || r.region}
                 </span>
-                <span className="text-xl font-bold text-slate-800 dark:text-slate-100">{r.total_tickets || 0}</span>
+                <div className="flex items-center gap-2 mt-1.5">
+                  <div className="text-center">
+                    <span className="text-sm font-semibold text-slate-800 dark:text-slate-100">{r.open_tickets || 0}</span>
+                    <div className="text-[9px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">Active</div>
+                  </div>
+                  <div className="w-[1px] h-6 bg-slate-200 dark:bg-slate-700/50 mx-0.5" />
+                  <div className="text-center">
+                    <span className="text-sm font-semibold text-slate-500 dark:text-slate-400">{(r.total_tickets || 0) - (r.open_tickets || 0)}</span>
+                    <div className="text-[9px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">Closed</div>
+                  </div>
+                </div>
               </Card>
             );
           })}
@@ -123,12 +147,73 @@ export default function CSOEntry() {
             <span className="text-xs font-medium text-indigo-600 dark:text-indigo-400 uppercase tracking-wide">
               Total
             </span>
-            <span className="text-xl font-bold text-indigo-700 dark:text-indigo-300">
-              {regionStats.reduce((acc, r) => acc + (r.total_tickets || 0), 0)}
-            </span>
+            <div className="flex items-center gap-2 mt-1.5">
+              <div className="text-center">
+                <span className="text-sm font-semibold text-indigo-700 dark:text-indigo-300">
+                  {regionStats.reduce((acc, r) => acc + (r.open_tickets || 0), 0)}
+                </span>
+                <div className="text-[9px] font-medium text-indigo-600/70 dark:text-indigo-400/70 uppercase tracking-wider">Active</div>
+              </div>
+              <div className="w-[1px] h-6 bg-indigo-200 dark:bg-indigo-800/50 mx-0.5" />
+              <div className="text-center">
+                <span className="text-sm font-semibold text-indigo-600/80 dark:text-indigo-400/80">
+                  {regionStats.reduce((acc, r) => acc + ((r.total_tickets || 0) - (r.open_tickets || 0)), 0)}
+                </span>
+                <div className="text-[9px] font-medium text-indigo-600/70 dark:text-indigo-400/70 uppercase tracking-wider">Closed</div>
+              </div>
+            </div>
           </Card>
         </div>
       )}
+
+      {/* ── Non-Admin Region Summary ─────────────────────────────────── */}
+      {!isAdmin && user?.region && regionStats && regionStats.length > 0 && (
+        <div className="flex flex-wrap gap-3 mb-6">
+          {(() => {
+            const r = regionStats.find((st) => st.region === user.region);
+            if (!r) return null;
+            return (
+              <Card className="p-4 flex flex-col items-center gap-1 border select-none min-w-[180px] border-slate-200 bg-white dark:bg-slate-900 dark:border-slate-800 shadow-sm">
+                <MapPin className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+                  {REGION_LABELS[user.region as Region] || user.region}
+                </span>
+                <div className="flex items-center gap-2 mt-1.5">
+                  <div className="text-center">
+                    <span className="text-sm font-semibold text-slate-800 dark:text-slate-100">{r.open_tickets || 0}</span>
+                    <div className="text-[9px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">Active</div>
+                  </div>
+                  <div className="w-[1px] h-6 bg-slate-200 dark:bg-slate-700/50 mx-0.5" />
+                  <div className="text-center">
+                    <span className="text-sm font-semibold text-slate-500 dark:text-slate-400">{(r.total_tickets || 0) - (r.open_tickets || 0)}</span>
+                    <div className="text-[9px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">Closed</div>
+                  </div>
+                </div>
+              </Card>
+            );
+          })()}
+        </div>
+      )}
+
+      <div className="flex justify-start mb-6">
+        <Tabs
+          value={activeTab}
+          onValueChange={(v) => {
+            setActiveTab(v as "active" | "closed");
+            setPage(1);
+          }}
+          className="w-full sm:w-[400px]"
+        >
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="active" className="text-sm font-medium">
+              Active Cases
+            </TabsTrigger>
+            <TabsTrigger value="closed" className="text-sm font-medium">
+              Closed Cases
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </div>
 
       {/* Error state */}
       {error && (

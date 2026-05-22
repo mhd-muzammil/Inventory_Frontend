@@ -47,6 +47,9 @@ export interface User {
   is_active: boolean;
 }
 
+// [x] Modify backend `customer` views to query `Ticket` model with role and region-based scoping (mirrored after HP Stock RMA workflow logic) <!-- id: 2 -->
+// [/] Update frontend types in `index.ts` to include case/ticket details in `Customer` interface <!-- id: 3 -->
+
 export interface AuthResponse {
   access: string;
   refresh: string;
@@ -146,6 +149,9 @@ export interface Ticket {
   arrival_date: string | null;
   target_completion: string | null;
   closed_at: string | null;
+  cso_image: string | null;
+  part_request_image: string | null;
+  part_request_images?: Array<{ id: number; image: string; created_at: string }>;
   created_at: string;
   updated_at: string;
 }
@@ -160,7 +166,7 @@ export interface TimelineEntry {
   metadata: Record<string, unknown>;
   entered_at: string;
   exited_at: string | null;
-  duration_mins: number | null;
+  duration_minutes: number | null;
   sla_minutes: number | null;
   is_breached: boolean;
   breach_minutes: number;
@@ -177,6 +183,17 @@ export interface AvailableTransition {
 // ============================================================
 // PART REQUESTS
 // ============================================================
+
+export interface PartRequestMessage {
+  id: number;
+  sender: {
+    id: number;
+    full_name: string;
+    role: string;
+  };
+  message: string;
+  created_at: string;
+}
 
 export interface PartRequest {
   id: number;
@@ -197,6 +214,8 @@ export interface PartRequest {
   rejection_reason: string | null;
   created_at: string;
   updated_at: string;
+  ticket_details?: Ticket;
+  messages?: PartRequestMessage[];
 }
 
 // ============================================================
@@ -342,6 +361,7 @@ export interface BufferPart {
     engineer_name?: string;
     case_id?: string;
   }>;
+  usage_count: number;
   created_by: number | null;
   created_by_name: string | null;
   created_at: string;
@@ -526,6 +546,7 @@ export interface PaginationMeta {
 export interface TicketFilters {
   search?: string;
   status?: TicketStatus;
+  is_closed?: boolean | string;
   priority?: TicketPriority;
   service_type?: ServiceType;
   sla_health?: SLAHealth;
@@ -590,6 +611,8 @@ export interface CustomerQueryParams {
   search?: string;
   page?: number;
   per_page?: number;
+  is_closed?: boolean | string;
+  region?: string;
 }
 
 // ============================================================
@@ -671,12 +694,16 @@ export const INVOICE_STATUS_LABELS: Record<InvoiceStatus, string> = {
 
 // Legacy compat for existing Customer/Transaction code
 export interface Customer {
-  id: string;
+  id: string | number;
   name: string;
   email: string;
   phone: string;
   company: string;
   total_transactions: number;
+  region?: Region;
+  status?: TicketStatus;
+  ticket_number?: string;
+  form_number?: string | null;
   created_at: string;
 }
 

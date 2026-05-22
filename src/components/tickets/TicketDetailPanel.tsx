@@ -26,6 +26,7 @@ import {
   Calendar,
   Clock,
   Trash2,
+  FileText,
 } from "lucide-react";
 import {
   SERVICE_TYPE_LABELS,
@@ -76,6 +77,12 @@ export function TicketDetailPanel({
   const [editOpen, setEditOpen] = useState(false);
   const navigate = useNavigate();
   const userRole = useAuthStore((s) => s.user?.role);
+  const [activeDocIndex, setActiveDocIndex] = useState(0);
+
+  const partRequestDocs = [
+    ...(ticket.part_request_images || []).map(img => img.image),
+    ...(ticket.part_request_image ? [ticket.part_request_image] : [])
+  ].filter((v, i, self) => self.indexOf(v) === i);
 
   const handleDelete = async () => {
     if (!window.confirm("Are you sure you want to delete this ticket?")) return;
@@ -138,12 +145,136 @@ export function TicketDetailPanel({
               ticketId={ticket.id}
               transitions={transitions}
               onTransitioned={onTransitioned}
+              csoImage={ticket.cso_image}
+              partRequestImage={ticket.part_request_image}
             />
           </CardContent>
         </Card>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* ── Document Scans (CSO Entry & Part Request) for Managers & Admins ── */}
+        {(userRole === "manager" || userRole === "super_admin" || userRole === "admin") && (ticket.cso_image || partRequestDocs.length > 0) && (
+          <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
+            {ticket.cso_image && (
+              <Card className={cn("overflow-hidden border-indigo-100 dark:border-indigo-900/50 shadow-sm", (partRequestDocs.length === 0) && "md:col-span-2")}>
+                <CardHeader className="pb-3 bg-slate-50/50 dark:bg-slate-900/50 border-b border-slate-100 dark:border-slate-800">
+                  <CardTitle className="text-base flex items-center justify-between">
+                    <span className="flex items-center gap-2">
+                      <span>📄</span> CSO Entry Image / Scan
+                    </span>
+                    <a
+                      href={ticket.cso_image}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline font-semibold"
+                    >
+                      Open Full Screen
+                    </a>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-4 flex flex-col items-center justify-center bg-slate-50/20 dark:bg-slate-950/20">
+                  {ticket.cso_image.toLowerCase().endsWith(".pdf") ? (
+                    <div className="w-full h-[350px] border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
+                      <iframe src={ticket.cso_image} className="w-full h-full" title="CSO Document Preview" />
+                    </div>
+                  ) : (
+                    <div className="relative max-w-full rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-inner group">
+                      <img
+                        src={ticket.cso_image}
+                        alt="CSO Entry scan"
+                        className="max-h-[350px] object-contain transition-transform duration-300 group-hover:scale-[1.01]"
+                      />
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {partRequestDocs.length > 0 && (() => {
+              const activeDoc = partRequestDocs[activeDocIndex] || partRequestDocs[0];
+              return (
+                <Card className={cn("overflow-hidden border-amber-100 dark:border-amber-900/50 shadow-sm", (!ticket.cso_image) && "md:col-span-2")}>
+                  <CardHeader className="pb-3 bg-slate-50/50 dark:bg-slate-900/50 border-b border-slate-100 dark:border-slate-800">
+                    <CardTitle className="text-base flex items-center justify-between">
+                      <span className="flex items-center gap-2">
+                        <span>🔧</span> Part Request Scan / Gallery {partRequestDocs.length > 1 && `(${activeDocIndex + 1}/${partRequestDocs.length})`}
+                      </span>
+                      {activeDoc && (
+                        <a
+                          href={activeDoc}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-amber-600 dark:text-amber-400 hover:underline font-semibold"
+                        >
+                          Open Full Screen
+                        </a>
+                      )}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-4 flex flex-col items-center bg-slate-50/20 dark:bg-slate-950/20 gap-4">
+                    {activeDoc ? (
+                      activeDoc.toLowerCase().endsWith(".pdf") ? (
+                        <div className="w-full h-[350px] border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden bg-white dark:bg-slate-950">
+                          <iframe src={activeDoc} className="w-full h-full" title="Part Request Document Preview" />
+                        </div>
+                      ) : (
+                        <div className="relative max-w-full rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-inner group">
+                          <img
+                            src={activeDoc}
+                            alt="Part Request scan"
+                            className="max-h-[350px] object-contain transition-transform duration-300 group-hover:scale-[1.01]"
+                          />
+                        </div>
+                      )
+                    ) : (
+                      <div className="text-xs text-slate-400 italic py-8">No document selected</div>
+                    )}
+
+                    {/* Horizontal scrollable slider for multiple documents */}
+                    {partRequestDocs.length > 1 && (
+                      <div className="w-full flex items-center gap-2 overflow-x-auto py-2 px-1 border-t border-slate-100 dark:border-slate-800/80 mt-2">
+                        {partRequestDocs.map((doc, idx) => {
+                          const isPdf = doc.toLowerCase().endsWith(".pdf");
+                          const isActive = idx === activeDocIndex;
+                          return (
+                            <button
+                              key={idx}
+                              onClick={() => setActiveDocIndex(idx)}
+                              className={cn(
+                                "flex-shrink-0 relative w-16 h-16 rounded-xl overflow-hidden border-2 bg-white dark:bg-slate-900 transition-all shadow-sm flex items-center justify-center p-1",
+                                isActive 
+                                  ? "border-amber-500 shadow-amber-100/50 dark:shadow-amber-950/30 scale-105" 
+                                  : "border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700"
+                              )}
+                            >
+                              {isPdf ? (
+                                <div className="flex flex-col items-center justify-center h-full w-full bg-rose-50 dark:bg-rose-950/20 text-rose-500 rounded-lg">
+                                  <FileText className="w-6 h-6" />
+                                  <span className="text-[8px] font-bold mt-0.5">PDF</span>
+                                </div>
+                              ) : (
+                                <img
+                                  src={doc}
+                                  alt={`Document ${idx + 1}`}
+                                  className="w-full h-full object-cover rounded-lg"
+                                />
+                              )}
+                              <span className="absolute bottom-0.5 right-1 bg-black/60 text-white text-[8px] font-bold px-1 rounded-sm">
+                                #{idx + 1}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })()}
+          </div>
+        )}
+
         {/* ── Customer Info ─────────────────────────────── */}
         <Card>
           <CardHeader className="pb-3">

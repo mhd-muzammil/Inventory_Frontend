@@ -10,9 +10,18 @@ interface TransitionActionsProps {
   transitions: AvailableTransition[];
   onTransitioned: () => void;
   className?: string;
+  csoImage?: string | null;
+  partRequestImage?: string | null;
 }
 
-export function TransitionActions({ ticketId, transitions, onTransitioned, className }: TransitionActionsProps) {
+export function TransitionActions({
+  ticketId,
+  transitions,
+  onTransitioned,
+  className,
+  csoImage,
+  partRequestImage,
+}: TransitionActionsProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedTransition, setSelectedTransition] = useState<AvailableTransition | null>(null);
 
@@ -52,6 +61,8 @@ export function TransitionActions({ ticketId, transitions, onTransitioned, class
           onOpenChange={setDialogOpen}
           ticketId={ticketId}
           transition={selectedTransition}
+          csoImage={csoImage}
+          partRequestImage={partRequestImage}
           onSuccess={() => {
             setDialogOpen(false);
             setSelectedTransition(null);

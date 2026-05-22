@@ -33,9 +33,7 @@ import { REGION_LABELS } from "@/types";
 import type { Region } from "@/types";
 import { cn } from "@/lib/utils";
 
-// ---------------------------------------------------------------------------
-// Metric row item inside a service card
-// ---------------------------------------------------------------------------
+
 interface MetricItemProps {
   label: string;
   value: number;
@@ -51,9 +49,7 @@ function MetricItem({ label, value, color }: MetricItemProps) {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Service summary card (Overall / Today)
-// ---------------------------------------------------------------------------
+
 interface ServiceCardProps {
   title: string;
   total: number;

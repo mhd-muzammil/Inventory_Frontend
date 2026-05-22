@@ -155,15 +155,15 @@ export default function ActivityCharges() {
     >
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
-            <Coins className="w-8 h-8 text-indigo-600 dark:text-indigo-400" />
+          <h1 className="text-2xl font-bold tracking-tight text-slate-800 dark:text-slate-100 flex items-center gap-2">
+            <Coins className="w-7 h-7 text-indigo-600 dark:text-indigo-400" />
             Activity Charges
           </h1>
           <p className="text-slate-500 dark:text-slate-400 mt-1">
             Track and log regional operational charges and expenses.
           </p>
         </div>
-        <Button onClick={() => setAddDialogOpen(true)} className="gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium shadow-md shadow-indigo-100 dark:shadow-none">
+        <Button onClick={() => setAddDialogOpen(true)} className="gap-2">
           <Plus className="w-4 h-4" /> Log New Charge
         </Button>
       </div>
@@ -174,10 +174,10 @@ export default function ActivityCharges() {
           <div className="absolute right-4 top-4 w-12 h-12 bg-indigo-50 dark:bg-indigo-950/40 rounded-full flex items-center justify-center">
             <IndianRupee className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
           </div>
-          <p className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+          <p className="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">
             Total (Current Page)
           </p>
-          <p className="text-3xl font-black text-slate-900 dark:text-white mt-2">
+          <p className="text-2xl font-bold text-slate-800 dark:text-slate-100 mt-2">
             ₹{totalAmount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
           </p>
           <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
@@ -189,10 +189,10 @@ export default function ActivityCharges() {
           <div className="absolute right-4 top-4 w-12 h-12 bg-emerald-50 dark:bg-emerald-950/40 rounded-full flex items-center justify-center">
             <Globe className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
           </div>
-          <p className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+          <p className="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">
             Active Region
           </p>
-          <p className="text-2xl font-bold text-slate-900 dark:text-white mt-3 uppercase">
+          <p className="text-xl font-bold text-slate-800 dark:text-slate-100 mt-3 uppercase">
             {user?.region ? REGION_LABELS[user.region as Region] : "All Regions"}
           </p>
           <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
@@ -204,10 +204,10 @@ export default function ActivityCharges() {
           <div className="absolute right-4 top-4 w-12 h-12 bg-amber-50 dark:bg-amber-950/40 rounded-full flex items-center justify-center">
             <FileText className="w-6 h-6 text-amber-600 dark:text-amber-400" />
           </div>
-          <p className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+          <p className="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">
             Record Count
           </p>
-          <p className="text-3xl font-black text-slate-900 dark:text-white mt-2">
+          <p className="text-2xl font-bold text-slate-800 dark:text-slate-100 mt-2">
             {pagination.total}
           </p>
           <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
@@ -286,7 +286,7 @@ export default function ActivityCharges() {
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/20 text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider">
+                <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/20 text-slate-500 dark:text-slate-400 text-xs font-semibold uppercase tracking-wider">
                   <th className="px-6 py-4">Activity</th>
                   <th className="px-6 py-4">Ticket No.</th>
                   <th className="px-6 py-4">Region</th>
@@ -300,7 +300,7 @@ export default function ActivityCharges() {
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-sm text-slate-700 dark:text-slate-300">
                 {data.map((item) => (
                   <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors">
-                    <td className="px-6 py-4 font-semibold text-slate-900 dark:text-white">
+                    <td className="px-6 py-4 font-medium text-slate-800 dark:text-slate-100">
                       {item.activity_name}
                     </td>
                     <td className="px-6 py-4 text-indigo-600 dark:text-indigo-400 font-medium">
@@ -312,7 +312,7 @@ export default function ActivityCharges() {
                         {item.region_display}
                       </span>
                     </td>
-                    <td className="px-6 py-4 font-bold text-slate-900 dark:text-white">
+                    <td className="px-6 py-4 font-semibold text-slate-800 dark:text-slate-100">
                       ₹{Number(item.amount).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                     </td>
                     <td className="px-6 py-4">

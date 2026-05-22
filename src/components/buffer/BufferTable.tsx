@@ -1,6 +1,9 @@
 import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { BoxesIcon, Pencil, Trash2, ArrowRight, ChevronDown } from "lucide-react";
+import {
+  BoxesIcon, Pencil, Trash2, ArrowRight, ChevronDown, Clock, Package, User,
+  AlertCircle, RotateCcw, RefreshCw, ClipboardCheck, ShieldCheck
+} from "lucide-react";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -14,7 +17,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { transitionBufferPart } from "@/api/bufferParts";
 import { extractApiError } from "@/api/client";
 import { toast } from "@/components/ui/use-toast";
+import { useAuthStore } from "@/store/authStore";
+import { getEngineersForAssignment } from "@/api/engineers";
 import type { BufferPart, PaginationMeta } from "@/types";
+import type { Engineer } from "@/types";
 
 type WorkflowStatus = BufferPart["status"];
 
@@ -22,9 +28,9 @@ const AVAILABLE_TRANSITIONS: Record<WorkflowStatus, WorkflowStatus[]> = {
   BUFFER_IN: ["OUT"],
   OUT: ["DEFECTIVE_RETURN", "UNUSED_RETURN"],
   DEFECTIVE_RETURN: ["REORDER"],
-  UNUSED_RETURN: ["OUT"],
+  UNUSED_RETURN: ["CLOSED"],
   REORDER: ["PART_RECEIVED"],
-  PART_RECEIVED: ["BUFFER_IN", "CLOSED"],
+  PART_RECEIVED: ["CLOSED"],
   CLOSED: ["BUFFER_IN"],
 };
 
@@ -51,11 +57,95 @@ const STATUS_LABELS: Record<WorkflowStatus, string> = {
 const STATUS_STYLE_MAP: Record<WorkflowStatus, { bg: string; text: string; dot: string }> = {
   BUFFER_IN: { bg: "bg-blue-50 dark:bg-blue-900/20", text: "text-blue-700 dark:text-blue-400", dot: "bg-blue-600" },
   OUT: { bg: "bg-amber-50 dark:bg-amber-900/20", text: "text-amber-700 dark:text-amber-400", dot: "bg-amber-500" },
-  DEFECTIVE_RETURN: { bg: "bg-purple-50 dark:bg-purple-900/20", text: "text-purple-700 dark:text-purple-400", dot: "bg-purple-600" },
+  DEFECTIVE_RETURN: { bg: "bg-rose-50 dark:bg-rose-900/20", text: "text-rose-700 dark:text-rose-400", dot: "bg-rose-600" },
   UNUSED_RETURN: { bg: "bg-teal-50 dark:bg-teal-900/20", text: "text-teal-700 dark:text-teal-400", dot: "bg-teal-600" },
-  REORDER: { bg: "bg-emerald-50 dark:bg-emerald-900/20", text: "text-emerald-700 dark:text-emerald-400", dot: "bg-emerald-600" },
+  REORDER: { bg: "bg-orange-50 dark:bg-orange-900/20", text: "text-orange-700 dark:text-orange-400", dot: "bg-orange-600" },
   PART_RECEIVED: { bg: "bg-indigo-50 dark:bg-indigo-900/20", text: "text-indigo-700 dark:text-indigo-400", dot: "bg-indigo-600" },
-  CLOSED: { bg: "bg-slate-100 dark:bg-slate-800", text: "text-slate-700 dark:text-slate-300", dot: "bg-slate-500" },
+  CLOSED: { bg: "bg-emerald-50 dark:bg-emerald-900/20", text: "text-emerald-700 dark:text-emerald-400", dot: "bg-emerald-600" },
+};
+
+const getStatusIcon = (status: WorkflowStatus) => {
+  switch (status) {
+    case "BUFFER_IN":
+      return <Package className="w-3.5 h-3.5" />;
+    case "OUT":
+      return <User className="w-3.5 h-3.5" />;
+    case "DEFECTIVE_RETURN":
+      return <AlertCircle className="w-3.5 h-3.5" />;
+    case "UNUSED_RETURN":
+      return <RotateCcw className="w-3.5 h-3.5" />;
+    case "REORDER":
+      return <RefreshCw className="w-3.5 h-3.5" />;
+    case "PART_RECEIVED":
+      return <ClipboardCheck className="w-3.5 h-3.5" />;
+    case "CLOSED":
+      return <ShieldCheck className="w-3.5 h-3.5" />;
+    default:
+      return <Clock className="w-3.5 h-3.5" />;
+  }
+};
+
+const getTransitionNote = (status: WorkflowStatus) => {
+  switch (status) {
+    case "BUFFER_IN":
+      return {
+        title: "Return Part to Buffer",
+        message: "Confirm the part is physically placed back in the buffer stock cabinet and inventory counts are successfully updated.",
+        icon: <Package className="w-5 h-5 text-blue-600 dark:text-blue-400" />,
+        bg: "bg-blue-50/80 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800/60",
+        text: "text-blue-800 dark:text-blue-300",
+      };
+    case "OUT":
+      return {
+        title: "Mark Part Out from Buffer",
+        message: "Enter the engineer's name and case ID to officially issue this part out of buffer stock for an active service case.",
+        icon: <User className="w-5 h-5 text-amber-600 dark:text-amber-400" />,
+        bg: "bg-amber-50/80 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800/60",
+        text: "text-amber-800 dark:text-amber-300",
+      };
+    case "DEFECTIVE_RETURN":
+      return {
+        title: "Defective Return Verification",
+        message: "Ensure the defective/faulty part has been received back from the engineer and labeled correctly for return logistics.",
+        icon: <AlertCircle className="w-5 h-5 text-rose-600 dark:text-rose-400" />,
+        bg: "bg-rose-50/80 dark:bg-rose-950/20 border-rose-200 dark:border-rose-800/60",
+        text: "text-rose-800 dark:text-rose-300",
+      };
+    case "UNUSED_RETURN":
+      return {
+        title: "Reconcile Unused Part",
+        message: "Confirm the unused part has been returned in its original, undamaged packaging and successfully returned to inventory.",
+        icon: <RotateCcw className="w-5 h-5 text-teal-600 dark:text-teal-400" />,
+        bg: "bg-teal-50/80 dark:bg-teal-950/20 border-teal-200 dark:border-teal-800/60",
+        text: "text-teal-800 dark:text-teal-300",
+      };
+    case "REORDER":
+      return {
+        title: "Trigger Part Reorder",
+        message: "Request a replenishment order for this part to restore buffer stock levels. Keep track of order details in comments.",
+        icon: <RefreshCw className="w-5 h-5 text-orange-600 dark:text-orange-400" />,
+        bg: "bg-orange-50/80 dark:bg-orange-950/20 border-orange-200 dark:border-orange-800/60",
+        text: "text-orange-800 dark:text-orange-300",
+      };
+    case "PART_RECEIVED":
+      return {
+        title: "Verify Replenished Part Receipt",
+        message: "Confirm physical delivery of the replenished part. Check serial numbers and part specifications before adding to stock.",
+        icon: <ClipboardCheck className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />,
+        bg: "bg-indigo-50/80 dark:bg-indigo-950/20 border-indigo-200 dark:border-indigo-800/60",
+        text: "text-indigo-800 dark:text-indigo-300",
+      };
+    case "CLOSED":
+      return {
+        title: "Final Case Closure",
+        message: "Close the lifecycle of this buffer part. Make sure all log files, return handovers, and replenishments are fully completed.",
+        icon: <ShieldCheck className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />,
+        bg: "bg-emerald-50/80 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/60",
+        text: "text-emerald-800 dark:text-emerald-300",
+      };
+    default:
+      return null;
+  }
 };
 
 const TRACK_STEPS: WorkflowStatus[] = ["BUFFER_IN", "OUT", "DEFECTIVE_RETURN", "UNUSED_RETURN", "REORDER", "PART_RECEIVED", "CLOSED"];
@@ -71,6 +161,8 @@ interface BufferTableProps {
 }
 
 export function BufferTable({ data, loading, pagination, onPageChange, onEdit, onDelete, onRowUpdated }: BufferTableProps) {
+  const user = useAuthStore((s) => s.user);
+  const isSubAdmin = user?.role === "sub_admin";
   const [transitionOpen, setTransitionOpen] = useState(false);
   const [trackOpen, setTrackOpen] = useState(false);
   const [activeRow, setActiveRow] = useState<BufferPart | null>(null);
@@ -79,11 +171,25 @@ export function BufferTable({ data, loading, pagination, onPageChange, onEdit, o
   const [caseId, setCaseId] = useState("");
   const [remarks, setRemarks] = useState("");
   const [savingTransition, setSavingTransition] = useState(false);
+  const [engineers, setEngineers] = useState<Engineer[]>([]);
+  const [loadingEngineers, setLoadingEngineers] = useState(false);
 
   const isOutTransition = pendingToStatus === "OUT";
+
+  const fetchEngineers = async (region?: string) => {
+    setLoadingEngineers(true);
+    try {
+      const data = await getEngineersForAssignment(region);
+      setEngineers(data.filter((e) => e.status === "active"));
+    } catch {
+      setEngineers([]);
+    } finally {
+      setLoadingEngineers(false);
+    }
+  };
+
   const canConfirm = useMemo(() => {
     if (!activeRow) return false;
-    if (activeRow.status === "CLOSED") return false;
     if (isOutTransition) return engineerName.trim().length > 0 && caseId.trim().length > 0;
     return true;
   }, [activeRow, caseId, engineerName, isOutTransition]);
@@ -95,6 +201,9 @@ export function BufferTable({ data, loading, pagination, onPageChange, onEdit, o
     setCaseId(row.case_id || "");
     setRemarks("");
     setTransitionOpen(true);
+    if (target === "OUT") {
+      fetchEngineers(row.region || undefined);
+    }
   };
 
   const openTrack = (row: BufferPart) => {
@@ -156,10 +265,11 @@ export function BufferTable({ data, loading, pagination, onPageChange, onEdit, o
               <TableHead>Part Name</TableHead>
               <TableHead>General Name</TableHead>
               <TableHead>Quantity</TableHead>
+              <TableHead className="text-center">Usage Count</TableHead>
               <TableHead>Region</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Next Action</TableHead>
-              <TableHead>Track</TableHead>
+              <TableHead className="text-center">History</TableHead>
               <TableHead>Edit</TableHead>
             </TableRow>
           </TableHeader>
@@ -182,6 +292,11 @@ export function BufferTable({ data, loading, pagination, onPageChange, onEdit, o
                 </TableCell>
                 <TableCell>
                   <Badge variant="secondary">{entry.quantity}</Badge>
+                </TableCell>
+                <TableCell className="text-center">
+                  <Badge variant="outline" className="bg-indigo-50 text-indigo-700 dark:bg-indigo-900/20 dark:text-indigo-400 border-indigo-100 dark:border-indigo-900/50 font-semibold">
+                    {entry.usage_count || 0}
+                  </Badge>
                 </TableCell>
                 <TableCell>
                   {entry.region_display ? <Badge variant="outline">{entry.region_display}</Badge> : <span className="text-slate-400 italic">-</span>}
@@ -224,9 +339,9 @@ export function BufferTable({ data, loading, pagination, onPageChange, onEdit, o
                     <Badge variant="outline" className="text-slate-400 border-slate-200">Completed</Badge>
                   )}
                 </TableCell>
-                <TableCell>
-                  <Button size="sm" variant="ghost" onClick={() => openTrack(entry)}>
-                    View Track
+                <TableCell className="text-center">
+                  <Button size="sm" variant="ghost" className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:text-indigo-300" onClick={() => openTrack(entry)}>
+                    History
                   </Button>
                 </TableCell>
                 <TableCell>
@@ -234,9 +349,11 @@ export function BufferTable({ data, loading, pagination, onPageChange, onEdit, o
                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onEdit(entry)}>
                       <Pencil className="w-4 h-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-600" onClick={() => onDelete(entry.id)}>
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
+                    {!isSubAdmin && (
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-600" onClick={() => onDelete(entry.id)}>
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    )}
                   </div>
                 </TableCell>
               </motion.tr>
@@ -265,11 +382,49 @@ export function BufferTable({ data, loading, pagination, onPageChange, onEdit, o
             <DialogTitle>Transition Ticket</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            {(() => {
+              const note = pendingToStatus ? getTransitionNote(pendingToStatus) : null;
+              if (!note) return null;
+              return (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className={`p-3.5 rounded-xl border flex gap-3 items-start shadow-sm backdrop-blur-sm ${note.bg}`}
+                >
+                  <div className="p-1 rounded-lg bg-white/60 dark:bg-slate-900/60 shadow-sm border border-slate-100 dark:border-slate-800 flex-shrink-0 mt-0.5">
+                    {note.icon}
+                  </div>
+                  <div className="space-y-1">
+                    <h4 className={`text-sm font-semibold tracking-wide ${note.text}`}>
+                      {note.title}
+                    </h4>
+                    <p className="text-xs opacity-90 leading-relaxed text-slate-600 dark:text-slate-300">
+                      {note.message}
+                    </p>
+                  </div>
+                </motion.div>
+              );
+            })()}
             {isOutTransition && (
               <>
                 <div className="space-y-2">
-                  <Label>Engineer Name *</Label>
-                  <Input value={engineerName} onChange={(e) => setEngineerName(e.target.value)} />
+                  <Label>Select Engineer *</Label>
+                  {loadingEngineers ? (
+                    <div className="text-xs text-slate-400 py-2">Loading engineers...</div>
+                  ) : (
+                    <select
+                      className="flex h-10 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                      value={engineerName}
+                      onChange={(e) => setEngineerName(e.target.value)}
+                    >
+                      <option value="">Select engineer...</option>
+                      {engineers.map((eng) => (
+                        <option key={eng.id} value={eng.name}>
+                          {eng.name}{eng.phone ? ` — ${eng.phone}` : ""}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label>Case ID *</Label>
@@ -296,77 +451,141 @@ export function BufferTable({ data, loading, pagination, onPageChange, onEdit, o
       <Dialog open={trackOpen} onOpenChange={setTrackOpen}>
         <DialogContent className="sm:max-w-[700px]">
           <DialogHeader>
-            <DialogTitle>Track</DialogTitle>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Workflow transition history</p>
+            <DialogTitle>Usage & Account History</DialogTitle>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Full transition records and case details</p>
           </DialogHeader>
           {activeRow && (
             <div className="space-y-6">
-              <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
-                {TRACK_STEPS.map((step, idx) => {
-                  const currentIndex = TRACK_STEPS.indexOf(activeRow.status || "BUFFER_IN");
-                  const completed = idx < currentIndex;
-                  const current = idx === currentIndex;
-                  const formattedStep = step.split('_').map(w => w.charAt(0) + w.slice(1).toLowerCase()).join(' ');
-                  return (
-                    <div key={step} className={`rounded-xl border p-2.5 text-center transition-colors ${current ? "border-indigo-200 dark:border-indigo-800 bg-indigo-50/50 dark:bg-indigo-900/20" : "border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30"}`}>
-                      <div className={`h-2.5 w-2.5 rounded-full mx-auto mb-1.5 shadow-sm ${completed ? "bg-emerald-500" : current ? "bg-indigo-500 shadow-indigo-500/40" : "bg-slate-300 dark:bg-slate-700"}`} />
-                      <p className={`text-[11px] font-medium ${current ? "text-indigo-700 dark:text-indigo-300" : "text-slate-600 dark:text-slate-400"}`}>{formattedStep}</p>
-                    </div>
-                  );
-                })}
-              </div>
-              <div className="space-y-4 max-h-[380px] overflow-y-auto pr-2">
-                {(activeRow.transition_history || []).map((h, idx) => {
-                  const formatStatus = (s: string) => s.split('_').map(w => w.charAt(0) + w.slice(1).toLowerCase()).join(' ');
-                  const d = new Date(h.timestamp);
-                  const dateStr = d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-                  const timeStr = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "numeric", hour12: true });
-                  const formattedDate = `${dateStr} • ${timeStr}`;
+              {(() => {
+                const hasUnused = activeRow.status === "UNUSED_RETURN" || 
+                  (activeRow.transition_history || []).some(h => h.to_status === "UNUSED_RETURN" || h.from_status === "UNUSED_RETURN");
+                const hasDefective = activeRow.status === "DEFECTIVE_RETURN" || 
+                  (activeRow.transition_history || []).some(h => h.to_status === "DEFECTIVE_RETURN" || h.from_status === "DEFECTIVE_RETURN");
+                
+                const steps = ["BUFFER_IN", "OUT"];
+                if (hasUnused) {
+                  steps.push("UNUSED_RETURN");
+                } else if (hasDefective) {
+                  steps.push("DEFECTIVE_RETURN", "REORDER", "PART_RECEIVED");
+                } else {
+                  if (activeRow.status === "REORDER" || activeRow.status === "PART_RECEIVED") {
+                    steps.push("DEFECTIVE_RETURN", "REORDER", "PART_RECEIVED");
+                  } else {
+                    steps.push("UNUSED_RETURN");
+                  }
+                }
+                steps.push("CLOSED");
 
-                  return (
-                    <div key={`${h.timestamp}-${idx}`} className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/50 p-4 space-y-3 shadow-sm">
-                      <p className="font-semibold text-slate-900 dark:text-slate-50 text-sm">
-                        {formatStatus(h.from_status)} &rarr; {formatStatus(h.to_status)}
-                      </p>
-                      <div className="grid gap-2 text-sm">
-                        {h.engineer_name && (
-                          <div className="flex items-start gap-2">
-                            <span className="text-slate-500 dark:text-slate-400 w-24 shrink-0">Engineer</span>
-                            <span className="font-medium text-slate-800 dark:text-slate-200">{h.engineer_name}</span>
-                          </div>
-                        )}
-                        {h.case_id && (
-                          <div className="flex items-start gap-2">
-                            <span className="text-slate-500 dark:text-slate-400 w-24 shrink-0">Case ID</span>
-                            <span className="font-medium text-slate-800 dark:text-slate-200">{h.case_id}</span>
-                          </div>
-                        )}
-                        {h.comment && (
-                          <div className="flex items-start gap-2">
-                            <span className="text-slate-500 dark:text-slate-400 w-24 shrink-0">Comment</span>
-                            <span className="font-medium text-slate-800 dark:text-slate-200">{h.comment}</span>
-                          </div>
-                        )}
-                        {h.updated_by && (
-                          <div className="flex items-start gap-2">
-                            <span className="text-slate-500 dark:text-slate-400 w-24 shrink-0">Updated by</span>
-                            <span className="font-medium text-slate-800 dark:text-slate-200">{h.updated_by}</span>
-                          </div>
-                        )}
-                      </div>
-                      <div className="pt-3 border-t border-slate-100 dark:border-slate-800/60 mt-1">
-                        <p className="text-[11px] text-slate-400 dark:text-slate-500 font-medium">
-                          {formattedDate}
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })}
-                {(activeRow.transition_history || []).length === 0 && (
-                  <div className="text-center py-8">
-                    <p className="text-sm text-slate-500 dark:text-slate-400">No transitions yet.</p>
+                return (
+                  <div className={`grid grid-cols-2 md:grid-cols-${steps.length} gap-3`}>
+                    {steps.map((step, idx) => {
+                      const currentIndex = steps.indexOf(activeRow.status || "BUFFER_IN");
+                      const completed = idx < currentIndex;
+                      const current = idx === currentIndex;
+                      const formattedStep = step.split('_').map(w => w.charAt(0) + w.slice(1).toLowerCase()).join(' ');
+                      return (
+                        <div key={step} className={`rounded-xl border p-2.5 text-center transition-colors ${current ? "border-indigo-200 dark:border-indigo-800 bg-indigo-50/50 dark:bg-indigo-900/20" : "border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30"}`}>
+                          <div className={`h-2.5 w-2.5 rounded-full mx-auto mb-1.5 shadow-sm ${completed ? "bg-emerald-500" : current ? "bg-indigo-500 shadow-indigo-500/40" : "bg-slate-300 dark:bg-slate-700"}`} />
+                          <p className={`text-[11px] font-medium ${current ? "text-indigo-700 dark:text-indigo-300" : "text-slate-600 dark:text-slate-400"}`}>{formattedStep}</p>
+                        </div>
+                      );
+                    })}
                   </div>
-                )}
+                );
+              })()}
+
+              {/* Timeline Logs */}
+              <div className="relative max-h-[380px] overflow-y-auto pr-2 pl-10 py-2 space-y-6">
+                {/* Vertical Line */}
+                <div className="absolute left-[22px] top-2 bottom-2 w-0.5 bg-slate-200 dark:bg-slate-800" />
+                {(() => {
+                  const milestones = [
+                    {
+                      status: "BUFFER_IN" as WorkflowStatus,
+                      label: "Stock Entry / Buffer In",
+                      timestamp: activeRow.created_at,
+                      updated_by: activeRow.created_by_name || "System",
+                      comment: "Stock entry registered successfully in buffer.",
+                      engineer_name: "",
+                      case_id: "",
+                    }
+                  ];
+
+                  if (activeRow.transition_history && Array.isArray(activeRow.transition_history)) {
+                    activeRow.transition_history.forEach((h) => {
+                      milestones.push({
+                        status: h.to_status as WorkflowStatus,
+                        label: STATUS_LABELS[h.to_status] || h.to_status,
+                        timestamp: h.timestamp,
+                        updated_by: h.updated_by || "System",
+                        comment: h.comment || "",
+                        engineer_name: h.engineer_name || "",
+                        case_id: h.case_id || "",
+                      });
+                    });
+                  }
+
+                  return milestones.map((m, idx) => {
+                    const st = STATUS_STYLE_MAP[m.status] || STATUS_STYLE_MAP.BUFFER_IN;
+                    const d = new Date(m.timestamp);
+                    const dateStr = d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+                    const timeStr = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "numeric", hour12: true });
+                    const formattedDate = `${dateStr} • ${timeStr}`;
+
+                    return (
+                      <div key={`${m.timestamp}-${idx}`} className="relative group">
+                        {/* Timeline Dot */}
+                        <div className={`absolute -left-[30px] top-1.5 flex items-center justify-center w-6 h-6 rounded-full border-2 border-white dark:border-slate-900 ${st.bg} ${st.text} shadow-sm z-10 transition-transform group-hover:scale-110`}>
+                          {getStatusIcon(m.status)}
+                        </div>
+
+                        {/* Card Content */}
+                        <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/50 p-4 space-y-2.5 shadow-sm hover:shadow-md hover:border-slate-300 dark:hover:border-slate-700 transition-all duration-200 text-slate-900 dark:text-slate-100">
+                          <div className="flex items-center justify-between flex-wrap gap-2">
+                            <h4 className="font-semibold text-slate-900 dark:text-slate-50 text-sm">
+                              {m.label}
+                            </h4>
+                            <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold tracking-wide uppercase ${st.bg} ${st.text}`}>
+                              {m.status === "BUFFER_IN" && idx === 0 ? "Initiated" : "Completed"}
+                            </span>
+                          </div>
+
+                          <div className="grid gap-1.5 text-xs text-slate-600 dark:text-slate-400">
+                            {m.updated_by && (
+                              <div className="flex items-center gap-2">
+                                <span className="text-slate-400 dark:text-slate-500 w-24">Updated By:</span>
+                                <span className="font-medium text-slate-800 dark:text-slate-200">{m.updated_by}</span>
+                              </div>
+                            )}
+                            {m.engineer_name && (
+                              <div className="flex items-center gap-2">
+                                <span className="text-slate-400 dark:text-slate-500 w-24">Engineer:</span>
+                                <span className="font-medium text-slate-800 dark:text-slate-200">{m.engineer_name}</span>
+                              </div>
+                            )}
+                            {m.case_id && (
+                              <div className="flex items-center gap-2">
+                                <span className="text-slate-400 dark:text-slate-500 w-24">Case ID:</span>
+                                <span className="font-medium text-slate-800 dark:text-slate-200 font-mono">{m.case_id}</span>
+                              </div>
+                            )}
+                            {m.comment && (
+                              <div className="flex items-start gap-2 mt-1 pt-1.5 border-t border-slate-100 dark:border-slate-800/40">
+                                <span className="text-slate-400 dark:text-slate-500 w-24 shrink-0 font-medium">Remarks:</span>
+                                <span className="text-slate-700 dark:text-slate-300 italic">"{m.comment}"</span>
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="pt-2 border-t border-slate-100 dark:border-slate-800/40 mt-1 flex items-center gap-1.5 text-[10px] text-slate-400 dark:text-slate-500 font-medium">
+                            <Clock className="w-3.5 h-3.5" />
+                            <span>{formattedDate}</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  });
+                })()}
               </div>
             </div>
           )}

@@ -1,0 +1,724 @@
+import { useMemo, useState } from "react";
+import { motion } from "framer-motion";
+import { Edit, Trash2, ArrowRight, ChevronDown, CheckCircle, Clock, Package, ClipboardCheck, User, ShieldCheck, Activity, RotateCcw } from "lucide-react";
+import { format } from "date-fns";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import { transitionHPStockItem, sendHPStockOTP } from "@/api/hpStock";
+import { getEngineersForAssignment } from "@/api/engineers";
+import type { Engineer } from "@/types";
+import { extractApiError } from "@/api/client";
+import { toast } from "@/components/ui/use-toast";
+import { useAuthStore } from "@/store/authStore";
+import type { HPStockItem } from "@/api/hpStock";
+import type { PaginationMeta, Region } from "@/types";
+import { REGION_LABELS } from "@/types";
+
+type WorkflowStatus = HPStockItem["status"];
+
+const AVAILABLE_TRANSITIONS: Record<string, string[]> = {
+  PENDING: ["STOCK_CHECK"],
+  STOCK_CHECK: ["ISSUED"],
+  ISSUED: ["WORK_STATUS"],
+  WORK_STATUS: ["UNUSED_RETURN", "DEFECTIVE_RETURN", "DOA"],
+  UNUSED_RETURN: ["HANDOVER"],
+  DEFECTIVE_RETURN: ["HANDOVER"],
+  DOA: ["HANDOVER"],
+  HANDOVER: ["CLOSED"],
+};
+
+const TRANSITION_LABELS: Record<string, string> = {
+  STOCK_CHECK: "Perform Stock Check",
+  ISSUED: "Part Taken by Engineer",
+  WORK_STATUS: "Verify Work Status",
+  UNUSED_RETURN: "Mark as Unused Part",
+  DEFECTIVE_RETURN: "Mark as Old/Defective Part",
+  DOA: "Death on Arrival",
+  HANDOVER: "Record Engineer Handover",
+  CLOSED: "Close the Case",
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  PENDING: "Stock Entry",
+  STOCK_CHECK: "Stock Check",
+  RECEIVED: "Stock Check",
+  ISSUED: "Part Taken by Engineer",
+  WORK_STATUS: "Work Status",
+  UNUSED_RETURN: "Unused Part",
+  DEFECTIVE_RETURN: "Old/Defective Part",
+  DOA: "Death on Arrival",
+  HANDOVER: "Handover by Engineer",
+  CLOSED: "Close the Case",
+};
+
+const STATUS_STYLE_MAP: Record<string, { bg: string; text: string; dot: string }> = {
+  PENDING: { bg: "bg-blue-50 dark:bg-blue-900/20", text: "text-blue-700 dark:text-blue-400", dot: "bg-blue-600" },
+  STOCK_CHECK: { bg: "bg-yellow-50 dark:bg-yellow-900/20", text: "text-yellow-700 dark:text-yellow-400", dot: "bg-yellow-500" },
+  RECEIVED: { bg: "bg-yellow-50 dark:bg-yellow-900/20", text: "text-yellow-700 dark:text-yellow-400", dot: "bg-yellow-500" },
+  ISSUED: { bg: "bg-purple-50 dark:bg-purple-900/20", text: "text-purple-700 dark:text-purple-400", dot: "bg-purple-600" },
+  WORK_STATUS: { bg: "bg-orange-50 dark:bg-orange-900/20", text: "text-orange-700 dark:text-orange-400", dot: "bg-orange-600" },
+  UNUSED_RETURN: { bg: "bg-teal-50 dark:bg-teal-900/20", text: "text-teal-700 dark:text-teal-400", dot: "bg-teal-600" },
+  DEFECTIVE_RETURN: { bg: "bg-rose-50 dark:bg-rose-900/20", text: "text-rose-700 dark:text-rose-400", dot: "bg-rose-600" },
+  DOA: { bg: "bg-red-50 dark:bg-red-900/20", text: "text-red-700 dark:text-red-400", dot: "bg-red-600" },
+  HANDOVER: { bg: "bg-indigo-50 dark:bg-indigo-900/20", text: "text-indigo-700 dark:text-indigo-400", dot: "bg-indigo-600" },
+  CLOSED: { bg: "bg-emerald-50 dark:bg-emerald-900/20", text: "text-emerald-700 dark:text-emerald-400", dot: "bg-emerald-600" },
+};
+
+const TRACK_STEPS = ["PENDING", "STOCK_CHECK", "ISSUED", "WORK_STATUS", "UNUSED_RETURN", "DEFECTIVE_RETURN", "DOA", "HANDOVER", "CLOSED"];
+
+const getStatusIcon = (status: string) => {
+  switch (status) {
+    case "PENDING":
+      return <Package className="w-3.5 h-3.5" />;
+    case "STOCK_CHECK":
+    case "RECEIVED":
+      return <ClipboardCheck className="w-3.5 h-3.5" />;
+    case "ISSUED":
+      return <User className="w-3.5 h-3.5" />;
+    case "WORK_STATUS":
+      return <Activity className="w-3.5 h-3.5" />;
+    case "UNUSED_RETURN":
+    case "DEFECTIVE_RETURN":
+      return <RotateCcw className="w-3.5 h-3.5" />;
+    case "DOA":
+      return <Activity className="w-3.5 h-3.5" />;
+    case "HANDOVER":
+      return <User className="w-3.5 h-3.5" />;
+    case "CLOSED":
+      return <ShieldCheck className="w-3.5 h-3.5" />;
+    default:
+      return <Clock className="w-3.5 h-3.5" />;
+  }
+};
+
+const getTransitionNote = (status: string) => {
+  switch (status) {
+    case "STOCK_CHECK":
+      return {
+        title: "Verify Stock Availability",
+        message: "Check the stock room to ensure the physical part matches the case specifications before updating the status.",
+        icon: <ClipboardCheck className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />,
+        bg: "bg-yellow-50/80 dark:bg-yellow-950/20 border-yellow-200 dark:border-yellow-800/60",
+        text: "text-yellow-800 dark:text-yellow-300",
+      };
+    case "ISSUED":
+      return {
+        title: "Engineer Part Issue Verification",
+        message: "Verify the engineer's identity. A 6-digit WhatsApp OTP is required to officially assign this part to the engineer.",
+        icon: <User className="w-5 h-5 text-purple-600 dark:text-purple-400" />,
+        bg: "bg-purple-50/80 dark:bg-purple-950/20 border-purple-200 dark:border-purple-800/60",
+        text: "text-purple-800 dark:text-purple-300",
+      };
+    case "WORK_STATUS":
+      return {
+        title: "Verify Work Execution",
+        message: "Confirm the current field progress with the engineer. Ensure the physical installation or service has commenced.",
+        icon: <Activity className="w-5 h-5 text-orange-600 dark:text-orange-400" />,
+        bg: "bg-orange-50/80 dark:bg-orange-950/20 border-orange-200 dark:border-orange-800/60",
+        text: "text-orange-800 dark:text-orange-300",
+      };
+    case "UNUSED_RETURN":
+      return {
+        title: "Reconcile Unused Part",
+        message: "Confirm the unused part has been returned in original, salable packaging and successfully added back to inventory.",
+        icon: <RotateCcw className="w-5 h-5 text-teal-600 dark:text-teal-400" />,
+        bg: "bg-teal-50/80 dark:bg-teal-950/20 border-teal-200 dark:border-teal-800/60",
+        text: "text-teal-800 dark:text-teal-300",
+      };
+    case "DEFECTIVE_RETURN":
+      return {
+        title: "Reconcile Defective Part",
+        message: "Confirm receipt of the customer's defective/old part. Match the serial numbers to prepare for HP RMA dispatch.",
+        icon: <RotateCcw className="w-5 h-5 text-rose-600 dark:text-rose-400" />,
+        bg: "bg-rose-50/80 dark:bg-rose-950/20 border-rose-200 dark:border-rose-800/60",
+        text: "text-rose-800 dark:text-rose-300",
+      };
+    case "DOA":
+      return {
+        title: "Death on Arrival",
+        message: "The part was found dead/non-functional on arrival. Document the issue and prepare for RMA or replacement processing.",
+        icon: <Activity className="w-5 h-5 text-red-600 dark:text-red-400" />,
+        bg: "bg-red-50/80 dark:bg-red-950/20 border-red-200 dark:border-red-800/60",
+        text: "text-red-800 dark:text-red-300",
+      };
+    case "HANDOVER":
+      return {
+        title: "Engineer Handover Verification",
+        message: "Record the formal return handover from the engineer. WhatsApp OTP verification is mandatory for security tracking.",
+        icon: <User className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />,
+        bg: "bg-indigo-50/80 dark:bg-indigo-950/20 border-indigo-200 dark:border-indigo-800/60",
+        text: "text-indigo-800 dark:text-indigo-300",
+      };
+    case "CLOSED":
+      return {
+        title: "Final Case Closure",
+        message: "Make sure all paperwork, OTP validations, and part logistics are 100% reconciled before closing the case forever.",
+        icon: <CheckCircle className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />,
+        bg: "bg-emerald-50/80 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/60",
+        text: "text-emerald-800 dark:text-emerald-300",
+      };
+    default:
+      return null;
+  }
+};
+
+interface Props {
+  data: HPStockItem[];
+  loading: boolean;
+  pagination: PaginationMeta;
+  onPageChange: (page: number) => void;
+  onEdit: (item: HPStockItem) => void;
+  onDelete: (id: number) => void;
+  onRowUpdated: (item: HPStockItem) => void;
+}
+
+export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, onDelete, onRowUpdated }: Props) {
+  const user = useAuthStore((s) => s.user);
+  const isSubAdmin = user?.role === "sub_admin";
+  const [transitionOpen, setTransitionOpen] = useState(false);
+  const [trackOpen, setTrackOpen] = useState(false);
+  const [activeRow, setActiveRow] = useState<HPStockItem | null>(null);
+  const [pendingToStatus, setPendingToStatus] = useState<string | null>(null);
+  const [engineerName, setEngineerName] = useState("");
+  const [engineerPhone, setEngineerPhone] = useState("");
+  const [otp, setOtp] = useState("");
+  const [otpSent, setOtpSent] = useState(false);
+  const [sendingOtp, setSendingOtp] = useState(false);
+  const [generatedOtp, setGeneratedOtp] = useState("");
+  const [remarks, setRemarks] = useState("");
+  const [savingTransition, setSavingTransition] = useState(false);
+  const [engineers, setEngineers] = useState<Engineer[]>([]);
+  const [loadingEngineers, setLoadingEngineers] = useState(false);
+
+  const showEngineerField = pendingToStatus === "ISSUED" || pendingToStatus === "HANDOVER";
+
+  const fetchEngineers = async (region?: string) => {
+    setLoadingEngineers(true);
+    try {
+      const data = await getEngineersForAssignment(region);
+      setEngineers(data.filter((e) => e.status === "active"));
+    } catch {
+      setEngineers([]);
+    } finally {
+      setLoadingEngineers(false);
+    }
+  };
+  
+  const canConfirm = useMemo(() => {
+    if (!activeRow) return false;
+    if (showEngineerField) {
+      return (
+        engineerName.trim().length > 0 &&
+        engineerPhone.trim().length === 10 &&
+        otp.trim().length === 6
+      );
+    }
+    return true;
+  }, [activeRow, engineerName, engineerPhone, otp, showEngineerField]);
+
+  const openTransition = (row: HPStockItem, target: string) => {
+    setActiveRow(row);
+    setPendingToStatus(target);
+    const isEngineerStep = target === "ISSUED" || target === "HANDOVER";
+    setEngineerName(isEngineerStep ? (row.engineer_name || "") : "");
+    setEngineerPhone(isEngineerStep ? (row.engineer_phone || "") : "");
+    setRemarks("");
+    setOtp("");
+    setOtpSent(false);
+    setGeneratedOtp("");
+    setTransitionOpen(true);
+    if (target === "ISSUED" || target === "HANDOVER") {
+      fetchEngineers(row.region || undefined);
+    }
+  };
+
+  const openTrack = (row: HPStockItem) => {
+    setActiveRow(row);
+    setTrackOpen(true);
+  };
+
+  const handleSendOTP = async () => {
+    if (!activeRow || !engineerPhone || engineerPhone.trim().length !== 10) {
+      toast({ title: "Please enter a valid 10-digit Indian phone number first", variant: "destructive" });
+      return;
+    }
+    setSendingOtp(true);
+    try {
+      const res = await sendHPStockOTP(activeRow.id, {
+        phone: engineerPhone.trim(),
+        to_status: pendingToStatus || "",
+      });
+      setOtpSent(true);
+      setGeneratedOtp(res.otp);
+      
+      // Open prefilled WhatsApp URL in new window
+      if (res.whatsapp_url) {
+        window.open(res.whatsapp_url, "_blank");
+      }
+      
+      toast({ title: "OTP generated! Pre-filled WhatsApp tab opened to send the code." });
+    } catch (err) {
+      toast({ title: extractApiError(err), variant: "destructive" });
+    } finally {
+      setSendingOtp(false);
+    }
+  };
+
+  const handleTransition = async () => {
+    if (!activeRow || !canConfirm) return;
+    setSavingTransition(true);
+    try {
+      const updated = await transitionHPStockItem(activeRow.id, {
+        engineer_name: showEngineerField ? engineerName.trim() || undefined : undefined,
+        engineer_phone: showEngineerField ? engineerPhone.trim() : undefined,
+        otp: showEngineerField ? otp.trim() : undefined,
+        remarks: remarks.trim() || undefined,
+        to_status: pendingToStatus || undefined,
+      });
+      onRowUpdated(updated);
+      setTransitionOpen(false);
+      toast({ title: "HP Stock status updated and verified successfully" });
+    } catch (err) {
+      toast({ title: extractApiError(err), variant: "destructive" });
+    } finally {
+      setSavingTransition(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Case ID / WO</TableHead>
+              <TableHead>Delivery / Service Event</TableHead>
+              <TableHead>Material / Sales Order</TableHead>
+              <TableHead>Region & Engineer</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {Array.from({ length: 5 }).map((_, i) => (
+              <TableRow key={i}>
+                {Array.from({ length: 6 }).map((_, j) => (
+                  <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>
+                ))}
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm">
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-slate-50 dark:bg-slate-800/50">
+                <TableHead className="font-semibold">Case ID / WO</TableHead>
+                <TableHead className="font-semibold">Delivery / Service Event</TableHead>
+                <TableHead className="font-semibold">Material / Sales Order</TableHead>
+                <TableHead className="font-semibold">GVRMA No</TableHead>
+                <TableHead className="font-semibold">Region & Engineer</TableHead>
+                <TableHead className="font-semibold">Status</TableHead>
+                <TableHead className="font-semibold">Next Action</TableHead>
+                <TableHead className="text-center font-semibold">History</TableHead>
+                <TableHead className="text-right font-semibold">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {data.map((item) => (
+                <TableRow key={item.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                  <TableCell>
+                    <div className="font-medium text-slate-900 dark:text-slate-100">{item.case_id || "N/A"}</div>
+                    <div className="text-xs text-slate-500">{item.work_order_id || "N/A"}</div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="text-sm text-slate-900 dark:text-slate-100">{item.delivery_no || "N/A"}</div>
+                    <div className="text-xs text-slate-500">{item.service_event_no || "N/A"}</div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="text-sm text-slate-900 dark:text-slate-100">{item.material_order_no || "N/A"}</div>
+                    <div className="text-xs text-slate-500">{item.hp_sales_order_no || "N/A"}</div>
+                  </TableCell>
+                  <TableCell>
+                    <span className="text-sm">{item.gvrma_no || "N/A"}</span>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex flex-col gap-1">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 w-fit">
+                        {REGION_LABELS[item.region as Region] || item.region || "No Region"}
+                      </span>
+                      <span className="text-xs text-slate-500">
+                        {item.engineer_name || "Unassigned"}
+                        {item.engineer_phone && ` (${item.engineer_phone})`}
+                      </span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    {(() => {
+                      const s = item.status || "PENDING";
+                      const st = STATUS_STYLE_MAP[s] || STATUS_STYLE_MAP.PENDING;
+                      return (
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${st.bg} ${st.text}`}>
+                          <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${st.dot}`} />
+                          {STATUS_LABELS[s] || s}
+                        </span>
+                      );
+                    })()}
+                  </TableCell>
+                  <TableCell>
+                    {AVAILABLE_TRANSITIONS[item.status || "PENDING"]?.length > 0 ? (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button size="sm" className="gap-1 text-xs">
+                            <ArrowRight className="w-3.5 h-3.5" />
+                            Next Step <ChevronDown className="w-3 h-3 ml-0.5" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" className="w-48">
+                          {AVAILABLE_TRANSITIONS[item.status || "PENDING"].map((targetStatus) => (
+                            <DropdownMenuItem
+                              key={targetStatus}
+                              className="cursor-pointer gap-2 text-sm"
+                              onClick={() => openTransition(item, targetStatus)}
+                            >
+                              <span className={`w-2 h-2 rounded-full ${STATUS_STYLE_MAP[targetStatus]?.dot || "bg-slate-400"}`} />
+                              {TRANSITION_LABELS[targetStatus] || targetStatus}
+                            </DropdownMenuItem>
+                          ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    ) : (
+                      <Badge variant="outline" className="text-slate-400 border-slate-200">Completed</Badge>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <Button size="sm" variant="ghost" className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:text-indigo-300 font-medium" onClick={() => openTrack(item)}>
+                      History
+                    </Button>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-2">
+                      <Button variant="ghost" size="icon" onClick={() => onEdit(item)} className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/50">
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                      {!isSubAdmin && (
+                        <Button variant="ghost" size="icon" onClick={() => onDelete(item.id)} className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/50">
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      </div>
+      
+      {pagination.total > 0 && (
+        <div className="flex items-center justify-between mt-4 text-sm text-slate-500 dark:text-slate-400">
+          <span>
+            Showing {(pagination.page - 1) * pagination.per_page + 1}-
+            {Math.min(pagination.page * pagination.per_page, pagination.total)} of {pagination.total}
+          </span>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => onPageChange(pagination.page - 1)} disabled={pagination.page <= 1}>
+              Previous
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => onPageChange(pagination.page + 1)} disabled={pagination.page >= pagination.pages}>
+              Next
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Transition Ticket Dialog */}
+      <Dialog open={transitionOpen} onOpenChange={setTransitionOpen}>
+        <DialogContent className="sm:max-w-[520px]">
+          <DialogHeader>
+            <DialogTitle>Transition HP Stock Status</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {(() => {
+              const note = pendingToStatus ? getTransitionNote(pendingToStatus) : null;
+              if (!note) return null;
+              return (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className={`p-3.5 rounded-xl border flex gap-3 items-start shadow-sm backdrop-blur-sm ${note.bg}`}
+                >
+                  <div className="p-1 rounded-lg bg-white/60 dark:bg-slate-900/60 shadow-sm border border-slate-100 dark:border-slate-800 flex-shrink-0 mt-0.5">
+                    {note.icon}
+                  </div>
+                  <div className="space-y-1">
+                    <h4 className={`text-sm font-semibold tracking-wide ${note.text}`}>
+                      {note.title}
+                    </h4>
+                    <p className="text-xs opacity-90 leading-relaxed text-slate-600 dark:text-slate-300">
+                      {note.message}
+                    </p>
+                  </div>
+                </motion.div>
+              );
+            })()}
+            {showEngineerField && (
+              <div className="space-y-4 border-l-2 border-indigo-500 pl-3 py-1">
+                <h4 className="text-xs font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+                  Engineer WhatsApp Verification
+                </h4>
+                <div className="space-y-2">
+                  <Label>Select Engineer *</Label>
+                  {loadingEngineers ? (
+                    <div className="text-xs text-slate-400 py-2">Loading engineers...</div>
+                  ) : (
+                    <select
+                      className="flex h-10 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                      value={engineerName}
+                      onChange={(e) => {
+                        const selected = engineers.find((eng) => eng.name === e.target.value);
+                        setEngineerName(e.target.value);
+                        setEngineerPhone(selected?.phone || "");
+                        setOtp("");
+                        setOtpSent(false);
+                        setGeneratedOtp("");
+                      }}
+                    >
+                      <option value="">Select engineer...</option>
+                      {engineers.map((eng) => (
+                        <option key={eng.id} value={eng.name}>
+                          {eng.name}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label>Engineer Phone (10 digits) *</Label>
+                  <div className="flex gap-2">
+                    <Input 
+                      value={engineerPhone} 
+                      onChange={(e) => setEngineerPhone(e.target.value)} 
+                      placeholder="e.g. 9876543210" 
+                      maxLength={10}
+                      disabled={otpSent}
+                    />
+                    <Button 
+                      type="button" 
+                      onClick={handleSendOTP} 
+                      disabled={sendingOtp || engineerPhone.trim().length !== 10}
+                      className="bg-indigo-600 hover:bg-indigo-700 whitespace-nowrap"
+                    >
+                      {sendingOtp ? "Sending..." : otpSent ? "Resend OTP" : "Send OTP"}
+                    </Button>
+                  </div>
+                </div>
+
+                {otpSent && (
+                  <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                    <Label className="text-emerald-600 dark:text-emerald-400 font-medium">
+                      Enter 6-Digit OTP *
+                    </Label>
+                    <Input 
+                      value={otp} 
+                      onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))} 
+                      placeholder="Enter 6-digit OTP code" 
+                      maxLength={6}
+                      className="border-emerald-500 focus-visible:ring-emerald-500 text-center tracking-widest font-mono text-lg font-bold"
+                    />
+                    <p className="text-[11px] text-slate-500 mt-1">
+                      WhatsApp pre-filled tab launched. Ask the engineer for the OTP to complete this action.
+                    </p>
+                    {generatedOtp && (
+                      <span className="inline-block mt-1 text-[11px] bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded text-slate-600 font-mono">
+                        Testing fallback OTP: <strong className="text-indigo-600 dark:text-indigo-400">{generatedOtp}</strong>
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+            <div className="space-y-2">
+              <Label>Remarks / Comments</Label>
+              <Textarea value={remarks} onChange={(e) => setRemarks(e.target.value)} placeholder="Optional comments about this transition" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setTransitionOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleTransition} disabled={!canConfirm || savingTransition}>
+              {savingTransition ? "Processing..." : "Confirm Transition"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* History Track Dialog */}
+      <Dialog open={trackOpen} onOpenChange={setTrackOpen}>
+        <DialogContent className="sm:max-w-[700px]">
+          <DialogHeader>
+            <DialogTitle>HP Stock Tracking & Account History</DialogTitle>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Full transition records and logistics details</p>
+          </DialogHeader>
+          {activeRow && (
+            <div className="space-y-6">
+              {/* Stepper Progress */}
+              {(() => {
+                const hasUnused = activeRow.status === "UNUSED_RETURN" || 
+                  (activeRow.transition_history || []).some(h => h.to_status === "UNUSED_RETURN" || h.from_status === "UNUSED_RETURN");
+                const hasDefective = activeRow.status === "DEFECTIVE_RETURN" || 
+                  (activeRow.transition_history || []).some(h => h.to_status === "DEFECTIVE_RETURN" || h.from_status === "DEFECTIVE_RETURN");
+                const hasDOA = activeRow.status === "DOA" || 
+                  (activeRow.transition_history || []).some(h => h.to_status === "DOA" || h.from_status === "DOA");
+                
+                const steps = ["PENDING", "STOCK_CHECK", "ISSUED", "WORK_STATUS"];
+                if (hasUnused) {
+                  steps.push("UNUSED_RETURN");
+                } else if (hasDefective) {
+                  steps.push("DEFECTIVE_RETURN");
+                } else if (hasDOA) {
+                  steps.push("DOA");
+                } else {
+                  steps.push("UNUSED_RETURN");
+                }
+                steps.push("HANDOVER", "CLOSED");
+
+                const colsClass = steps.length === 6 
+                  ? "grid grid-cols-2 md:grid-cols-6 gap-3" 
+                  : "grid grid-cols-2 md:grid-cols-7 gap-3";
+
+                return (
+                  <div className={colsClass}>
+                    {steps.map((step, idx) => {
+                      const normalizeStatusForStepper = (status: string) => {
+                        if (status === "RECEIVED") return "STOCK_CHECK";
+                        return status;
+                      };
+                      const normalizedCurrentStatus = normalizeStatusForStepper(activeRow.status || "PENDING");
+                      const currentIndex = steps.indexOf(normalizedCurrentStatus);
+                      const completed = idx < currentIndex;
+                      const current = idx === currentIndex;
+                      const formattedStep = STATUS_LABELS[step] || step;
+                      return (
+                        <div key={step} className={`rounded-xl border p-2.5 text-center transition-colors ${current ? "border-indigo-200 dark:border-indigo-800 bg-indigo-50/50 dark:bg-indigo-900/20" : "border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30"}`}>
+                          <div className={`h-2.5 w-2.5 rounded-full mx-auto mb-1.5 shadow-sm ${completed ? "bg-emerald-500" : current ? "bg-indigo-500 shadow-indigo-500/40" : "bg-slate-300 dark:bg-slate-700"}`} />
+                          <p className={`text-[11px] font-medium ${current ? "text-indigo-700 dark:text-indigo-300" : "text-slate-600 dark:text-slate-400"}`}>{formattedStep}</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+              
+              {/* Timeline Logs */}
+              <div className="relative max-h-[380px] overflow-y-auto pr-2 pl-10 py-2 space-y-6">
+                {/* Vertical Line */}
+                <div className="absolute left-[22px] top-2 bottom-2 w-0.5 bg-slate-200 dark:bg-slate-800" />
+                {(() => {
+                  const milestones = [
+                    {
+                      status: "PENDING",
+                      label: STATUS_LABELS["PENDING"] || "Stock Entry",
+                      timestamp: activeRow.created_at,
+                      updated_by: activeRow.created_by_name || "System",
+                      comment: "Stock entry registered successfully.",
+                      engineer_name: "",
+                      engineer_phone: "",
+                    }
+                  ];
+
+                  if (activeRow.transition_history && Array.isArray(activeRow.transition_history)) {
+                    activeRow.transition_history.forEach((h) => {
+                      milestones.push({
+                        status: h.to_status,
+                        label: STATUS_LABELS[h.to_status] || h.to_status,
+                        timestamp: h.timestamp,
+                        updated_by: h.updated_by || "System",
+                        comment: h.comment || "",
+                        engineer_name: h.engineer_name || "",
+                        engineer_phone: h.engineer_phone || "",
+                      });
+                    });
+                  }
+
+                  return milestones.map((m, idx) => {
+                    const st = STATUS_STYLE_MAP[m.status] || STATUS_STYLE_MAP.PENDING;
+                    const d = new Date(m.timestamp);
+                    const dateStr = d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+                    const timeStr = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "numeric", hour12: true });
+                    const formattedDate = `${dateStr} • ${timeStr}`;
+
+                    return (
+                      <div key={`${m.timestamp}-${idx}`} className="relative group">
+                        {/* Timeline Dot */}
+                        <div className={`absolute -left-[30px] top-1.5 flex items-center justify-center w-6 h-6 rounded-full border-2 border-white dark:border-slate-900 ${st.bg} ${st.text} shadow-sm z-10 transition-transform group-hover:scale-110`}>
+                          {getStatusIcon(m.status)}
+                        </div>
+
+                        {/* Card Content */}
+                        <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/50 p-4 space-y-2.5 shadow-sm hover:shadow-md hover:border-slate-300 dark:hover:border-slate-700 transition-all duration-200">
+                          <div className="flex items-center justify-between flex-wrap gap-2">
+                            <h4 className="font-semibold text-slate-900 dark:text-slate-50 text-sm">
+                              {m.label}
+                            </h4>
+                            <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold tracking-wide uppercase ${st.bg} ${st.text}`}>
+                              {m.status === "PENDING" ? "Initiated" : "Completed"}
+                            </span>
+                          </div>
+
+                          <div className="grid gap-1.5 text-xs text-slate-600 dark:text-slate-400">
+                            {m.updated_by && (
+                              <div className="flex items-center gap-2">
+                                <span className="text-slate-400 dark:text-slate-500 w-24">Updated By:</span>
+                                <span className="font-medium text-slate-800 dark:text-slate-200">{m.updated_by}</span>
+                              </div>
+                            )}
+                            {m.engineer_name && (
+                              <div className="flex items-center gap-2">
+                                <span className="text-slate-400 dark:text-slate-500 w-24">Engineer:</span>
+                                <span className="font-medium text-slate-800 dark:text-slate-200">
+                                  {m.engineer_name} {m.engineer_phone && `(${m.engineer_phone})`}
+                                </span>
+                              </div>
+                            )}
+                            {m.comment && (
+                              <div className="flex items-start gap-2 mt-1 pt-1.5 border-t border-slate-100 dark:border-slate-800/40">
+                                <span className="text-slate-400 dark:text-slate-500 w-24 shrink-0 font-medium">Remarks:</span>
+                                <span className="text-slate-700 dark:text-slate-300 italic">"{m.comment}"</span>
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="pt-2 border-t border-slate-100 dark:border-slate-800/40 mt-1 flex items-center gap-1.5 text-[10px] text-slate-400 dark:text-slate-500 font-medium">
+                            <Clock className="w-3.5 h-3.5" />
+                            <span>{formattedDate}</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  });
+                })()}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
