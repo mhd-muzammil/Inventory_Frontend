@@ -149,6 +149,9 @@ export interface Ticket {
   arrival_date: string | null;
   target_completion: string | null;
   closed_at: string | null;
+  cso_image: string | null;
+  part_request_image: string | null;
+  part_request_images?: Array<{ id: number; image: string; created_at: string }>;
   created_at: string;
   updated_at: string;
 }
@@ -200,6 +203,7 @@ export interface PartRequest {
   rejection_reason: string | null;
   created_at: string;
   updated_at: string;
+  ticket_details?: Ticket;
 }
 
 // ============================================================
