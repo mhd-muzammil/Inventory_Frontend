@@ -34,6 +34,8 @@ import {
   User,
   Package,
   Wrench,
+  UploadCloud,
+  FileText,
 } from "lucide-react";
 
 type Step = "customer" | "parts" | "engineer" | "review" | "done";
@@ -117,6 +119,7 @@ export function TicketFormDialog({
       explanation: "",
       customer_comments: "",
       entry_charge: 0,
+      cso_image: undefined,
     },
   });
 
@@ -421,6 +424,8 @@ export function TicketFormDialog({
               <textarea {...register("issue_description")} placeholder="Describe the issue..." rows={4} className={textareaClass} />
             </div>
 
+
+
             <DialogFooter className="border-t border-slate-200 dark:border-slate-700 pt-4">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
               <Button type="button" onClick={handleNext} className="gap-2">
@@ -580,6 +585,8 @@ export function TicketFormDialog({
               <p className="font-semibold text-slate-700 dark:text-slate-200">Issue Description</p>
               <p className="text-slate-600 dark:text-slate-300 whitespace-pre-wrap">{getValues("issue_description") || "-"}</p>
             </div>
+
+
 
             {(getValues("part_number") || getValues("engineer_name") || getValues("resolution_summary")) && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
