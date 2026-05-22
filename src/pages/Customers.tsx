@@ -242,7 +242,7 @@ export default function Customers() {
         <Card className="p-4 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 relative overflow-hidden">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-              Total CSO Entry Sync
+              Total CSO Entry
             </span>
             <BarChart2 className="w-4 h-4 text-sky-500" />
           </div>
