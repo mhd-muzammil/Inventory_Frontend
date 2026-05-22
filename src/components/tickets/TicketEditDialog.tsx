@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import {
   Dialog,
@@ -27,6 +27,8 @@ import {
   User,
   Package,
   Wrench,
+  UploadCloud,
+  FileText,
 } from "lucide-react";
 import type { Ticket } from "@/types";
 
@@ -42,6 +44,15 @@ interface TicketEditDialogProps {
 export function TicketEditDialog({ open, onOpenChange, ticket, onSaved }: TicketEditDialogProps) {
   const [tab, setTab] = useState<Tab>("customer");
   const [saving, setSaving] = useState(false);
+  const [partRequestFiles, setPartRequestFiles] = useState<File[]>([]);
+  const [deletedPartRequestImageIds, setDeletedPartRequestImageIds] = useState<number[]>([]);
+
+  useEffect(() => {
+    if (open) {
+      setPartRequestFiles([]);
+      setDeletedPartRequestImageIds([]);
+    }
+  }, [open]);
 
   const { register, getValues, setValue, watch } = useForm({
     defaultValues: {
@@ -62,6 +73,7 @@ export function TicketEditDialog({ open, onOpenChange, ticket, onSaved }: Ticket
       service_type: ticket.service_type || "warranty",
       issue_description: ticket.issue_description || "",
       cso_date: ticket.cso_date || "",
+      cso_image: undefined as File | string | null | undefined,
       // Parts
       part_number: ticket.part_number || "",
       part_usage: ticket.part_usage || "",
@@ -72,6 +84,7 @@ export function TicketEditDialog({ open, onOpenChange, ticket, onSaved }: Ticket
       so_req_id: ticket.so_req_id || "",
       removed_part_sno: ticket.removed_part_sno || "",
       installed_part_sno: ticket.installed_part_sno || "",
+      part_request_image: undefined as File | string | null | undefined,
       // Engineer
       engineer_name: ticket.engineer_name || "",
       hp_id: ticket.hp_id || "",
@@ -86,8 +99,16 @@ export function TicketEditDialog({ open, onOpenChange, ticket, onSaved }: Ticket
   const handleSave = async () => {
     setSaving(true);
     try {
-      await updateTicket(ticket.id, getValues());
+      const formValues = getValues();
+      const payload = {
+        ...formValues,
+        part_request_images: partRequestFiles,
+        delete_part_request_images: deletedPartRequestImageIds,
+      };
+      await updateTicket(ticket.id, payload);
       toast({ title: "Ticket updated successfully" });
+      setPartRequestFiles([]);
+      setDeletedPartRequestImageIds([]);
       onSaved();
       onOpenChange(false);
     } catch (err) {
@@ -208,6 +229,44 @@ export function TicketEditDialog({ open, onOpenChange, ticket, onSaved }: Ticket
               <Label>Issue Description</Label>
               <textarea {...register("issue_description")} rows={3} className={textareaClass} />
             </div>
+            
+            <div className="space-y-2">
+              <Label className="text-slate-700 dark:text-slate-300">CSO Entry Image / Scan (Optional)</Label>
+              <div className="flex items-center gap-3">
+                <Input
+                  type="file"
+                  accept="image/*,application/pdf"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      setValue("cso_image", file);
+                    }
+                  }}
+                  className="cursor-pointer bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-xl file:mr-4 file:py-1 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 file:hover:bg-indigo-100 dark:file:bg-indigo-950/40 dark:file:text-indigo-300"
+                />
+                {(watch("cso_image") || ticket.cso_image) && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setValue("cso_image", null)}
+                    className="text-red-500 hover:text-red-700"
+                  >
+                    Clear
+                  </Button>
+                )}
+              </div>
+              {watch("cso_image") && watch("cso_image") instanceof File && (
+                <p className="text-xs text-indigo-600 dark:text-indigo-400 font-medium">
+                  New file selected: {(watch("cso_image") as File).name}
+                </p>
+              )}
+              {ticket.cso_image && !watch("cso_image") && (
+                <p className="text-xs text-indigo-600 dark:text-indigo-400 font-medium">
+                  Current file: <a href={ticket.cso_image} target="_blank" rel="noopener noreferrer" className="underline hover:text-indigo-800">View current scan</a>
+                </p>
+              )}
+            </div>
           </div>
         )}
 
@@ -257,6 +316,152 @@ export function TicketEditDialog({ open, onOpenChange, ticket, onSaved }: Ticket
                 <Label>Installed Part S.No.</Label>
                 <Input {...register("installed_part_sno")} />
               </div>
+            </div>
+            
+            <div className="space-y-4 mt-4">
+              <Label className="text-slate-700 dark:text-slate-300 font-semibold">
+                Part Request Images / Scans
+              </Label>
+              
+              {/* Existing Uploaded Scans */}
+              {((ticket.part_request_images && ticket.part_request_images.length > 0) || ticket.part_request_image) && (
+                <div className="space-y-2">
+                  <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                    Existing Scans:
+                  </span>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {/* Legacy Single Scan */}
+                    {ticket.part_request_image && watch("part_request_image") !== null && (
+                      <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                        <div className="flex items-center gap-2 overflow-hidden mr-2">
+                          <FileText className="w-4 h-4 text-amber-500 shrink-0" />
+                          <a
+                            href={ticket.part_request_image}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-slate-700 dark:text-slate-300 font-medium truncate hover:underline"
+                          >
+                            Legacy Scan
+                          </a>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setValue("part_request_image", null);
+                            toast({ title: "Legacy scan marked for removal" });
+                          }}
+                          className="h-7 w-7 p-0 hover:bg-rose-50 dark:hover:bg-rose-950/30 hover:text-rose-500 text-slate-400"
+                        >
+                          ✕
+                        </Button>
+                      </div>
+                    )}
+
+                    {/* Multiple DB Scans */}
+                    {(ticket.part_request_images || [])
+                      .filter((img) => !deletedPartRequestImageIds.includes(img.id))
+                      .map((img) => {
+                        const filename = img.image.split("/").pop() || `Scan #${img.id}`;
+                        return (
+                          <div
+                            key={img.id}
+                            className="flex items-center justify-between p-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
+                          >
+                            <div className="flex items-center gap-2 overflow-hidden mr-2">
+                              <FileText className="w-4 h-4 text-indigo-500 shrink-0" />
+                              <a
+                                href={img.image}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs text-slate-700 dark:text-slate-300 font-medium truncate hover:underline"
+                              >
+                                {filename}
+                              </a>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setDeletedPartRequestImageIds((prev) => [...prev, img.id]);
+                                toast({ title: "Scan marked for deletion" });
+                              }}
+                              className="h-7 w-7 p-0 hover:bg-rose-50 dark:hover:bg-rose-950/30 hover:text-rose-500 text-slate-400"
+                            >
+                              ✕
+                            </Button>
+                          </div>
+                        );
+                      })}
+                  </div>
+                  
+                  {(watch("part_request_image") === null || deletedPartRequestImageIds.length > 0) && (
+                    <p className="text-[10px] text-amber-600 dark:text-amber-400 italic">
+                      Note: Changes to existing scans will be applied upon saving.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Multiple Upload Drag & Drop Picker */}
+              <div className="relative border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-xl p-4 flex flex-col items-center justify-center bg-slate-50/50 dark:bg-slate-900/50 hover:bg-slate-50 dark:hover:bg-slate-900/80 transition-colors group cursor-pointer">
+                <input
+                  id="part_request_images_edit"
+                  type="file"
+                  multiple
+                  accept="image/*,application/pdf"
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files || []);
+                    if (files.length > 0) {
+                      setPartRequestFiles((prev) => [...prev, ...files]);
+                    }
+                    e.target.value = "";
+                  }}
+                  className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                />
+                <UploadCloud className="w-8 h-8 text-slate-400 group-hover:text-indigo-500 transition-colors mb-2" />
+                <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">
+                  Click or drag to add new part scans
+                </span>
+                <span className="text-[10px] text-slate-400 dark:text-slate-500 mt-1">
+                  Supports Images & PDFs (Upload as many as needed)
+                </span>
+              </div>
+
+              {/* Newly Selected Files */}
+              {partRequestFiles.length > 0 && (
+                <div className="space-y-2">
+                  <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                    New Scans to Upload:
+                  </span>
+                  <div className="space-y-2 max-h-[160px] overflow-y-auto pr-1">
+                    {partRequestFiles.map((file, idx) => (
+                      <div
+                        key={idx}
+                        className="flex items-center justify-between p-2 rounded-xl bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100/50 dark:border-indigo-900/30"
+                      >
+                        <div className="flex items-center gap-2 overflow-hidden mr-2">
+                          <FileText className="w-4 h-4 text-indigo-500 shrink-0" />
+                          <span className="text-xs text-indigo-900 dark:text-indigo-300 font-medium truncate">
+                            {file.name}
+                          </span>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setPartRequestFiles((prev) => prev.filter((_, i) => i !== idx))}
+                          className="h-7 w-7 p-0 hover:bg-rose-50 dark:hover:bg-rose-950/30 hover:text-rose-500 text-slate-400"
+                        >
+                          ✕
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
