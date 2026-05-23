@@ -4,23 +4,72 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Plus, Trash2, Printer, Receipt, Loader2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import renderfulllogo from "@/assets/renderfulllogo.png";
 import renderlogo from "@/assets/renderlogo.png";
 import stampImg from "@/assets/stamp.png";
+
+type DocumentStyle = "classic" | "orange";
+type LineItemId = number | string;
+type LineItemValue = string | number;
+
+interface InvoiceLineItem {
+  id: LineItemId;
+  description: string;
+  hsn: string;
+  qty: number;
+  uom: string;
+  price: number;
+  cgstPercent: number;
+  sgstPercent: number;
+}
+
+type CalculatedInvoiceLineItem = InvoiceLineItem & {
+  taxableValue: number;
+  cgstAmount: number;
+  sgstAmount: number;
+  totalAmount: number;
+};
+
+export interface InvoiceDraftData {
+  invoiceNumber?: string;
+  issueDate?: string;
+  dueDate?: string;
+  placeOfSupply?: string;
+  senderCompany?: string;
+  senderAddress?: string;
+  senderPhone?: string;
+  senderEmail?: string;
+  senderGSTIN?: string;
+  senderWebsite?: string;
+  senderContactName?: string;
+  billToName?: string;
+  billToPhone?: string;
+  billToAddress?: string;
+  billToGSTIN?: string;
+  shipToName?: string;
+  shipToPhone?: string;
+  shipToAddress?: string;
+  items?: InvoiceLineItem[];
+  terms?: string;
+  style?: DocumentStyle;
+  totalTaxableValue?: number;
+  totalCGST?: number;
+  totalSGST?: number;
+  overallTotal?: number;
+}
 
 interface InvoiceFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmitInvoice?: (invoiceData: any) => Promise<void>;
-  initialStyle?: "classic" | "orange";
-  initialData?: any;
+  onSubmitInvoice?: (invoiceData: InvoiceDraftData) => Promise<void>;
+  initialStyle?: DocumentStyle;
+  initialData?: InvoiceDraftData | null;
+  allowStyleChange?: boolean;
 }
 
 export function InvoiceFormDialog({
@@ -29,8 +78,9 @@ export function InvoiceFormDialog({
   onSubmitInvoice,
   initialStyle = "classic",
   initialData = null,
+  allowStyleChange = true,
 }: InvoiceFormDialogProps) {
-  const [invoiceStyle, setInvoiceStyle] = useState<"classic" | "orange">(initialStyle);
+  const [invoiceStyle, setInvoiceStyle] = useState<DocumentStyle>(initialStyle);
   const [invoiceNumber, setInvoiceNumber] = useState("RT/20-21-SAL-1254");
   const [issueDate, setIssueDate] = useState("2021-02-06");
   const [dueDate, setDueDate] = useState("2021-02-06");
@@ -63,7 +113,7 @@ export function InvoiceFormDialog({
   );
 
   // Items
-  const [items, setItems] = useState<any[]>([
+  const [items, setItems] = useState<InvoiceLineItem[]>([
     {
       id: 1,
       description: "Windows Installation\n* Desktop OS Reinstallation.",
@@ -157,7 +207,7 @@ export function InvoiceFormDialog({
   }, [initialData, open]);
 
   // Calculations
-  const calculatedItems = items.map((item) => {
+  const calculatedItems: CalculatedInvoiceLineItem[] = items.map((item) => {
     const qty = Number(item.qty) || 0;
     const price = Number(item.price) || 0;
     const cgstPercent = Number(item.cgstPercent) || 0;
@@ -240,13 +290,13 @@ export function InvoiceFormDialog({
     }
 
     const parts: string[] = [];
-    let crore = Math.floor(num / 10000000);
+    const crore = Math.floor(num / 10000000);
     num %= 10000000;
-    let lakh = Math.floor(num / 100000);
+    const lakh = Math.floor(num / 100000);
     num %= 100000;
-    let thousand = Math.floor(num / 1000);
+    const thousand = Math.floor(num / 1000);
     num %= 1000;
-    let hundred = num;
+    const hundred = num;
 
     if (crore) parts.push(toWords(crore) + " Crore");
     if (lakh) parts.push(toWords(lakh) + " Lakh");
@@ -272,11 +322,15 @@ export function InvoiceFormDialog({
     ]);
   };
 
-  const handleRemoveItem = (id: any) => {
+  const handleRemoveItem = (id: LineItemId) => {
     setItems(items.filter((item) => item.id !== id));
   };
 
-  const updateItemField = (id: any, field: string, val: any) => {
+  const updateItemField = (
+    id: LineItemId,
+    field: keyof InvoiceLineItem,
+    val: LineItemValue,
+  ) => {
     setItems(
       items.map((item) => (item.id === id ? { ...item, [field]: val } : item))
     );
@@ -356,18 +410,20 @@ export function InvoiceFormDialog({
             <Receipt className="w-5 h-5 text-indigo-600" /> Invoice Creator & Editor
           </DialogTitle>
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">Template:</span>
-              <Select value={invoiceStyle} onValueChange={(val: any) => setInvoiceStyle(val)}>
-                <SelectTrigger className="h-8 w-36 text-xs bg-white dark:bg-slate-800">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="classic">100% Classic (B&W)</SelectItem>
-                  <SelectItem value="orange">Modern Orange</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            {allowStyleChange && (
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">Template:</span>
+                <Select value={invoiceStyle} onValueChange={(val) => setInvoiceStyle(val as DocumentStyle)}>
+                  <SelectTrigger className="h-8 w-36 text-xs bg-white dark:bg-slate-800">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="classic">100% Classic (B&W)</SelectItem>
+                    <SelectItem value="orange">Modern Orange</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <Button
               onClick={handlePrint}
               variant="default"

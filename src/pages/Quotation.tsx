@@ -10,12 +10,57 @@ import { toast } from "@/components/ui/use-toast";
 import { sendQuotation, recordCustomerResponse, getQuotationSummary } from "@/api/quotations";
 import { extractApiError } from "@/api/client";
 import { QuotationFormDialog } from "@/components/quotations/QuotationFormDialog";
+import { HPQuotationFormDialog } from "@/components/quotations/HPQuotationFormDialog";
+import { RTPLQuotationFormDialog } from "@/components/quotations/RTPLQuotationFormDialog";
 import { useAuthStore } from "@/store/authStore";
 import { REGION_LABELS } from "@/types";
 import type { QuotationStatus, Region, QuotationSummary } from "@/types";
 import { useEffect, useCallback } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+
+type DocumentStyle = "classic" | "orange";
+type QuotationVariantId = "hp" | "rtpl";
+
+type LocalQuotation = {
+  localId?: string;
+  quoteNumber?: string;
+  quoteToName?: string;
+  quoteToAddress?: string;
+  issueDate?: string;
+  validUntil?: string;
+  overallTotal?: number | string;
+  region?: Region | string | null;
+  style?: DocumentStyle;
+  [key: string]: unknown;
+};
+
+const QUOTATION_BASE_PATH = "/quotation";
+
+const QUOTATION_CREATE_VARIANTS = {
+  hp: {
+    path: "/quotation/hp",
+    style: "classic",
+    FormComponent: HPQuotationFormDialog,
+  },
+  rtpl: {
+    path: "/quotation/rtpl",
+    style: "orange",
+    FormComponent: RTPLQuotationFormDialog,
+  },
+} as const;
+
+function getQuotationVariantByPath(pathname: string) {
+  return Object.values(QUOTATION_CREATE_VARIANTS).find((variant) => variant.path === pathname) ?? null;
+}
+
+function getQuotationVariantByStyle(style: DocumentStyle) {
+  return Object.values(QUOTATION_CREATE_VARIANTS).find((variant) => variant.style === style)
+    ?? QUOTATION_CREATE_VARIANTS.hp;
+}
 
 export default function Quotation() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
   const isAdmin = user?.role === "admin" || user?.role === "super_admin";
 
@@ -23,7 +68,7 @@ export default function Quotation() {
   const [selectedRegion, setSelectedRegion] = useState<Region | undefined>(undefined);
   const [page, setPage] = useState(1);
   const [openDialog, setOpenDialog] = useState(false);
-  const [activeStyle, setActiveStyle] = useState<"classic" | "orange">("classic");
+  const [activeStyle, setActiveStyle] = useState<DocumentStyle>("classic");
   
   const [summary, setSummary] = useState<QuotationSummary | null>(null);
 
@@ -37,17 +82,39 @@ export default function Quotation() {
   }, []);
 
   useEffect(() => {
+    // Initial server summary load for the regional dashboard cards.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchSummary();
   }, [fetchSummary]);
 
-  const [localQuotations, setLocalQuotations] = useState<any[]>(() => {
+  const [localQuotations, setLocalQuotations] = useState<LocalQuotation[]>(() => {
     const saved = localStorage.getItem("localQuotations");
-    return saved ? JSON.parse(saved) : [];
+    return saved ? (JSON.parse(saved) as LocalQuotation[]) : [];
   });
 
-  const [editingQuotation, setEditingQuotation] = useState<any>(null);
+  const [editingQuotation, setEditingQuotation] = useState<LocalQuotation | null>(null);
+  const routeVariant = getQuotationVariantByPath(location.pathname);
+  const routeStyle = routeVariant?.style ?? null;
 
-  const handleSaveLocalQuotation = async (quotation: any) => {
+  const quotationFormOpen = openDialog || !!routeStyle;
+  const formStyle = routeStyle || activeStyle;
+  const formInitialData = routeStyle ? null : editingQuotation;
+  const createVariant = routeVariant ?? getQuotationVariantByStyle(formStyle);
+  const CreateQuotationForm = createVariant.FormComponent;
+
+  const openQuotationForm = (variantId: QuotationVariantId) => {
+    const variant = QUOTATION_CREATE_VARIANTS[variantId];
+    setEditingQuotation(null);
+    setActiveStyle(variant.style);
+    navigate(variant.path);
+  };
+
+  const handleQuotationOpenChange = (open: boolean) => {
+    setOpenDialog(open);
+    if (!open && routeStyle) navigate(QUOTATION_BASE_PATH);
+  };
+
+  const handleSaveLocalQuotation = async (quotation: LocalQuotation) => {
     // Ensure localId exists for reliable state management
     const targetId = quotation.localId || editingQuotation?.localId || Date.now().toString();
     const updatedQuotation = { 
@@ -86,7 +153,7 @@ export default function Quotation() {
   );
 
   // Utility: Detect region mapping for dashboard filtering and count distribution
-  const inferRegion = useCallback((q: any): Region => {
+  const inferRegion = useCallback((q: LocalQuotation): Region => {
     // 1. Use explicit region metadata (Primary)
     if (q.region) return q.region as Region;
     
@@ -141,7 +208,7 @@ export default function Quotation() {
     // Then apply active UI click filter if active
     if (!selectedRegion) return base;
     return base.filter((q) => inferRegion(q) === selectedRegion);
-  }, [localQuotations, selectedRegion, inferRegion, isAdmin, user?.region]);
+  }, [localQuotations, selectedRegion, inferRegion, isAdmin, user]);
 
   const { data, loading, error, pagination, refetch } = useQuotations(filters);
 
@@ -285,21 +352,32 @@ export default function Quotation() {
       <QuotationsToolbar
         status={status}
         onStatusChange={(v) => { setStatus(v); setPage(1); }}
-        onAddClassic={() => { setEditingQuotation(null); setActiveStyle("classic"); setOpenDialog(true); }}
-        onAddOrange={() => { setEditingQuotation(null); setActiveStyle("orange"); setOpenDialog(true); }}
+        onAddClassic={() => openQuotationForm("hp")}
+        onAddOrange={() => openQuotationForm("rtpl")}
         onClearFilters={handleClearFilters}
         hasActiveFilters={hasActiveFilters}
       />
 
-      <QuotationFormDialog
-        key={openDialog ? (editingQuotation ? `edit-${editingQuotation.quoteNumber}` : `new-${activeStyle}`) : "closed"}
-        open={openDialog}
-        onOpenChange={setOpenDialog}
-        onSubmitQuotation={handleSaveLocalQuotation}
-        initialStyle={activeStyle}
-        initialData={editingQuotation}
-        defaultRegion={user?.region}
-      />
+      {formInitialData ? (
+        <QuotationFormDialog
+          key={quotationFormOpen ? `edit-${formInitialData.quoteNumber}` : "closed"}
+          open={quotationFormOpen}
+          onOpenChange={handleQuotationOpenChange}
+          onSubmitQuotation={handleSaveLocalQuotation}
+          initialStyle={formStyle}
+          initialData={formInitialData}
+          defaultRegion={user?.region}
+        />
+      ) : (
+        <CreateQuotationForm
+          key={quotationFormOpen ? `new-${createVariant.id}` : "closed"}
+          open={quotationFormOpen}
+          onOpenChange={handleQuotationOpenChange}
+          onSubmitQuotation={handleSaveLocalQuotation}
+          initialData={null}
+          defaultRegion={user?.region}
+        />
+      )}
 
       {!loading && data.length === 0 ? (
         <Card className="p-12 text-center">
@@ -342,7 +420,7 @@ export default function Quotation() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40 text-slate-700 dark:text-slate-200 text-xs">
-                  {visibleLocalQuotations.map((q: any, i: number) => (
+                  {visibleLocalQuotations.map((q, i) => (
                     <tr key={i} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
                       <td className="p-2 font-medium text-slate-900 dark:text-white">{q.quoteNumber}</td>
                       <td className="p-2">{q.quoteToName}</td>
@@ -378,7 +456,7 @@ export default function Quotation() {
                           className="h-7 text-xs text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 px-2"
                           onClick={() => {
                             const targetId = q.localId;
-                            const updated = localQuotations.filter((item: any, idx: number) => {
+                            const updated = localQuotations.filter((item, idx) => {
                                // Filter by localId if exists, fallback to index for legacy
                                return targetId ? item.localId !== targetId : idx !== i;
                             });

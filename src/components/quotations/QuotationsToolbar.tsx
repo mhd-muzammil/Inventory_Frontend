@@ -33,11 +33,11 @@ export function QuotationsToolbar({
           )}
           <Button onClick={onAddClassic} variant="outline" className="border-indigo-600 text-indigo-600 hover:bg-indigo-50 w-full sm:w-auto gap-2 font-semibold shadow-sm">
             <Plus className="w-4 h-4" />
-            HP (Quatation)
+            HP (Quotation)
           </Button>
           <Button onClick={onAddOrange} className="bg-orange-600 hover:bg-orange-700 text-white w-full sm:w-auto gap-2 font-semibold shadow-sm">
             <Plus className="w-4 h-4" />
-            RTPL (Quatation)
+            RTPL (Quotation)
           </Button>
         </div>
       </div>

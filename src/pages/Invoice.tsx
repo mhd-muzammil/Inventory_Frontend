@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Receipt, AlertCircle, Plus, Trash2, FileText, Download } from "lucide-react";
 import { Card } from "@/components/ui/card";
@@ -6,25 +7,86 @@ import { Button } from "@/components/ui/button";
 import { InvoicesToolbar } from "@/components/invoices/InvoicesToolbar";
 import { InvoicesTable } from "@/components/invoices/InvoicesTable";
 import { InvoiceFormDialog } from "@/components/invoices/InvoiceFormDialog";
+import { BillOfSupplyInvoiceFormDialog } from "@/components/invoices/BillOfSupplyInvoiceFormDialog";
+import { TaxInvoiceFormDialog } from "@/components/invoices/TaxInvoiceFormDialog";
 import { useInvoices } from "@/hooks/useInvoices";
 import { toast } from "@/components/ui/use-toast";
 import { sendInvoice, markInvoicePaid } from "@/api/invoices";
 import { extractApiError } from "@/api/client";
 import type { InvoiceStatus } from "@/types";
 
+type DocumentStyle = "classic" | "orange";
+type InvoiceVariantId = "billOfSupply" | "taxInvoice";
+
+type LocalInvoice = {
+  invoiceNumber?: string;
+  billToName?: string;
+  issueDate?: string;
+  dueDate?: string;
+  overallTotal?: number | string;
+  style?: DocumentStyle;
+  [key: string]: unknown;
+};
+
+const INVOICE_BASE_PATH = "/invoice";
+
+const INVOICE_CREATE_VARIANTS = {
+  billOfSupply: {
+    path: "/invoice/bill-of-supply",
+    style: "classic",
+    FormComponent: BillOfSupplyInvoiceFormDialog,
+  },
+  taxInvoice: {
+    path: "/invoice/tax-invoice",
+    style: "orange",
+    FormComponent: TaxInvoiceFormDialog,
+  },
+} as const;
+
+function getInvoiceVariantByPath(pathname: string) {
+  return Object.values(INVOICE_CREATE_VARIANTS).find((variant) => variant.path === pathname) ?? null;
+}
+
+function getInvoiceVariantByStyle(style: DocumentStyle) {
+  return Object.values(INVOICE_CREATE_VARIANTS).find((variant) => variant.style === style)
+    ?? INVOICE_CREATE_VARIANTS.billOfSupply;
+}
+
 export default function Invoice() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [status, setStatus] = useState("all");
   const [page, setPage] = useState(1);
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [activeStyle, setActiveStyle] = useState<"classic" | "orange">("classic");
-  const [localInvoices, setLocalInvoices] = useState<any[]>(() => {
+  const [activeStyle, setActiveStyle] = useState<DocumentStyle>("classic");
+  const [localInvoices, setLocalInvoices] = useState<LocalInvoice[]>(() => {
     const saved = localStorage.getItem("localInvoices");
-    return saved ? JSON.parse(saved) : [];
+    return saved ? (JSON.parse(saved) as LocalInvoice[]) : [];
   });
 
-  const [editingInvoice, setEditingInvoice] = useState<any>(null);
+  const [editingInvoice, setEditingInvoice] = useState<LocalInvoice | null>(null);
+  const routeVariant = getInvoiceVariantByPath(location.pathname);
+  const routeStyle = routeVariant?.style ?? null;
 
-  const handleSaveLocalInvoice = async (invoiceData: any) => {
+  const invoiceFormOpen = isFormOpen || !!routeStyle;
+  const formStyle = routeStyle || activeStyle;
+  const formInitialData = routeStyle ? null : editingInvoice;
+  const createVariant = routeVariant ?? getInvoiceVariantByStyle(formStyle);
+  const CreateInvoiceForm = createVariant.FormComponent;
+
+  const openInvoiceForm = (variantId: InvoiceVariantId) => {
+    const variant = INVOICE_CREATE_VARIANTS[variantId];
+    setEditingInvoice(null);
+    setActiveStyle(variant.style);
+    navigate(variant.path);
+  };
+
+  const handleInvoiceFormOpenChange = (open: boolean) => {
+    setIsFormOpen(open);
+    if (!open && routeStyle) navigate(INVOICE_BASE_PATH);
+  };
+
+  const handleSaveLocalInvoice = async (invoiceData: LocalInvoice) => {
     const newList = [invoiceData, ...localInvoices];
     setLocalInvoices(newList);
     localStorage.setItem("localInvoices", JSON.stringify(newList));
@@ -107,8 +169,8 @@ export default function Invoice() {
       <InvoicesToolbar
         status={status}
         onStatusChange={(v) => { setStatus(v); setPage(1); }}
-        onAddClassic={() => { setEditingInvoice(null); setActiveStyle("classic"); setIsFormOpen(true); }}
-        onAddOrange={() => { setEditingInvoice(null); setActiveStyle("orange"); setIsFormOpen(true); }}
+        onAddClassic={() => openInvoiceForm("billOfSupply")}
+        onAddOrange={() => openInvoiceForm("taxInvoice")}
         onClearFilters={handleClearFilters}
         hasActiveFilters={hasActiveFilters}
       />
@@ -122,7 +184,7 @@ export default function Invoice() {
           <p className="text-sm text-slate-500 mb-4">
             Invoices will be generated from approved quotations.
           </p>
-          <Button onClick={() => setIsFormOpen(true)} className="gap-2">
+          <Button onClick={() => openInvoiceForm("billOfSupply")} className="gap-2">
             <Plus className="w-4 h-4" /> Create First Invoice
           </Button>
         </Card>
@@ -156,7 +218,7 @@ export default function Invoice() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40 text-slate-700 dark:text-slate-200 text-xs">
-                  {localInvoices.map((inv: any, i: number) => (
+                  {localInvoices.map((inv, i) => (
                     <tr key={i} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
                       <td className="p-2 font-medium text-slate-900 dark:text-white">{inv.invoiceNumber}</td>
                       <td className="p-2">{inv.billToName}</td>
@@ -186,7 +248,7 @@ export default function Invoice() {
                           size="sm"
                           className="h-7 text-xs text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 px-2"
                           onClick={() => {
-                            const updated = localInvoices.filter((_: any, idx: number) => idx !== i);
+                            const updated = localInvoices.filter((_, idx) => idx !== i);
                             setLocalInvoices(updated);
                             localStorage.setItem("localInvoices", JSON.stringify(updated));
                           }}
@@ -203,14 +265,24 @@ export default function Invoice() {
         </div>
       )}
 
-      <InvoiceFormDialog 
-        key={isFormOpen ? (editingInvoice ? `edit-${editingInvoice.invoiceNumber}` : `new-${activeStyle}`) : "inactive"} 
-        open={isFormOpen} 
-        onOpenChange={setIsFormOpen} 
-        initialStyle={activeStyle}
-        initialData={editingInvoice}
-        onSubmitInvoice={handleSaveLocalInvoice}
-      />
+      {formInitialData ? (
+        <InvoiceFormDialog
+          key={invoiceFormOpen ? `edit-${formInitialData.invoiceNumber}` : "inactive"}
+          open={invoiceFormOpen}
+          onOpenChange={handleInvoiceFormOpenChange}
+          initialStyle={formStyle}
+          initialData={formInitialData}
+          onSubmitInvoice={handleSaveLocalInvoice}
+        />
+      ) : (
+        <CreateInvoiceForm
+          key={invoiceFormOpen ? `new-${createVariant.id}` : "inactive"}
+          open={invoiceFormOpen}
+          onOpenChange={handleInvoiceFormOpenChange}
+          initialData={null}
+          onSubmitInvoice={handleSaveLocalInvoice}
+        />
+      )}
     </motion.div>
   );
 }

@@ -9,10 +9,70 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, Printer, FileText, Loader2 } from "lucide-react";
+import { Trash2, Printer, FileText, Loader2 } from "lucide-react";
 import renderlogo from "@/assets/renderlogo.png";
 import bobQr from "@/assets/bob_qr.png";
 import stampImg from "@/assets/stamp.png";
+
+type DocumentStyle = "classic" | "orange";
+type LineItemId = number | string;
+type LineItemValue = string | number;
+
+interface QuotationLineItem {
+  id: LineItemId;
+  description: string;
+  detailDesc: string;
+  modelNo: string;
+  slNo: string;
+  hsn: string;
+  qty: number;
+  uom: string;
+  price: number;
+  cgstPercent: number;
+  sgstPercent: number;
+}
+
+type CalculatedQuotationLineItem = QuotationLineItem & {
+  taxableValue: number;
+  cgstAmount: number;
+  sgstAmount: number;
+  totalAmount: number;
+};
+
+export interface QuotationDraftData {
+  quoteNumber?: string;
+  issueDate?: string;
+  validUntil?: string;
+  placeOfSupply?: string;
+  caseId?: string;
+  orderNumber?: string;
+  senderCompany?: string;
+  senderAddress?: string;
+  senderPhone?: string;
+  senderEmail?: string;
+  senderGSTIN?: string;
+  senderPAN?: string;
+  senderWebsite?: string;
+  bankDetails?: string;
+  bankAc?: string;
+  bankIfsc?: string;
+  quoteToName?: string;
+  quoteToEmail?: string;
+  quoteToPhone?: string;
+  quoteToAddress?: string;
+  quoteToGSTIN?: string;
+  shipToName?: string;
+  shipToPhone?: string;
+  shipToAddress?: string;
+  items?: QuotationLineItem[];
+  totalTaxableValue?: number;
+  totalCGST?: number;
+  totalSGST?: number;
+  overallTotal?: number;
+  terms?: string;
+  style?: DocumentStyle;
+  region?: string;
+}
 
 function numberToWords(num: number): string {
   if (num === 0) return "Zero";
@@ -53,10 +113,11 @@ function numberToWords(num: number): string {
 interface QuotationFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmitQuotation?: (quotationData: any) => Promise<void>;
-  initialStyle?: "classic" | "orange";
-  initialData?: any;
+  onSubmitQuotation?: (quotationData: QuotationDraftData) => Promise<void>;
+  initialStyle?: DocumentStyle;
+  initialData?: QuotationDraftData | null;
   defaultRegion?: string;
+  allowStyleChange?: boolean;
 }
 
 export function QuotationFormDialog({
@@ -66,8 +127,9 @@ export function QuotationFormDialog({
   initialStyle = "classic",
   initialData = null,
   defaultRegion = "chennai",
+  allowStyleChange = true,
 }: QuotationFormDialogProps) {
-  const [quotationStyle, setQuotationStyle] = useState<"classic" | "orange">(initialStyle);
+  const [quotationStyle, setQuotationStyle] = useState<DocumentStyle>(initialStyle);
   
   const [quoteNumber, setQuoteNumber] = useState(initialStyle === "classic" ? "RTPL/25-26/QEN/271" : "RT25-26/QEN-2540");
   const [issueDate, setIssueDate] = useState(initialStyle === "classic" ? "2026-05-04" : "2025-12-09");
@@ -117,7 +179,7 @@ export function QuotationFormDialog({
   const [terms, setTerms] = useState(initialStyle === "classic" ? "Thanks for your support" : "Thanks for your support");
 
   // Items
-  const [items, setItems] = useState<any[]>(
+  const [items, setItems] = useState<QuotationLineItem[]>(
     initialStyle === "classic" 
     ? [
         {
@@ -204,7 +266,7 @@ export function QuotationFormDialog({
   }, [initialData, open, defaultRegion]);
 
   // Calculations
-  const calculatedItems = items.map((item) => {
+  const calculatedItems: CalculatedQuotationLineItem[] = items.map((item) => {
     const qty = Number(item.qty) || 0;
     const price = Number(item.price) || 0;
     const cgstPercent = Number(item.cgstPercent) || 0;
@@ -248,11 +310,15 @@ export function QuotationFormDialog({
     ]);
   };
 
-  const handleRemoveItem = (id: any) => {
+  const handleRemoveItem = (id: LineItemId) => {
     setItems(items.filter((item) => item.id !== id));
   };
 
-  const updateItemField = (id: any, field: string, val: any) => {
+  const updateItemField = (
+    id: LineItemId,
+    field: keyof QuotationLineItem,
+    val: LineItemValue,
+  ) => {
     setItems(
       items.map((item) => (item.id === id ? { ...item, [field]: val } : item))
     );
@@ -341,18 +407,20 @@ export function QuotationFormDialog({
             <FileText className="w-5 h-5 text-indigo-600" /> Quotation Editor
           </DialogTitle>
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 mr-2">
-              <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">Template:</span>
-              <Select value={quotationStyle} onValueChange={(val: any) => setQuotationStyle(val)}>
-                <SelectTrigger className="h-8 w-36 text-xs bg-white dark:bg-slate-800">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="classic">100% Classic (B&W)</SelectItem>
-                  <SelectItem value="orange">Modern Orange</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            {allowStyleChange && (
+              <div className="flex items-center gap-2 mr-2">
+                <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">Template:</span>
+                <Select value={quotationStyle} onValueChange={(val) => setQuotationStyle(val as DocumentStyle)}>
+                  <SelectTrigger className="h-8 w-36 text-xs bg-white dark:bg-slate-800">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="classic">100% Classic (B&W)</SelectItem>
+                    <SelectItem value="orange">Modern Orange</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <Button
               onClick={handlePrint}
               variant="default"
@@ -436,7 +504,7 @@ export function QuotationFormDialog({
             <div className="space-y-3">
               <div className="flex items-center justify-between border-b pb-1"><h3 className="font-bold text-indigo-600 text-sm">Line Items</h3><Button size="sm" className="h-6 text-xs" onClick={handleAddItem}>Add Item</Button></div>
               <div className="space-y-3">
-                {items.map((item, i) => (
+                {items.map((item) => (
                   <div key={item.id} className="p-2 border rounded-lg bg-slate-50 dark:bg-slate-800 space-y-2 relative">
                     <Button onClick={() => handleRemoveItem(item.id)} variant="ghost" size="icon" className="h-5 w-5 text-red-500 absolute top-1 right-1"><Trash2 className="w-3 h-3"/></Button>
                     <div className="space-y-1">

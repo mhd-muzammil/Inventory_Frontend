@@ -32,8 +32,12 @@ export default function App() {
           <Route path="/cso-entry" element={<Materials />} />
           <Route path="/tickets/:id" element={<TicketDetail />} />
           <Route path="/quotation" element={<Quotation />} />
+          <Route path="/quotation/hp" element={<Quotation />} />
+          <Route path="/quotation/rtpl" element={<Quotation />} />
           <Route path="/part-request" element={<PartRequest />} />
           <Route path="/invoice" element={<Invoice />} />
+          <Route path="/invoice/bill-of-supply" element={<Invoice />} />
+          <Route path="/invoice/tax-invoice" element={<Invoice />} />
           <Route path="/stock" element={<Stock />} />
           <Route path="/hp-stock" element={<HPStock />} />
           <Route path="/buffer" element={<Buffer />} />
