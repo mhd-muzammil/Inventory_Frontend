@@ -9,6 +9,7 @@ export interface Manager {
   region: string;
   region_display: string;
   is_active: boolean;
+  allowed_sections?: string[];
 }
 
 export interface CreateManagerPayload {
@@ -18,6 +19,7 @@ export interface CreateManagerPayload {
   first_name?: string;
   last_name?: string;
   region?: string;
+  allowed_sections?: string[];
 }
 
 export async function getManagers(): Promise<Manager[]> {
