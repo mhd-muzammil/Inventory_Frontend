@@ -7,6 +7,7 @@ export async function getBufferParts(filters?: {
   per_page?: number;
   view?: "my_region" | "overall";
   region?: string;
+  status_type?: "used" | "unused" | "all";
 }): Promise<PaginatedResponse<BufferPart>> {
   const { data } = await client.get<PaginatedResponse<BufferPart>>("/buffer-parts/", { params: filters });
   return data;
