@@ -54,8 +54,16 @@ interface SidebarProps {
 export function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
   const user = useAuthStore((s) => s.user);
   const isSuperAdmin = user?.role === "super_admin";
+  const isManager = user?.role === "manager";
 
-  const links = isSuperAdmin ? [...navLinks, ...superAdminLinks] : navLinks;
+  const filteredNavLinks = navLinks.filter((link) => {
+    if (isManager) {
+      return user?.allowed_sections?.includes(link.to);
+    }
+    return true;
+  });
+
+  const links = isSuperAdmin ? [...filteredNavLinks, ...superAdminLinks] : filteredNavLinks;
 
   return (
     <motion.aside
