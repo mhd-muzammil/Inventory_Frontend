@@ -19,7 +19,16 @@ const superAdminTabs = [
 export function MobileNav() {
   const user = useAuthStore((s) => s.user);
   const isSuperAdmin = user?.role === "super_admin";
-  const allTabs = isSuperAdmin ? [...tabs, ...superAdminTabs] : tabs;
+  const isManager = user?.role === "manager";
+
+  const filteredTabs = tabs.filter((tab) => {
+    if (isManager) {
+      return user?.allowed_sections?.includes(tab.to);
+    }
+    return true;
+  });
+
+  const allTabs = isSuperAdmin ? [...filteredTabs, ...superAdminTabs] : filteredTabs;
 
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-t border-slate-200 dark:border-slate-700 safe-bottom">
