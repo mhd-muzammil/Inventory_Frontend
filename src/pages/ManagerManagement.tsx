@@ -18,6 +18,23 @@ import type { Region } from "@/types";
 import { getManagers, createManager, updateManager, deleteManager } from "@/api/managers";
 import type { Manager } from "@/api/managers";
 
+const SECTIONS = [
+  { path: "/", label: "Dashboard" },
+  { path: "/customers", label: "Customers" },
+  { path: "/cso-entry", label: "CSO Entry" },
+  { path: "/engineers", label: "Engineers" },
+  { path: "/quotation", label: "Quotation" },
+  { path: "/part-request", label: "Part Request" },
+  { path: "/invoice", label: "Invoice" },
+  { path: "/stock", label: "RTPL Stock" },
+  { path: "/hp-stock", label: "HP Stock" },
+  { path: "/buffer", label: "Buffer" },
+  { path: "/purchase-order", label: "Purchase Order" },
+  { path: "/reports", label: "Report" },
+  { path: "/activity-charges", label: "Activity Charges" },
+  { path: "/settings", label: "Settings" },
+];
+
 const managerSchema = z.object({
   username: z.string().min(3, "Username must be at least 3 characters"),
   password: z.string().min(6, "Password must be at least 6 characters").or(z.literal("")),
@@ -25,6 +42,7 @@ const managerSchema = z.object({
   first_name: z.string().optional().default(""),
   last_name: z.string().optional().default(""),
   region: z.string().optional().default(""),
+  allowed_sections: z.array(z.string()).optional().default([]),
 });
 
 type ManagerFormData = z.infer<typeof managerSchema>;
@@ -42,10 +60,23 @@ export default function ManagerManagement() {
     register,
     handleSubmit,
     reset,
+    watch,
+    setValue,
     formState: { errors },
   } = useForm<ManagerFormData>({
     resolver: zodResolver(managerSchema),
+    defaultValues: {
+      username: "",
+      password: "",
+      email: "",
+      first_name: "",
+      last_name: "",
+      region: "",
+      allowed_sections: [],
+    }
   });
+
+  const watchedSections = watch("allowed_sections") || [];
 
   const fetchManagers = async () => {
     setLoading(true);
@@ -66,7 +97,15 @@ export default function ManagerManagement() {
 
   const openCreate = () => {
     setEditing(null);
-    reset({ username: "", password: "", email: "", first_name: "", last_name: "", region: "" });
+    reset({
+      username: "",
+      password: "",
+      email: "",
+      first_name: "",
+      last_name: "",
+      region: "",
+      allowed_sections: [],
+    });
     setDialogOpen(true);
   };
 
@@ -79,6 +118,7 @@ export default function ManagerManagement() {
       first_name: mgr.first_name || "",
       last_name: mgr.last_name || "",
       region: mgr.region || "",
+      allowed_sections: mgr.allowed_sections || [],
     });
     setDialogOpen(true);
   };
@@ -178,6 +218,7 @@ export default function ManagerManagement() {
                 <TableHead>Name</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Region</TableHead>
+                <TableHead>Permissions</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
@@ -199,6 +240,20 @@ export default function ManagerManagement() {
                     ) : (
                       <span className="text-xs text-slate-400">All regions</span>
                     )}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex flex-col gap-1 max-w-[200px]">
+                      <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">
+                        {m.allowed_sections?.length || 0} of 14 sections
+                      </span>
+                      {m.allowed_sections && m.allowed_sections.length > 0 ? (
+                        <span className="text-[10px] text-slate-400 truncate block hover:text-slate-500 transition-colors" title={m.allowed_sections.map(x => x === "/" ? "Dashboard" : x.substring(1)).join(", ")}>
+                          {m.allowed_sections.map(x => x === "/" ? "Dashboard" : x.substring(1)).join(", ")}
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-red-400">No access granted</span>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell>
                     <Badge variant={m.is_active ? "success" : "destructive"}>
@@ -275,6 +330,53 @@ export default function ManagerManagement() {
                 ))}
               </select>
             </div>
+            
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-slate-800 dark:text-slate-200 font-semibold">Allowed Sections / Access Permissions</Label>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setValue("allowed_sections", SECTIONS.map(s => s.path))}
+                    className="text-[10px] text-indigo-600 hover:text-indigo-700 font-semibold"
+                  >
+                    Select All
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setValue("allowed_sections", [])}
+                    className="text-[10px] text-slate-500 hover:text-slate-600 font-semibold"
+                  >
+                    Clear All
+                  </button>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2 mt-1 border border-slate-200 dark:border-slate-700 rounded-xl p-3 max-h-[180px] overflow-y-auto bg-slate-50 dark:bg-slate-900/50">
+                {SECTIONS.map((sec) => (
+                  <label
+                    key={sec.path}
+                    className="flex items-center gap-2.5 p-2 rounded-lg hover:bg-slate-200/50 dark:hover:bg-slate-800/80 cursor-pointer transition-colors text-xs font-medium text-slate-700 dark:text-slate-300"
+                  >
+                    <input
+                      type="checkbox"
+                      value={sec.path}
+                      checked={watchedSections.includes(sec.path)}
+                      onChange={(e) => {
+                        const current = [...watchedSections];
+                        if (e.target.checked) {
+                          setValue("allowed_sections", [...current, sec.path]);
+                        } else {
+                          setValue("allowed_sections", current.filter((x) => x !== sec.path));
+                        }
+                      }}
+                      className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-indigo-600 focus:ring-indigo-500"
+                    />
+                    {sec.label}
+                  </label>
+                ))}
+              </div>
+            </div>
+
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
               <Button type="submit" disabled={saving} className="gap-2">

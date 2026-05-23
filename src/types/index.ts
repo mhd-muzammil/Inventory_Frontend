@@ -45,6 +45,7 @@ export interface User {
   role: UserRole;
   region: Region | null;
   is_active: boolean;
+  allowed_sections?: string[];
 }
 
 // [x] Modify backend `customer` views to query `Ticket` model with role and region-based scoping (mirrored after HP Stock RMA workflow logic) <!-- id: 2 -->
