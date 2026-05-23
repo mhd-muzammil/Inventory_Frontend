@@ -45,6 +45,8 @@ export async function transitionBufferPart(
 export interface BufferPartSummary {
   regions: { region: string; total: number }[];
   total: number;
+  used: number;
+  unused: number;
 }
 
 export async function getBufferPartSummary(view?: "my_region" | "overall", region?: string): Promise<BufferPartSummary> {

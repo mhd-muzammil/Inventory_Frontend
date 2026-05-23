@@ -122,7 +122,7 @@ export default function Buffer() {
       </div>
 
       {/* ── Summary Cards ──────────────────────────────────────── */}
-      {summary && summary.regions.length > 0 && (
+      {summary && (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 mb-6">
           {summary.regions.map((r) => {
             const isSelected = selectedRegion === r.region;
@@ -155,6 +155,32 @@ export default function Buffer() {
               Total
             </span>
             <span className="text-xl font-bold text-indigo-700 dark:text-indigo-300">{summary.total}</span>
+          </Card>
+
+          {/* Unused Buffer Parts Count Card */}
+          <Card
+            className="p-4 flex flex-col items-center gap-1 border border-emerald-200 dark:border-emerald-800/60 bg-emerald-50/40 dark:bg-emerald-950/10 select-none"
+          >
+            <Package className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+            <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400 uppercase tracking-wide">
+              Unused (In Buffer)
+            </span>
+            <span className="text-xl font-bold text-emerald-700 dark:text-emerald-300">
+              {summary.unused}
+            </span>
+          </Card>
+
+          {/* Used Buffer Parts Count Card */}
+          <Card
+            className="p-4 flex flex-col items-center gap-1 border border-amber-200 dark:border-amber-800/60 bg-amber-50/40 dark:bg-amber-950/10 select-none"
+          >
+            <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+            <span className="text-xs font-medium text-amber-600 dark:text-amber-400 uppercase tracking-wide">
+              Used (Checked Out)
+            </span>
+            <span className="text-xl font-bold text-amber-700 dark:text-amber-300">
+              {summary.used}
+            </span>
           </Card>
         </div>
       )}
@@ -235,6 +261,7 @@ export default function Buffer() {
           onDelete={handleDelete}
           onRowUpdated={(updated) => {
             setData((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
+            fetchSummary();
           }}
         />
       )}
