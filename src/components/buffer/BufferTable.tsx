@@ -25,7 +25,8 @@ import type { Engineer } from "@/types";
 type WorkflowStatus = BufferPart["status"];
 
 const AVAILABLE_TRANSITIONS: Record<WorkflowStatus, WorkflowStatus[]> = {
-  BUFFER_IN: ["OUT"],
+  BUFFER_IN: ["PART_AVAILABILITY_CHECK"],
+  PART_AVAILABILITY_CHECK: ["OUT"],
   OUT: ["DEFECTIVE_RETURN", "UNUSED_RETURN"],
   DEFECTIVE_RETURN: ["REORDER"],
   UNUSED_RETURN: ["CLOSED"],
@@ -36,6 +37,7 @@ const AVAILABLE_TRANSITIONS: Record<WorkflowStatus, WorkflowStatus[]> = {
 
 const TRANSITION_LABELS: Record<WorkflowStatus, string> = {
   BUFFER_IN: "Return to Buffer",
+  PART_AVAILABILITY_CHECK: "Parts Availability Check",
   OUT: "Mark Out",
   DEFECTIVE_RETURN: "Defective Return",
   UNUSED_RETURN: "Unused Return",
@@ -46,6 +48,7 @@ const TRANSITION_LABELS: Record<WorkflowStatus, string> = {
 
 const STATUS_LABELS: Record<WorkflowStatus, string> = {
   BUFFER_IN: "Buffer In",
+  PART_AVAILABILITY_CHECK: "Parts Availability Check",
   OUT: "Out",
   DEFECTIVE_RETURN: "Defective Return",
   UNUSED_RETURN: "Unused Return",
@@ -56,6 +59,7 @@ const STATUS_LABELS: Record<WorkflowStatus, string> = {
 
 const STATUS_STYLE_MAP: Record<WorkflowStatus, { bg: string; text: string; dot: string }> = {
   BUFFER_IN: { bg: "bg-blue-50 dark:bg-blue-900/20", text: "text-blue-700 dark:text-blue-400", dot: "bg-blue-600" },
+  PART_AVAILABILITY_CHECK: { bg: "bg-purple-50 dark:bg-purple-900/20", text: "text-purple-700 dark:text-purple-400", dot: "bg-purple-600" },
   OUT: { bg: "bg-amber-50 dark:bg-amber-900/20", text: "text-amber-700 dark:text-amber-400", dot: "bg-amber-500" },
   DEFECTIVE_RETURN: { bg: "bg-rose-50 dark:bg-rose-900/20", text: "text-rose-700 dark:text-rose-400", dot: "bg-rose-600" },
   UNUSED_RETURN: { bg: "bg-teal-50 dark:bg-teal-900/20", text: "text-teal-700 dark:text-teal-400", dot: "bg-teal-600" },
@@ -68,6 +72,8 @@ const getStatusIcon = (status: WorkflowStatus) => {
   switch (status) {
     case "BUFFER_IN":
       return <Package className="w-3.5 h-3.5" />;
+    case "PART_AVAILABILITY_CHECK":
+      return <BoxesIcon className="w-3.5 h-3.5" />;
     case "OUT":
       return <User className="w-3.5 h-3.5" />;
     case "DEFECTIVE_RETURN":
@@ -94,6 +100,14 @@ const getTransitionNote = (status: WorkflowStatus) => {
         icon: <Package className="w-5 h-5 text-blue-600 dark:text-blue-400" />,
         bg: "bg-blue-50/80 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800/60",
         text: "text-blue-800 dark:text-blue-300",
+      };
+    case "PART_AVAILABILITY_CHECK":
+      return {
+        title: "Parts Availability Check",
+        message: "Verify if the parts required for the service case are fully available and ready in stock.",
+        icon: <BoxesIcon className="w-5 h-5 text-purple-600 dark:text-purple-400" />,
+        bg: "bg-purple-50/80 dark:bg-purple-950/20 border-purple-200 dark:border-purple-800/60",
+        text: "text-purple-800 dark:text-purple-300",
       };
     case "OUT":
       return {
@@ -148,7 +162,7 @@ const getTransitionNote = (status: WorkflowStatus) => {
   }
 };
 
-const TRACK_STEPS: WorkflowStatus[] = ["BUFFER_IN", "OUT", "DEFECTIVE_RETURN", "UNUSED_RETURN", "REORDER", "PART_RECEIVED", "CLOSED"];
+const TRACK_STEPS: WorkflowStatus[] = ["BUFFER_IN", "PART_AVAILABILITY_CHECK", "OUT", "DEFECTIVE_RETURN", "UNUSED_RETURN", "REORDER", "PART_RECEIVED", "CLOSED"];
 
 interface BufferTableProps {
   data: BufferPart[];
@@ -462,7 +476,7 @@ export function BufferTable({ data, loading, pagination, onPageChange, onEdit, o
                 const hasDefective = activeRow.status === "DEFECTIVE_RETURN" || 
                   (activeRow.transition_history || []).some(h => h.to_status === "DEFECTIVE_RETURN" || h.from_status === "DEFECTIVE_RETURN");
                 
-                const steps = ["BUFFER_IN", "OUT"];
+                const steps = ["BUFFER_IN", "PART_AVAILABILITY_CHECK", "OUT"];
                 if (hasUnused) {
                   steps.push("UNUSED_RETURN");
                 } else if (hasDefective) {
