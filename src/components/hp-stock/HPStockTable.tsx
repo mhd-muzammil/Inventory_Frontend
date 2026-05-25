@@ -55,7 +55,7 @@ const STATUS_LABELS: Record<string, string> = {
   UNUSED_RETURN: "Unused Part",
   DEFECTIVE_RETURN: "Old/Defective Part",
   DOA: "Death on Arrival",
-  HANDOVER: "Handover by Engineer",
+  HANDOVER: "Part Handover by Engineer",
   CLOSED: "Close the Case",
 };
 

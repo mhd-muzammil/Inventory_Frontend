@@ -202,7 +202,7 @@ export function HPStockFormDialog({ open, onOpenChange, editing, onSuccess }: Pr
                   <SelectItem value="WORK_STATUS">Work Status</SelectItem>
                   <SelectItem value="UNUSED_RETURN">Unused Part</SelectItem>
                   <SelectItem value="DEFECTIVE_RETURN">Old/Defective Part</SelectItem>
-                  <SelectItem value="HANDOVER">Handover by Engineer</SelectItem>
+                  <SelectItem value="HANDOVER">Part Handover by Engineer</SelectItem>
                   <SelectItem value="CLOSED">Close the Case</SelectItem>
                 </SelectContent>
               </Select>
