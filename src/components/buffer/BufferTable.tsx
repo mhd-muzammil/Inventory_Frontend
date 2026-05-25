@@ -28,10 +28,12 @@ const AVAILABLE_TRANSITIONS: Record<WorkflowStatus, WorkflowStatus[]> = {
   BUFFER_IN: ["PART_AVAILABILITY_CHECK"],
   PART_AVAILABILITY_CHECK: ["USABLE_READY_TO_USE", "DEFECTIVE_NOT_READY_TO_USE"],
   USABLE_READY_TO_USE: ["OUT"],
-  DEFECTIVE_NOT_READY_TO_USE: ["REORDER"],
-  OUT: ["DEFECTIVE_RETURN", "UNUSED_RETURN"],
-  DEFECTIVE_RETURN: ["REORDER"],
+  DEFECTIVE_NOT_READY_TO_USE: ["PART_HANDOVER_BY_ENGINEER"],
+  OUT: ["WORK_STATUS"],
+  WORK_STATUS: ["DEFECTIVE_RETURN", "UNUSED_RETURN"],
+  DEFECTIVE_RETURN: ["PART_HANDOVER_BY_ENGINEER"],
   UNUSED_RETURN: ["CLOSED"],
+  PART_HANDOVER_BY_ENGINEER: ["REORDER"],
   REORDER: ["PART_RECEIVED"],
   PART_RECEIVED: ["CLOSED"],
   CLOSED: ["BUFFER_IN"],
@@ -43,8 +45,10 @@ const TRANSITION_LABELS: Record<WorkflowStatus, string> = {
   USABLE_READY_TO_USE: "Usable (Good Part) ready to use",
   DEFECTIVE_NOT_READY_TO_USE: "Defective (Faulty Part) not ready to use",
   OUT: "Part Taken by Engineer",
+  WORK_STATUS: "Work Status",
   DEFECTIVE_RETURN: "Defective Return",
   UNUSED_RETURN: "Unused Return",
+  PART_HANDOVER_BY_ENGINEER: "Part Handover by Engineer",
   REORDER: "Reorder",
   PART_RECEIVED: "Part Received",
   CLOSED: "Close Case",
@@ -56,8 +60,10 @@ const STATUS_LABELS: Record<WorkflowStatus, string> = {
   USABLE_READY_TO_USE: "Usable (Good Part) ready to use",
   DEFECTIVE_NOT_READY_TO_USE: "Defective (Faulty Part) not ready to use",
   OUT: "Part Taken by Engineer",
+  WORK_STATUS: "Work Status",
   DEFECTIVE_RETURN: "Defective Return",
   UNUSED_RETURN: "Unused Return",
+  PART_HANDOVER_BY_ENGINEER: "Part Handover by Engineer",
   REORDER: "Reorder",
   PART_RECEIVED: "Part Received",
   CLOSED: "Closed",
@@ -69,8 +75,10 @@ const STATUS_STYLE_MAP: Record<WorkflowStatus, { bg: string; text: string; dot: 
   USABLE_READY_TO_USE: { bg: "bg-cyan-50 dark:bg-cyan-900/20", text: "text-cyan-700 dark:text-cyan-400", dot: "bg-cyan-600" },
   DEFECTIVE_NOT_READY_TO_USE: { bg: "bg-red-50 dark:bg-red-900/20", text: "text-red-700 dark:text-red-400", dot: "bg-red-600" },
   OUT: { bg: "bg-amber-50 dark:bg-amber-900/20", text: "text-amber-700 dark:text-amber-400", dot: "bg-amber-500" },
+  WORK_STATUS: { bg: "bg-fuchsia-50 dark:bg-fuchsia-900/20", text: "text-fuchsia-700 dark:text-fuchsia-400", dot: "bg-fuchsia-600" },
   DEFECTIVE_RETURN: { bg: "bg-rose-50 dark:bg-rose-900/20", text: "text-rose-700 dark:text-rose-400", dot: "bg-rose-600" },
   UNUSED_RETURN: { bg: "bg-teal-50 dark:bg-teal-900/20", text: "text-teal-700 dark:text-teal-400", dot: "bg-teal-600" },
+  PART_HANDOVER_BY_ENGINEER: { bg: "bg-slate-100 dark:bg-slate-800/40", text: "text-slate-700 dark:text-slate-300", dot: "bg-slate-500" },
   REORDER: { bg: "bg-orange-50 dark:bg-orange-900/20", text: "text-orange-700 dark:text-orange-400", dot: "bg-orange-600" },
   PART_RECEIVED: { bg: "bg-indigo-50 dark:bg-indigo-900/20", text: "text-indigo-700 dark:text-indigo-400", dot: "bg-indigo-600" },
   CLOSED: { bg: "bg-emerald-50 dark:bg-emerald-900/20", text: "text-emerald-700 dark:text-emerald-400", dot: "bg-emerald-600" },
@@ -88,10 +96,14 @@ const getStatusIcon = (status: WorkflowStatus) => {
       return <AlertCircle className="w-3.5 h-3.5" />;
     case "OUT":
       return <User className="w-3.5 h-3.5" />;
+    case "WORK_STATUS":
+      return <Clock className="w-3.5 h-3.5" />;
     case "DEFECTIVE_RETURN":
       return <AlertCircle className="w-3.5 h-3.5" />;
     case "UNUSED_RETURN":
       return <RotateCcw className="w-3.5 h-3.5" />;
+    case "PART_HANDOVER_BY_ENGINEER":
+      return <User className="w-3.5 h-3.5" />;
     case "REORDER":
       return <RefreshCw className="w-3.5 h-3.5" />;
     case "PART_RECEIVED":
@@ -132,7 +144,7 @@ const getTransitionNote = (status: WorkflowStatus) => {
     case "DEFECTIVE_NOT_READY_TO_USE":
       return {
         title: "Defective (Faulty Part) not ready to use",
-        message: "Mark this part as defective and not in usable condition. It will be routed for reordering.",
+        message: "Mark this part as defective and not in usable condition. It will be routed for engineer handover.",
         icon: <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400" />,
         bg: "bg-red-50/80 dark:bg-red-950/20 border-red-200 dark:border-red-800/60",
         text: "text-red-800 dark:text-red-300",
@@ -144,6 +156,14 @@ const getTransitionNote = (status: WorkflowStatus) => {
         icon: <User className="w-5 h-5 text-amber-600 dark:text-amber-400" />,
         bg: "bg-amber-50/80 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800/60",
         text: "text-amber-800 dark:text-amber-300",
+      };
+    case "WORK_STATUS":
+      return {
+        title: "Work Status",
+        message: "Update the work status for this part being used in the active service case.",
+        icon: <Clock className="w-5 h-5 text-fuchsia-600 dark:text-fuchsia-400" />,
+        bg: "bg-fuchsia-50/80 dark:bg-fuchsia-950/20 border-fuchsia-200 dark:border-fuchsia-800/60",
+        text: "text-fuchsia-800 dark:text-fuchsia-300",
       };
     case "DEFECTIVE_RETURN":
       return {
@@ -160,6 +180,14 @@ const getTransitionNote = (status: WorkflowStatus) => {
         icon: <RotateCcw className="w-5 h-5 text-teal-600 dark:text-teal-400" />,
         bg: "bg-teal-50/80 dark:bg-teal-950/20 border-teal-200 dark:border-teal-800/60",
         text: "text-teal-800 dark:text-teal-300",
+      };
+    case "PART_HANDOVER_BY_ENGINEER":
+      return {
+        title: "Part Handover by Engineer",
+        message: "Verify that the engineer has physically handed over the defective part and all required details are captured.",
+        icon: <User className="w-5 h-5 text-slate-600 dark:text-slate-450" />,
+        bg: "bg-slate-50/80 dark:bg-slate-950/20 border-slate-200 dark:border-slate-800/60",
+        text: "text-slate-800 dark:text-slate-300",
       };
     case "REORDER":
       return {
@@ -190,7 +218,7 @@ const getTransitionNote = (status: WorkflowStatus) => {
   }
 };
 
-const TRACK_STEPS: WorkflowStatus[] = ["BUFFER_IN", "PART_AVAILABILITY_CHECK", "USABLE_READY_TO_USE", "DEFECTIVE_NOT_READY_TO_USE", "OUT", "DEFECTIVE_RETURN", "UNUSED_RETURN", "REORDER", "PART_RECEIVED", "CLOSED"];
+const TRACK_STEPS: WorkflowStatus[] = ["BUFFER_IN", "PART_AVAILABILITY_CHECK", "USABLE_READY_TO_USE", "DEFECTIVE_NOT_READY_TO_USE", "OUT", "WORK_STATUS", "DEFECTIVE_RETURN", "UNUSED_RETURN", "PART_HANDOVER_BY_ENGINEER", "REORDER", "PART_RECEIVED", "CLOSED"];
 
 interface BufferTableProps {
   data: BufferPart[];
@@ -510,16 +538,18 @@ export function BufferTable({ data, loading, pagination, onPageChange, onEdit, o
                 if (hasDefectiveNotReady) {
                   steps.push("DEFECTIVE_NOT_READY_TO_USE");
                 } else {
-                  steps.push("USABLE_READY_TO_USE");
+                  steps.push("USABLE_READY_TO_USE", "OUT", "WORK_STATUS");
                 }
-                steps.push("OUT");
                 if (hasUnused) {
                   steps.push("UNUSED_RETURN");
                 } else if (hasDefective || hasDefectiveNotReady) {
-                  steps.push("DEFECTIVE_RETURN", "REORDER", "PART_RECEIVED");
+                  if (hasDefective) {
+                    steps.push("DEFECTIVE_RETURN");
+                  }
+                  steps.push("PART_HANDOVER_BY_ENGINEER", "REORDER", "PART_RECEIVED");
                 } else {
-                  if (activeRow.status === "REORDER" || activeRow.status === "PART_RECEIVED") {
-                    steps.push("DEFECTIVE_RETURN", "REORDER", "PART_RECEIVED");
+                  if (activeRow.status === "PART_HANDOVER_BY_ENGINEER" || activeRow.status === "REORDER" || activeRow.status === "PART_RECEIVED") {
+                    steps.push("DEFECTIVE_RETURN", "PART_HANDOVER_BY_ENGINEER", "REORDER", "PART_RECEIVED");
                   } else {
                     steps.push("UNUSED_RETURN");
                   }
