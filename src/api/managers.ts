@@ -20,6 +20,7 @@ export interface CreateManagerPayload {
   last_name?: string;
   region?: string;
   allowed_sections?: string[];
+  is_active?: boolean;
 }
 
 export async function getManagers(): Promise<Manager[]> {
