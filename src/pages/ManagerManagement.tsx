@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { UserPlus, Pencil, Trash2, ShieldAlert, MapPin, AlertCircle, Loader2 } from "lucide-react";
+import { UserPlus, Pencil, Trash2, ShieldAlert, MapPin, AlertCircle, Loader2, UserCheck, UserX } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod/v4";
@@ -151,15 +151,25 @@ export default function ManagerManagement() {
     }
   };
 
+  const handleToggleActive = async (mgr: Manager, newStatus: boolean) => {
+    try {
+      await updateManager(mgr.id, { is_active: newStatus });
+      toast({ title: `Manager ${newStatus ? "activated" : "deactivated"} successfully` });
+      fetchManagers();
+    } catch {
+      toast({ title: `Failed to ${newStatus ? "activate" : "deactivate"} manager`, variant: "destructive" });
+    }
+  };
+
   const handleDelete = async () => {
     if (!deleteTarget) return;
     try {
       await deleteManager(deleteTarget.id);
-      toast({ title: "Manager deactivated" });
+      toast({ title: "Manager deleted permanently" });
       setDeleteTarget(null);
       fetchManagers();
     } catch {
-      toast({ title: "Failed to deactivate manager", variant: "destructive" });
+      toast({ title: "Failed to delete manager", variant: "destructive" });
     }
   };
 
@@ -262,14 +272,39 @@ export default function ManagerManagement() {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1">
-                      <Button variant="ghost" size="icon" onClick={() => openEdit(m)} className="h-8 w-8">
+                      <Button variant="ghost" size="icon" onClick={() => openEdit(m)} className="h-8 w-8" title="Edit Manager">
                         <Pencil className="w-4 h-4" />
                       </Button>
-                      {m.is_active && (
-                        <Button variant="ghost" size="icon" onClick={() => setDeleteTarget(m)} className="h-8 w-8 text-red-500 hover:text-red-600">
-                          <Trash2 className="w-4 h-4" />
+                      {m.is_active ? (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleToggleActive(m, false)}
+                          className="h-8 w-8 text-amber-500 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/20"
+                          title="Deactivate Manager"
+                        >
+                          <UserX className="w-4 h-4" />
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleToggleActive(m, true)}
+                          className="h-8 w-8 text-green-500 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-950/20"
+                          title="Activate Manager"
+                        >
+                          <UserCheck className="w-4 h-4" />
                         </Button>
                       )}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setDeleteTarget(m)}
+                        className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20"
+                        title="Delete Manager"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -288,52 +323,52 @@ export default function ManagerManagement() {
 
       {/* Create / Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-[480px]">
+        <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
             <DialogTitle>{editing ? "Edit Manager" : "Create Manager"}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 pt-2">
-            <div className="space-y-2">
-              <Label>Username *</Label>
-              <Input {...register("username")} placeholder="e.g. manager_parts" disabled={!!editing} />
-              {errors.username && <p className="text-xs text-red-500">{errors.username.message}</p>}
-            </div>
-            <div className="space-y-2">
-              <Label>{editing ? "New Password (leave blank to keep)" : "Password *"}</Label>
-              <Input type="password" {...register("password")} placeholder="••••••••" />
-              {errors.password && <p className="text-xs text-red-500">{errors.password.message}</p>}
-            </div>
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>First Name</Label>
-                <Input {...register("first_name")} />
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">Username *</Label>
+                <Input {...register("username")} placeholder="e.g. manager_parts" disabled={!!editing} className="h-9 rounded-lg" />
+                {errors.username && <p className="text-[11px] text-red-500 font-medium">{errors.username.message}</p>}
               </div>
-              <div className="space-y-2">
-                <Label>Last Name</Label>
-                <Input {...register("last_name")} />
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">{editing ? "New Password" : "Password *"}</Label>
+                <Input type="password" {...register("password")} placeholder="••••••••" className="h-9 rounded-lg" />
+                {errors.password && <p className="text-[11px] text-red-500 font-medium">{errors.password.message}</p>}
               </div>
-            </div>
-            <div className="space-y-2">
-              <Label>Email</Label>
-              <Input type="email" {...register("email")} placeholder="manager@example.com" />
-              {errors.email && <p className="text-xs text-red-500">{errors.email.message}</p>}
-            </div>
-            <div className="space-y-2">
-              <Label>Region (optional)</Label>
-              <select
-                {...register("region")}
-                className="flex h-10 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900"
-              >
-                <option value="">All regions</option>
-                {Object.entries(REGION_LABELS).map(([value, label]) => (
-                  <option key={value} value={value}>{label}</option>
-                ))}
-              </select>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">First Name</Label>
+                <Input {...register("first_name")} placeholder="John" className="h-9 rounded-lg" />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">Last Name</Label>
+                <Input {...register("last_name")} placeholder="Doe" className="h-9 rounded-lg" />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">Email</Label>
+                <Input type="email" {...register("email")} placeholder="manager@example.com" className="h-9 rounded-lg" />
+                {errors.email && <p className="text-[11px] text-red-500 font-medium">{errors.email.message}</p>}
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">Region (optional)</Label>
+                <select
+                  {...register("region")}
+                  className="flex h-9 w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm dark:border-slate-700 dark:bg-slate-900"
+                >
+                  <option value="">All regions</option>
+                  {Object.entries(REGION_LABELS).map(([value, label]) => (
+                    <option key={value} value={value}>{label}</option>
+                  ))}
+                </select>
+              </div>
             </div>
             
-            <div className="space-y-2">
+            <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
               <div className="flex items-center justify-between">
-                <Label className="text-slate-800 dark:text-slate-200 font-semibold">Allowed Sections / Access Permissions</Label>
+                <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">Access Permissions</Label>
                 <div className="flex gap-2">
                   <button
                     type="button"
@@ -351,11 +386,11 @@ export default function ManagerManagement() {
                   </button>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-2 mt-1 border border-slate-200 dark:border-slate-700 rounded-xl p-3 max-h-[180px] overflow-y-auto bg-slate-50 dark:bg-slate-900/50">
+              <div className="grid grid-cols-3 gap-2 mt-1 border border-slate-200 dark:border-slate-700 rounded-xl p-3 max-h-[140px] overflow-y-auto bg-slate-50 dark:bg-slate-900/50">
                 {SECTIONS.map((sec) => (
                   <label
                     key={sec.path}
-                    className="flex items-center gap-2.5 p-2 rounded-lg hover:bg-slate-200/50 dark:hover:bg-slate-800/80 cursor-pointer transition-colors text-xs font-medium text-slate-700 dark:text-slate-300"
+                    className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-slate-200/50 dark:hover:bg-slate-800/80 cursor-pointer transition-colors text-[11px] font-medium text-slate-700 dark:text-slate-300"
                   >
                     <input
                       type="checkbox"
@@ -369,17 +404,17 @@ export default function ManagerManagement() {
                           setValue("allowed_sections", current.filter((x) => x !== sec.path));
                         }
                       }}
-                      className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-indigo-600 focus:ring-indigo-500"
+                      className="w-3.5 h-3.5 rounded border-slate-300 dark:border-slate-600 text-indigo-600 focus:ring-indigo-500"
                     />
-                    {sec.label}
+                    <span className="truncate" title={sec.label}>{sec.label}</span>
                   </label>
                 ))}
               </div>
             </div>
 
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
-              <Button type="submit" disabled={saving} className="gap-2">
+            <DialogFooter className="pt-2">
+              <Button type="button" variant="outline" size="sm" onClick={() => setDialogOpen(false)}>Cancel</Button>
+              <Button type="submit" size="sm" disabled={saving} className="gap-2">
                 {saving && <Loader2 className="w-4 h-4 animate-spin" />}
                 {editing ? "Update" : "Create"}
               </Button>
@@ -392,14 +427,14 @@ export default function ManagerManagement() {
       <Dialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
         <DialogContent className="sm:max-w-[400px]">
           <DialogHeader>
-            <DialogTitle>Deactivate {deleteTarget?.username}?</DialogTitle>
+            <DialogTitle>Delete {deleteTarget?.username}?</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-slate-500">
-            This will deactivate the manager account. They won't be able to log in or approve parts.
+            This will permanently delete the manager account. This action cannot be undone.
           </p>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteTarget(null)}>Cancel</Button>
-            <Button variant="destructive" onClick={handleDelete}>Deactivate</Button>
+            <Button variant="destructive" onClick={handleDelete}>Delete</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
