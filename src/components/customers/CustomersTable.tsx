@@ -1,5 +1,6 @@
-import { Pencil, Trash2, MapPin } from "lucide-react";
+import { Pencil, Trash2, MapPin, History } from "lucide-react";
 import { motion } from "framer-motion";
+import { Link } from "react-router-dom";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -45,7 +46,7 @@ export function CustomersTable({ data, loading, pagination, onEdit, onDelete, on
               <TableHead className="font-semibold text-slate-700 dark:text-slate-300">Contact Info</TableHead>
               <TableHead className="font-semibold text-slate-700 dark:text-slate-300">Region</TableHead>
               <TableHead className="font-semibold text-slate-700 dark:text-slate-300">CSO Status</TableHead>
-              <TableHead className="font-semibold text-slate-700 dark:text-slate-300">Total Transactions</TableHead>
+              <TableHead className="font-semibold text-slate-700 dark:text-slate-300">Case History</TableHead>
               {isAdmin && <TableHead className="font-semibold text-slate-700 dark:text-slate-300 text-right pr-6">Actions</TableHead>}
             </TableRow>
           </TableHeader>
@@ -120,11 +121,15 @@ export function CustomersTable({ data, loading, pagination, onEdit, onDelete, on
                     )}
                   </TableCell>
 
-                  {/* Transactions / Cases Count */}
+                  {/* Case History Link */}
                   <TableCell className="py-4">
-                    <Badge variant="secondary" className="font-semibold text-slate-600 dark:text-slate-300">
-                      {c.total_transactions || 1} {c.total_transactions === 1 ? "Case" : "Cases"}
-                    </Badge>
+                    <Link
+                      to={`/tickets/${c.id}`}
+                      className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 hover:underline bg-indigo-50/50 hover:bg-indigo-50 dark:bg-indigo-950/20 dark:hover:bg-indigo-950/40 px-2.5 py-1.5 rounded-lg border border-indigo-100/50 dark:border-indigo-900/30 transition-all"
+                    >
+                      <History className="w-3.5 h-3.5 text-indigo-500 dark:text-indigo-400" />
+                      History
+                    </Link>
                   </TableCell>
 
                   {/* Actions scoped to Admin/Manager */}
