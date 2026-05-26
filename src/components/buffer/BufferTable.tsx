@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { transitionBufferPart } from "@/api/bufferParts";
+import { transitionBufferPart, sendBufferPartOTP } from "@/api/bufferParts";
 import { extractApiError } from "@/api/client";
 import { toast } from "@/components/ui/use-toast";
 import { useAuthStore } from "@/store/authStore";
@@ -151,11 +151,11 @@ const getTransitionNote = (status: WorkflowStatus) => {
       };
     case "OUT":
       return {
-        title: "Part Taken by Engineer",
-        message: "Enter the engineer's name and case ID to officially issue this part out of buffer stock for an active service case.",
-        icon: <User className="w-5 h-5 text-amber-600 dark:text-amber-400" />,
-        bg: "bg-amber-50/80 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800/60",
-        text: "text-amber-800 dark:text-amber-300",
+        title: "Engineer Part Issue Verification",
+        message: "Verify the engineer's identity. A 6-digit WhatsApp OTP is required to officially assign this part to the engineer.",
+        icon: <User className="w-5 h-5 text-purple-600 dark:text-purple-400" />,
+        bg: "bg-purple-50/80 dark:bg-purple-950/20 border-purple-200 dark:border-purple-800/60",
+        text: "text-purple-800 dark:text-purple-300",
       };
     case "WORK_STATUS":
       return {
@@ -183,11 +183,11 @@ const getTransitionNote = (status: WorkflowStatus) => {
       };
     case "PART_HANDOVER_BY_ENGINEER":
       return {
-        title: "Part Handover by Engineer",
-        message: "Verify that the engineer has physically handed over the defective part and all required details are captured.",
-        icon: <User className="w-5 h-5 text-slate-600 dark:text-slate-450" />,
-        bg: "bg-slate-50/80 dark:bg-slate-950/20 border-slate-200 dark:border-slate-800/60",
-        text: "text-slate-800 dark:text-slate-300",
+        title: "Engineer Handover Verification",
+        message: "Record the formal return handover from the engineer. WhatsApp OTP verification is mandatory for security tracking.",
+        icon: <User className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />,
+        bg: "bg-indigo-50/80 dark:bg-indigo-950/20 border-indigo-200 dark:border-indigo-800/60",
+        text: "text-indigo-800 dark:text-indigo-300",
       };
     case "REORDER":
       return {
@@ -238,6 +238,11 @@ export function BufferTable({ data, loading, pagination, onPageChange, onEdit, o
   const [activeRow, setActiveRow] = useState<BufferPart | null>(null);
   const [pendingToStatus, setPendingToStatus] = useState<WorkflowStatus | null>(null);
   const [engineerName, setEngineerName] = useState("");
+  const [engineerPhone, setEngineerPhone] = useState("");
+  const [otp, setOtp] = useState("");
+  const [otpSent, setOtpSent] = useState(false);
+  const [sendingOtp, setSendingOtp] = useState(false);
+  const [generatedOtp, setGeneratedOtp] = useState("");
   const [caseId, setCaseId] = useState("");
   const [remarks, setRemarks] = useState("");
   const [savingTransition, setSavingTransition] = useState(false);
@@ -245,6 +250,7 @@ export function BufferTable({ data, loading, pagination, onPageChange, onEdit, o
   const [loadingEngineers, setLoadingEngineers] = useState(false);
 
   const isOutTransition = pendingToStatus === "OUT";
+  const showEngineerField = pendingToStatus === "OUT" || pendingToStatus === "PART_HANDOVER_BY_ENGINEER";
 
   const fetchEngineers = async (region?: string) => {
     setLoadingEngineers(true);
@@ -260,18 +266,32 @@ export function BufferTable({ data, loading, pagination, onPageChange, onEdit, o
 
   const canConfirm = useMemo(() => {
     if (!activeRow) return false;
-    if (isOutTransition) return engineerName.trim().length > 0 && caseId.trim().length > 0;
+    if (showEngineerField) {
+      return (
+        engineerName.trim().length > 0 &&
+        (!isOutTransition || caseId.trim().length > 0) &&
+        engineerPhone.trim().length === 10 &&
+        otp.trim().length === 6
+      );
+    }
     return true;
-  }, [activeRow, caseId, engineerName, isOutTransition]);
+  }, [activeRow, caseId, engineerName, engineerPhone, otp, showEngineerField, isOutTransition]);
 
   const openTransition = (row: BufferPart, target: WorkflowStatus) => {
     setActiveRow(row);
     setPendingToStatus(target);
-    setEngineerName(row.engineer_name || "");
-    setCaseId(row.case_id || "");
+    const isOut = target === "OUT";
+    const isHandover = target === "PART_HANDOVER_BY_ENGINEER";
+    const isEngineerStep = isOut || isHandover;
+    setEngineerName(isEngineerStep ? (row.engineer_name || "") : "");
+    setCaseId(isOut ? (row.case_id || "") : "");
+    setEngineerPhone(isEngineerStep ? (row.engineer_phone || "") : "");
     setRemarks("");
+    setOtp("");
+    setOtpSent(false);
+    setGeneratedOtp("");
     setTransitionOpen(true);
-    if (target === "OUT") {
+    if (isEngineerStep) {
       fetchEngineers(row.region || undefined);
     }
   };
@@ -281,19 +301,47 @@ export function BufferTable({ data, loading, pagination, onPageChange, onEdit, o
     setTrackOpen(true);
   };
 
+  const handleSendOTP = async () => {
+    if (!activeRow || !engineerPhone || engineerPhone.trim().length !== 10) {
+      toast({ title: "Please enter a valid 10-digit Indian phone number first", variant: "destructive" });
+      return;
+    }
+    setSendingOtp(true);
+    try {
+      const res = await sendBufferPartOTP(activeRow.id, {
+        phone: engineerPhone.trim(),
+        to_status: pendingToStatus || "",
+      });
+      setOtpSent(true);
+      setGeneratedOtp(res.otp);
+      
+      if (res.whatsapp_url) {
+        window.open(res.whatsapp_url, "_blank");
+      }
+      
+      toast({ title: "OTP generated! Pre-filled WhatsApp tab opened to send the code." });
+    } catch (err) {
+      toast({ title: extractApiError(err), variant: "destructive" });
+    } finally {
+      setSendingOtp(false);
+    }
+  };
+
   const handleTransition = async () => {
     if (!activeRow || !canConfirm) return;
     setSavingTransition(true);
     try {
       const updated = await transitionBufferPart(activeRow.id, {
-        engineer_name: engineerName.trim() || undefined,
-        case_id: caseId.trim() || undefined,
+        engineer_name: showEngineerField ? engineerName.trim() || undefined : undefined,
+        engineer_phone: showEngineerField ? engineerPhone.trim() : undefined,
+        otp: showEngineerField ? otp.trim() : undefined,
+        case_id: isOutTransition ? caseId.trim() || undefined : undefined,
         remarks: remarks.trim() || undefined,
         to_status: pendingToStatus || undefined,
       });
       onRowUpdated(updated);
       setTransitionOpen(false);
-      toast({ title: "Status updated" });
+      toast({ title: "Buffer Stock status updated and verified successfully" });
     } catch (err) {
       toast({ title: extractApiError(err), variant: "destructive" });
     } finally {
@@ -475,8 +523,11 @@ export function BufferTable({ data, loading, pagination, onPageChange, onEdit, o
                 </motion.div>
               );
             })()}
-            {isOutTransition && (
-              <>
+            {showEngineerField && (
+              <div className="space-y-4 border-l-2 border-indigo-500 pl-3 py-1">
+                <h4 className="text-xs font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+                  Engineer WhatsApp Verification
+                </h4>
                 <div className="space-y-2">
                   <Label>Select Engineer *</Label>
                   {loadingEngineers ? (
@@ -485,22 +536,75 @@ export function BufferTable({ data, loading, pagination, onPageChange, onEdit, o
                     <select
                       className="flex h-10 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
                       value={engineerName}
-                      onChange={(e) => setEngineerName(e.target.value)}
+                      onChange={(e) => {
+                        const selected = engineers.find((eng) => eng.name === e.target.value);
+                        setEngineerName(e.target.value);
+                        setEngineerPhone(selected?.phone || "");
+                        setOtp("");
+                        setOtpSent(false);
+                        setGeneratedOtp("");
+                      }}
                     >
                       <option value="">Select engineer...</option>
                       {engineers.map((eng) => (
                         <option key={eng.id} value={eng.name}>
-                          {eng.name}{eng.phone ? ` — ${eng.phone}` : ""}
+                          {eng.name}
                         </option>
                       ))}
                     </select>
                   )}
                 </div>
                 <div className="space-y-2">
-                  <Label>Case ID *</Label>
-                  <Input value={caseId} onChange={(e) => setCaseId(e.target.value)} />
+                  <Label>Engineer Phone (10 digits) *</Label>
+                  <div className="flex gap-2">
+                    <Input 
+                      value={engineerPhone} 
+                      onChange={(e) => setEngineerPhone(e.target.value)} 
+                      placeholder="e.g. 9876543210" 
+                      maxLength={10}
+                      disabled={otpSent}
+                    />
+                    <Button 
+                      type="button" 
+                      onClick={handleSendOTP} 
+                      disabled={sendingOtp || engineerPhone.trim().length !== 10}
+                      className="bg-indigo-600 hover:bg-indigo-700 whitespace-nowrap"
+                    >
+                      {sendingOtp ? "Sending..." : otpSent ? "Resend OTP" : "Send OTP"}
+                    </Button>
+                  </div>
                 </div>
-              </>
+
+                {otpSent && (
+                  <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                    <Label className="text-emerald-600 dark:text-emerald-400 font-medium">
+                      Enter 6-Digit OTP *
+                    </Label>
+                    <Input 
+                      value={otp} 
+                      onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))} 
+                      placeholder="Enter 6-digit OTP code" 
+                      maxLength={6}
+                      className="border-emerald-500 focus-visible:ring-emerald-500 text-center tracking-widest font-mono text-lg font-bold"
+                    />
+                    <p className="text-[11px] text-slate-500 mt-1">
+                      WhatsApp pre-filled tab launched. Ask the engineer for the OTP to complete this action.
+                    </p>
+                    {generatedOtp && (
+                      <span className="inline-block mt-1 text-[11px] bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded text-slate-600 font-mono">
+                        Testing fallback OTP: <strong className="text-indigo-600 dark:text-indigo-400">{generatedOtp}</strong>
+                      </span>
+                    )}
+                  </div>
+                )}
+
+                {isOutTransition && (
+                  <div className="space-y-2">
+                    <Label>Case ID *</Label>
+                    <Input value={caseId} onChange={(e) => setCaseId(e.target.value)} />
+                  </div>
+                )}
+              </div>
             )}
             <div className="space-y-2">
               <Label>Remarks</Label>
