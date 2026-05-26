@@ -35,9 +35,27 @@ export async function deleteBufferPart(id: number): Promise<void> {
 
 export async function transitionBufferPart(
   id: number,
-  payload: { engineer_name?: string; case_id?: string; remarks?: string; to_status?: string }
+  payload: {
+    engineer_name?: string;
+    engineer_phone?: string;
+    otp?: string;
+    case_id?: string;
+    remarks?: string;
+    to_status?: string;
+  }
 ): Promise<BufferPart> {
   const { data } = await client.post<BufferPart>(`/buffer-parts/${id}/transition/`, payload);
+  return data;
+}
+
+export async function sendBufferPartOTP(
+  id: number,
+  payload: { phone: string; to_status: string }
+): Promise<{ otp: string; whatsapp_url: string; detail: string }> {
+  const { data } = await client.post<{ otp: string; whatsapp_url: string; detail: string }>(
+    `/buffer-parts/${id}/send-otp/`,
+    payload
+  );
   return data;
 }
 
