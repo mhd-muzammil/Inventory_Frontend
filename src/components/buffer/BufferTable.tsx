@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { transitionBufferPart } from "@/api/bufferParts";
+import { transitionBufferPart, sendBufferPartOTP } from "@/api/bufferParts";
 import { extractApiError } from "@/api/client";
 import { toast } from "@/components/ui/use-toast";
 import { useAuthStore } from "@/store/authStore";
@@ -25,10 +25,15 @@ import type { Engineer } from "@/types";
 type WorkflowStatus = BufferPart["status"];
 
 const AVAILABLE_TRANSITIONS: Record<WorkflowStatus, WorkflowStatus[]> = {
-  BUFFER_IN: ["OUT"],
-  OUT: ["DEFECTIVE_RETURN", "UNUSED_RETURN"],
-  DEFECTIVE_RETURN: ["REORDER"],
+  BUFFER_IN: ["PART_AVAILABILITY_CHECK"],
+  PART_AVAILABILITY_CHECK: ["USABLE_READY_TO_USE", "DEFECTIVE_NOT_READY_TO_USE"],
+  USABLE_READY_TO_USE: ["OUT"],
+  DEFECTIVE_NOT_READY_TO_USE: ["PART_HANDOVER_BY_ENGINEER"],
+  OUT: ["WORK_STATUS"],
+  WORK_STATUS: ["DEFECTIVE_RETURN", "UNUSED_RETURN"],
+  DEFECTIVE_RETURN: ["PART_HANDOVER_BY_ENGINEER"],
   UNUSED_RETURN: ["CLOSED"],
+  PART_HANDOVER_BY_ENGINEER: ["REORDER"],
   REORDER: ["PART_RECEIVED"],
   PART_RECEIVED: ["CLOSED"],
   CLOSED: ["BUFFER_IN"],
@@ -36,9 +41,14 @@ const AVAILABLE_TRANSITIONS: Record<WorkflowStatus, WorkflowStatus[]> = {
 
 const TRANSITION_LABELS: Record<WorkflowStatus, string> = {
   BUFFER_IN: "Return to Buffer",
-  OUT: "Mark Out",
+  PART_AVAILABILITY_CHECK: "Parts Availability Check",
+  USABLE_READY_TO_USE: "Usable (Good Part) ready to use",
+  DEFECTIVE_NOT_READY_TO_USE: "Defective (Faulty Part) not ready to use",
+  OUT: "Part Taken by Engineer",
+  WORK_STATUS: "Work Status",
   DEFECTIVE_RETURN: "Defective Return",
   UNUSED_RETURN: "Unused Return",
+  PART_HANDOVER_BY_ENGINEER: "Part Handover by Engineer",
   REORDER: "Reorder",
   PART_RECEIVED: "Part Received",
   CLOSED: "Close Case",
@@ -46,9 +56,14 @@ const TRANSITION_LABELS: Record<WorkflowStatus, string> = {
 
 const STATUS_LABELS: Record<WorkflowStatus, string> = {
   BUFFER_IN: "Buffer In",
-  OUT: "Out",
+  PART_AVAILABILITY_CHECK: "Parts Availability Check",
+  USABLE_READY_TO_USE: "Usable (Good Part) ready to use",
+  DEFECTIVE_NOT_READY_TO_USE: "Defective (Faulty Part) not ready to use",
+  OUT: "Part Taken by Engineer",
+  WORK_STATUS: "Work Status",
   DEFECTIVE_RETURN: "Defective Return",
   UNUSED_RETURN: "Unused Return",
+  PART_HANDOVER_BY_ENGINEER: "Part Handover by Engineer",
   REORDER: "Reorder",
   PART_RECEIVED: "Part Received",
   CLOSED: "Closed",
@@ -56,9 +71,14 @@ const STATUS_LABELS: Record<WorkflowStatus, string> = {
 
 const STATUS_STYLE_MAP: Record<WorkflowStatus, { bg: string; text: string; dot: string }> = {
   BUFFER_IN: { bg: "bg-blue-50 dark:bg-blue-900/20", text: "text-blue-700 dark:text-blue-400", dot: "bg-blue-600" },
+  PART_AVAILABILITY_CHECK: { bg: "bg-purple-50 dark:bg-purple-900/20", text: "text-purple-700 dark:text-purple-400", dot: "bg-purple-600" },
+  USABLE_READY_TO_USE: { bg: "bg-cyan-50 dark:bg-cyan-900/20", text: "text-cyan-700 dark:text-cyan-400", dot: "bg-cyan-600" },
+  DEFECTIVE_NOT_READY_TO_USE: { bg: "bg-red-50 dark:bg-red-900/20", text: "text-red-700 dark:text-red-400", dot: "bg-red-600" },
   OUT: { bg: "bg-amber-50 dark:bg-amber-900/20", text: "text-amber-700 dark:text-amber-400", dot: "bg-amber-500" },
+  WORK_STATUS: { bg: "bg-fuchsia-50 dark:bg-fuchsia-900/20", text: "text-fuchsia-700 dark:text-fuchsia-400", dot: "bg-fuchsia-600" },
   DEFECTIVE_RETURN: { bg: "bg-rose-50 dark:bg-rose-900/20", text: "text-rose-700 dark:text-rose-400", dot: "bg-rose-600" },
   UNUSED_RETURN: { bg: "bg-teal-50 dark:bg-teal-900/20", text: "text-teal-700 dark:text-teal-400", dot: "bg-teal-600" },
+  PART_HANDOVER_BY_ENGINEER: { bg: "bg-slate-100 dark:bg-slate-800/40", text: "text-slate-700 dark:text-slate-300", dot: "bg-slate-500" },
   REORDER: { bg: "bg-orange-50 dark:bg-orange-900/20", text: "text-orange-700 dark:text-orange-400", dot: "bg-orange-600" },
   PART_RECEIVED: { bg: "bg-indigo-50 dark:bg-indigo-900/20", text: "text-indigo-700 dark:text-indigo-400", dot: "bg-indigo-600" },
   CLOSED: { bg: "bg-emerald-50 dark:bg-emerald-900/20", text: "text-emerald-700 dark:text-emerald-400", dot: "bg-emerald-600" },
@@ -68,12 +88,22 @@ const getStatusIcon = (status: WorkflowStatus) => {
   switch (status) {
     case "BUFFER_IN":
       return <Package className="w-3.5 h-3.5" />;
+    case "PART_AVAILABILITY_CHECK":
+      return <BoxesIcon className="w-3.5 h-3.5" />;
+    case "USABLE_READY_TO_USE":
+      return <ClipboardCheck className="w-3.5 h-3.5" />;
+    case "DEFECTIVE_NOT_READY_TO_USE":
+      return <AlertCircle className="w-3.5 h-3.5" />;
     case "OUT":
       return <User className="w-3.5 h-3.5" />;
+    case "WORK_STATUS":
+      return <Clock className="w-3.5 h-3.5" />;
     case "DEFECTIVE_RETURN":
       return <AlertCircle className="w-3.5 h-3.5" />;
     case "UNUSED_RETURN":
       return <RotateCcw className="w-3.5 h-3.5" />;
+    case "PART_HANDOVER_BY_ENGINEER":
+      return <User className="w-3.5 h-3.5" />;
     case "REORDER":
       return <RefreshCw className="w-3.5 h-3.5" />;
     case "PART_RECEIVED":
@@ -95,13 +125,45 @@ const getTransitionNote = (status: WorkflowStatus) => {
         bg: "bg-blue-50/80 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800/60",
         text: "text-blue-800 dark:text-blue-300",
       };
+    case "PART_AVAILABILITY_CHECK":
+      return {
+        title: "Parts Availability Check",
+        message: "Verify if the parts required for the service case are fully available and ready in stock.",
+        icon: <BoxesIcon className="w-5 h-5 text-purple-600 dark:text-purple-400" />,
+        bg: "bg-purple-50/80 dark:bg-purple-950/20 border-purple-200 dark:border-purple-800/60",
+        text: "text-purple-800 dark:text-purple-300",
+      };
+    case "USABLE_READY_TO_USE":
+      return {
+        title: "Usable (Good Part) ready to use",
+        message: "Confirm this part is confirmed to be fully functional, in good working condition, and ready to be checked out.",
+        icon: <ClipboardCheck className="w-5 h-5 text-cyan-600 dark:text-cyan-400" />,
+        bg: "bg-cyan-50/80 dark:bg-cyan-950/20 border-cyan-200 dark:border-cyan-800/60",
+        text: "text-cyan-800 dark:text-cyan-300",
+      };
+    case "DEFECTIVE_NOT_READY_TO_USE":
+      return {
+        title: "Defective (Faulty Part) not ready to use",
+        message: "Mark this part as defective and not in usable condition. It will be routed for engineer handover.",
+        icon: <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400" />,
+        bg: "bg-red-50/80 dark:bg-red-950/20 border-red-200 dark:border-red-800/60",
+        text: "text-red-800 dark:text-red-300",
+      };
     case "OUT":
       return {
-        title: "Mark Part Out from Buffer",
-        message: "Enter the engineer's name and case ID to officially issue this part out of buffer stock for an active service case.",
-        icon: <User className="w-5 h-5 text-amber-600 dark:text-amber-400" />,
-        bg: "bg-amber-50/80 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800/60",
-        text: "text-amber-800 dark:text-amber-300",
+        title: "Engineer Part Issue Verification",
+        message: "Verify the engineer's identity. A 6-digit WhatsApp OTP is required to officially assign this part to the engineer.",
+        icon: <User className="w-5 h-5 text-purple-600 dark:text-purple-400" />,
+        bg: "bg-purple-50/80 dark:bg-purple-950/20 border-purple-200 dark:border-purple-800/60",
+        text: "text-purple-800 dark:text-purple-300",
+      };
+    case "WORK_STATUS":
+      return {
+        title: "Work Status",
+        message: "Update the work status for this part being used in the active service case.",
+        icon: <Clock className="w-5 h-5 text-fuchsia-600 dark:text-fuchsia-400" />,
+        bg: "bg-fuchsia-50/80 dark:bg-fuchsia-950/20 border-fuchsia-200 dark:border-fuchsia-800/60",
+        text: "text-fuchsia-800 dark:text-fuchsia-300",
       };
     case "DEFECTIVE_RETURN":
       return {
@@ -118,6 +180,14 @@ const getTransitionNote = (status: WorkflowStatus) => {
         icon: <RotateCcw className="w-5 h-5 text-teal-600 dark:text-teal-400" />,
         bg: "bg-teal-50/80 dark:bg-teal-950/20 border-teal-200 dark:border-teal-800/60",
         text: "text-teal-800 dark:text-teal-300",
+      };
+    case "PART_HANDOVER_BY_ENGINEER":
+      return {
+        title: "Engineer Handover Verification",
+        message: "Record the formal return handover from the engineer. WhatsApp OTP verification is mandatory for security tracking.",
+        icon: <User className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />,
+        bg: "bg-indigo-50/80 dark:bg-indigo-950/20 border-indigo-200 dark:border-indigo-800/60",
+        text: "text-indigo-800 dark:text-indigo-300",
       };
     case "REORDER":
       return {
@@ -148,7 +218,7 @@ const getTransitionNote = (status: WorkflowStatus) => {
   }
 };
 
-const TRACK_STEPS: WorkflowStatus[] = ["BUFFER_IN", "OUT", "DEFECTIVE_RETURN", "UNUSED_RETURN", "REORDER", "PART_RECEIVED", "CLOSED"];
+const TRACK_STEPS: WorkflowStatus[] = ["BUFFER_IN", "PART_AVAILABILITY_CHECK", "USABLE_READY_TO_USE", "DEFECTIVE_NOT_READY_TO_USE", "OUT", "WORK_STATUS", "DEFECTIVE_RETURN", "UNUSED_RETURN", "PART_HANDOVER_BY_ENGINEER", "REORDER", "PART_RECEIVED", "CLOSED"];
 
 interface BufferTableProps {
   data: BufferPart[];
@@ -168,6 +238,11 @@ export function BufferTable({ data, loading, pagination, onPageChange, onEdit, o
   const [activeRow, setActiveRow] = useState<BufferPart | null>(null);
   const [pendingToStatus, setPendingToStatus] = useState<WorkflowStatus | null>(null);
   const [engineerName, setEngineerName] = useState("");
+  const [engineerPhone, setEngineerPhone] = useState("");
+  const [otp, setOtp] = useState("");
+  const [otpSent, setOtpSent] = useState(false);
+  const [sendingOtp, setSendingOtp] = useState(false);
+  const [generatedOtp, setGeneratedOtp] = useState("");
   const [caseId, setCaseId] = useState("");
   const [remarks, setRemarks] = useState("");
   const [savingTransition, setSavingTransition] = useState(false);
@@ -175,6 +250,7 @@ export function BufferTable({ data, loading, pagination, onPageChange, onEdit, o
   const [loadingEngineers, setLoadingEngineers] = useState(false);
 
   const isOutTransition = pendingToStatus === "OUT";
+  const showEngineerField = pendingToStatus === "OUT" || pendingToStatus === "PART_HANDOVER_BY_ENGINEER";
 
   const fetchEngineers = async (region?: string) => {
     setLoadingEngineers(true);
@@ -190,18 +266,32 @@ export function BufferTable({ data, loading, pagination, onPageChange, onEdit, o
 
   const canConfirm = useMemo(() => {
     if (!activeRow) return false;
-    if (isOutTransition) return engineerName.trim().length > 0 && caseId.trim().length > 0;
+    if (showEngineerField) {
+      return (
+        engineerName.trim().length > 0 &&
+        (!isOutTransition || caseId.trim().length > 0) &&
+        engineerPhone.trim().length === 10 &&
+        otp.trim().length === 6
+      );
+    }
     return true;
-  }, [activeRow, caseId, engineerName, isOutTransition]);
+  }, [activeRow, caseId, engineerName, engineerPhone, otp, showEngineerField, isOutTransition]);
 
   const openTransition = (row: BufferPart, target: WorkflowStatus) => {
     setActiveRow(row);
     setPendingToStatus(target);
-    setEngineerName(row.engineer_name || "");
-    setCaseId(row.case_id || "");
+    const isOut = target === "OUT";
+    const isHandover = target === "PART_HANDOVER_BY_ENGINEER";
+    const isEngineerStep = isOut || isHandover;
+    setEngineerName(isEngineerStep ? (row.engineer_name || "") : "");
+    setCaseId(isOut ? (row.case_id || "") : "");
+    setEngineerPhone(isEngineerStep ? (row.engineer_phone || "") : "");
     setRemarks("");
+    setOtp("");
+    setOtpSent(false);
+    setGeneratedOtp("");
     setTransitionOpen(true);
-    if (target === "OUT") {
+    if (isEngineerStep) {
       fetchEngineers(row.region || undefined);
     }
   };
@@ -211,19 +301,47 @@ export function BufferTable({ data, loading, pagination, onPageChange, onEdit, o
     setTrackOpen(true);
   };
 
+  const handleSendOTP = async () => {
+    if (!activeRow || !engineerPhone || engineerPhone.trim().length !== 10) {
+      toast({ title: "Please enter a valid 10-digit Indian phone number first", variant: "destructive" });
+      return;
+    }
+    setSendingOtp(true);
+    try {
+      const res = await sendBufferPartOTP(activeRow.id, {
+        phone: engineerPhone.trim(),
+        to_status: pendingToStatus || "",
+      });
+      setOtpSent(true);
+      setGeneratedOtp(res.otp);
+      
+      if (res.whatsapp_url) {
+        window.open(res.whatsapp_url, "_blank");
+      }
+      
+      toast({ title: "OTP generated! Pre-filled WhatsApp tab opened to send the code." });
+    } catch (err) {
+      toast({ title: extractApiError(err), variant: "destructive" });
+    } finally {
+      setSendingOtp(false);
+    }
+  };
+
   const handleTransition = async () => {
     if (!activeRow || !canConfirm) return;
     setSavingTransition(true);
     try {
       const updated = await transitionBufferPart(activeRow.id, {
-        engineer_name: engineerName.trim() || undefined,
-        case_id: caseId.trim() || undefined,
+        engineer_name: showEngineerField ? engineerName.trim() || undefined : undefined,
+        engineer_phone: showEngineerField ? engineerPhone.trim() : undefined,
+        otp: showEngineerField ? otp.trim() : undefined,
+        case_id: isOutTransition ? caseId.trim() || undefined : undefined,
         remarks: remarks.trim() || undefined,
         to_status: pendingToStatus || undefined,
       });
       onRowUpdated(updated);
       setTransitionOpen(false);
-      toast({ title: "Status updated" });
+      toast({ title: "Buffer Stock status updated and verified successfully" });
     } catch (err) {
       toast({ title: extractApiError(err), variant: "destructive" });
     } finally {
@@ -405,8 +523,11 @@ export function BufferTable({ data, loading, pagination, onPageChange, onEdit, o
                 </motion.div>
               );
             })()}
-            {isOutTransition && (
-              <>
+            {showEngineerField && (
+              <div className="space-y-4 border-l-2 border-indigo-500 pl-3 py-1">
+                <h4 className="text-xs font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+                  Engineer WhatsApp Verification
+                </h4>
                 <div className="space-y-2">
                   <Label>Select Engineer *</Label>
                   {loadingEngineers ? (
@@ -415,22 +536,75 @@ export function BufferTable({ data, loading, pagination, onPageChange, onEdit, o
                     <select
                       className="flex h-10 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
                       value={engineerName}
-                      onChange={(e) => setEngineerName(e.target.value)}
+                      onChange={(e) => {
+                        const selected = engineers.find((eng) => eng.name === e.target.value);
+                        setEngineerName(e.target.value);
+                        setEngineerPhone(selected?.phone || "");
+                        setOtp("");
+                        setOtpSent(false);
+                        setGeneratedOtp("");
+                      }}
                     >
                       <option value="">Select engineer...</option>
                       {engineers.map((eng) => (
                         <option key={eng.id} value={eng.name}>
-                          {eng.name}{eng.phone ? ` — ${eng.phone}` : ""}
+                          {eng.name}
                         </option>
                       ))}
                     </select>
                   )}
                 </div>
                 <div className="space-y-2">
-                  <Label>Case ID *</Label>
-                  <Input value={caseId} onChange={(e) => setCaseId(e.target.value)} />
+                  <Label>Engineer Phone (10 digits) *</Label>
+                  <div className="flex gap-2">
+                    <Input 
+                      value={engineerPhone} 
+                      onChange={(e) => setEngineerPhone(e.target.value)} 
+                      placeholder="e.g. 9876543210" 
+                      maxLength={10}
+                      disabled={otpSent}
+                    />
+                    <Button 
+                      type="button" 
+                      onClick={handleSendOTP} 
+                      disabled={sendingOtp || engineerPhone.trim().length !== 10}
+                      className="bg-indigo-600 hover:bg-indigo-700 whitespace-nowrap"
+                    >
+                      {sendingOtp ? "Sending..." : otpSent ? "Resend OTP" : "Send OTP"}
+                    </Button>
+                  </div>
                 </div>
-              </>
+
+                {otpSent && (
+                  <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                    <Label className="text-emerald-600 dark:text-emerald-400 font-medium">
+                      Enter 6-Digit OTP *
+                    </Label>
+                    <Input 
+                      value={otp} 
+                      onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))} 
+                      placeholder="Enter 6-digit OTP code" 
+                      maxLength={6}
+                      className="border-emerald-500 focus-visible:ring-emerald-500 text-center tracking-widest font-mono text-lg font-bold"
+                    />
+                    <p className="text-[11px] text-slate-500 mt-1">
+                      WhatsApp pre-filled tab launched. Ask the engineer for the OTP to complete this action.
+                    </p>
+                    {generatedOtp && (
+                      <span className="inline-block mt-1 text-[11px] bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded text-slate-600 font-mono">
+                        Testing fallback OTP: <strong className="text-indigo-600 dark:text-indigo-400">{generatedOtp}</strong>
+                      </span>
+                    )}
+                  </div>
+                )}
+
+                {isOutTransition && (
+                  <div className="space-y-2">
+                    <Label>Case ID *</Label>
+                    <Input value={caseId} onChange={(e) => setCaseId(e.target.value)} />
+                  </div>
+                )}
+              </div>
             )}
             <div className="space-y-2">
               <Label>Remarks</Label>
@@ -461,15 +635,25 @@ export function BufferTable({ data, loading, pagination, onPageChange, onEdit, o
                   (activeRow.transition_history || []).some(h => h.to_status === "UNUSED_RETURN" || h.from_status === "UNUSED_RETURN");
                 const hasDefective = activeRow.status === "DEFECTIVE_RETURN" || 
                   (activeRow.transition_history || []).some(h => h.to_status === "DEFECTIVE_RETURN" || h.from_status === "DEFECTIVE_RETURN");
+                const hasDefectiveNotReady = activeRow.status === "DEFECTIVE_NOT_READY_TO_USE" ||
+                  (activeRow.transition_history || []).some(h => h.to_status === "DEFECTIVE_NOT_READY_TO_USE" || h.from_status === "DEFECTIVE_NOT_READY_TO_USE");
                 
-                const steps = ["BUFFER_IN", "OUT"];
+                const steps = ["BUFFER_IN", "PART_AVAILABILITY_CHECK"];
+                if (hasDefectiveNotReady) {
+                  steps.push("DEFECTIVE_NOT_READY_TO_USE");
+                } else {
+                  steps.push("USABLE_READY_TO_USE", "OUT", "WORK_STATUS");
+                }
                 if (hasUnused) {
                   steps.push("UNUSED_RETURN");
-                } else if (hasDefective) {
-                  steps.push("DEFECTIVE_RETURN", "REORDER", "PART_RECEIVED");
+                } else if (hasDefective || hasDefectiveNotReady) {
+                  if (hasDefective) {
+                    steps.push("DEFECTIVE_RETURN");
+                  }
+                  steps.push("PART_HANDOVER_BY_ENGINEER", "REORDER", "PART_RECEIVED");
                 } else {
-                  if (activeRow.status === "REORDER" || activeRow.status === "PART_RECEIVED") {
-                    steps.push("DEFECTIVE_RETURN", "REORDER", "PART_RECEIVED");
+                  if (activeRow.status === "PART_HANDOVER_BY_ENGINEER" || activeRow.status === "REORDER" || activeRow.status === "PART_RECEIVED") {
+                    steps.push("DEFECTIVE_RETURN", "PART_HANDOVER_BY_ENGINEER", "REORDER", "PART_RECEIVED");
                   } else {
                     steps.push("UNUSED_RETURN");
                   }

@@ -342,13 +342,7 @@ export default function Customers() {
       </div>
 
       {/* Main Table rendering */}
-      {loading ? (
-        <div className="space-y-4">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="h-16 w-full rounded-2xl bg-slate-100 dark:bg-slate-800 animate-pulse border border-slate-200 dark:border-slate-700"></div>
-          ))}
-        </div>
-      ) : data.length === 0 ? (
+      {!loading && data.length === 0 ? (
         <Card className="p-16 text-center border-dashed border-slate-200 dark:border-slate-800 rounded-3xl bg-white dark:bg-slate-900">
           <Users className="w-14 h-14 text-slate-300 dark:text-slate-700 mx-auto mb-4" />
           <p className="text-slate-800 dark:text-slate-100 font-bold text-lg mb-1">No synced customer cases</p>

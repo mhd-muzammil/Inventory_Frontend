@@ -45,6 +45,7 @@ export interface User {
   role: UserRole;
   region: Region | null;
   is_active: boolean;
+  allowed_sections?: string[];
 }
 
 // [x] Modify backend `customer` views to query `Ticket` model with role and region-based scoping (mirrored after HP Stock RMA workflow logic) <!-- id: 2 -->
@@ -349,7 +350,7 @@ export interface BufferPart {
   general_name: string;
   region: Region | "";
   region_display: string;
-  status: "BUFFER_IN" | "OUT" | "DEFECTIVE_RETURN" | "UNUSED_RETURN" | "REORDER" | "PART_RECEIVED" | "CLOSED";
+  status: "BUFFER_IN" | "PART_AVAILABILITY_CHECK" | "USABLE_READY_TO_USE" | "DEFECTIVE_NOT_READY_TO_USE" | "OUT" | "WORK_STATUS" | "DEFECTIVE_RETURN" | "UNUSED_RETURN" | "PART_HANDOVER_BY_ENGINEER" | "REORDER" | "PART_RECEIVED" | "CLOSED";
   engineer_name: string;
   case_id: string;
   transition_history: Array<{

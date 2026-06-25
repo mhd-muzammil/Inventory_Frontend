@@ -29,6 +29,7 @@ export default function Buffer() {
   
   const [viewMode, setViewMode] = useState<"my_region" | "overall">(showToggle ? "my_region" : "overall");
   const [selectedRegion, setSelectedRegion] = useState<string>("all");
+  const [selectedStatus, setSelectedStatus] = useState<"used" | "unused" | "all">("all");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [data, setData] = useState<BufferPart[]>([]);
@@ -52,12 +53,13 @@ export default function Buffer() {
   const fetchSummary = useCallback(async () => {
     try {
       const apiView = isAdmin ? "overall" : viewMode;
-      const res = await getBufferPartSummary(apiView, undefined);
+      const apiRegion = selectedRegion !== "all" ? selectedRegion : undefined;
+      const res = await getBufferPartSummary(apiView, apiRegion);
       setSummary(res);
     } catch {
       // silent — summary is supplementary
     }
-  }, [viewMode, isAdmin]);
+  }, [viewMode, isAdmin, selectedRegion]);
 
   const fetchData = useCallback(async () => {
     if (dataRef.current.length === 0) {
@@ -66,11 +68,12 @@ export default function Buffer() {
     setError(null);
     try {
       const apiView = isAdmin ? "overall" : viewMode;
-      const apiRegion = isAdmin && selectedRegion !== "all" ? selectedRegion : undefined;
+      const apiRegion = selectedRegion !== "all" ? selectedRegion : undefined;
       const res = await getBufferParts({
         search: debouncedSearch || undefined,
         view: apiView,
         region: apiRegion,
+        status_type: selectedStatus !== "all" ? selectedStatus : undefined,
         page,
         per_page: 20,
       });
@@ -81,7 +84,7 @@ export default function Buffer() {
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, viewMode, page, isAdmin, selectedRegion]);
+  }, [debouncedSearch, viewMode, page, isAdmin, selectedRegion, selectedStatus]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
   useEffect(() => { fetchSummary(); }, [fetchSummary]);
@@ -122,14 +125,14 @@ export default function Buffer() {
       </div>
 
       {/* ── Summary Cards ──────────────────────────────────────── */}
-      {summary && summary.regions.length > 0 && (
+      {summary && (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 mb-6">
           {summary.regions.map((r) => {
             const isSelected = selectedRegion === r.region;
             return (
               <Card
                 key={r.region}
-                onClick={() => { setSelectedRegion(isSelected ? "all" : r.region); setPage(1); }}
+                onClick={() => { setSelectedRegion(isSelected ? "all" : r.region); setSelectedStatus("all"); setPage(1); }}
                 className={`p-4 flex flex-col items-center gap-1 border cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all select-none ${
                   isSelected
                     ? "border-indigo-600 bg-indigo-50/40 dark:bg-indigo-950/30 ring-1 ring-indigo-600"
@@ -145,7 +148,7 @@ export default function Buffer() {
             );
           })}
           <Card
-            onClick={() => { setSelectedRegion("all"); setPage(1); }}
+            onClick={() => { setSelectedRegion("all"); setSelectedStatus("all"); setPage(1); }}
             className={`p-4 flex flex-col items-center gap-1 border cursor-pointer hover:bg-indigo-100/50 dark:hover:bg-indigo-900/40 transition-all select-none bg-indigo-50 dark:bg-indigo-950/30 border-indigo-200 dark:border-indigo-800 ${
               selectedRegion === "all" ? "ring-2 ring-indigo-600" : ""
             }`}
@@ -155,6 +158,38 @@ export default function Buffer() {
               Total
             </span>
             <span className="text-xl font-bold text-indigo-700 dark:text-indigo-300">{summary.total}</span>
+          </Card>
+
+          {/* Unused Buffer Parts Count Card */}
+          <Card
+            onClick={() => { setSelectedStatus(selectedStatus === "unused" ? "all" : "unused"); setSelectedRegion("all"); setPage(1); }}
+            className={`p-4 flex flex-col items-center gap-1 border cursor-pointer hover:bg-emerald-100/50 dark:hover:bg-emerald-900/40 transition-all select-none bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800 ${
+              selectedStatus === "unused" ? "ring-2 ring-emerald-600 border-emerald-600" : ""
+            }`}
+          >
+            <Package className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+            <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400 uppercase tracking-wide">
+              Unused (In Buffer)
+            </span>
+            <span className="text-xl font-bold text-emerald-700 dark:text-emerald-300">
+              {summary.unused}
+            </span>
+          </Card>
+
+          {/* Used Buffer Parts Count Card */}
+          <Card
+            onClick={() => { setSelectedStatus(selectedStatus === "used" ? "all" : "used"); setSelectedRegion("all"); setPage(1); }}
+            className={`p-4 flex flex-col items-center gap-1 border cursor-pointer hover:bg-amber-100/50 dark:hover:bg-amber-900/40 transition-all select-none bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800 ${
+              selectedStatus === "used" ? "ring-2 ring-amber-600 border-amber-600" : ""
+            }`}
+          >
+            <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+            <span className="text-xs font-medium text-amber-600 dark:text-amber-400 uppercase tracking-wide">
+              Used (Checked Out)
+            </span>
+            <span className="text-xl font-bold text-amber-700 dark:text-amber-300">
+              {summary.used}
+            </span>
           </Card>
         </div>
       )}
@@ -189,7 +224,7 @@ export default function Buffer() {
         )}
 
         {isAdmin && (
-          <Select value={selectedRegion} onValueChange={(v) => { setSelectedRegion(v); setPage(1); }}>
+          <Select value={selectedRegion} onValueChange={(v) => { setSelectedRegion(v); setSelectedStatus("all"); setPage(1); }}>
             <SelectTrigger className="w-full sm:w-44 bg-white dark:bg-slate-900">
               <SelectValue placeholder="Region" />
             </SelectTrigger>
@@ -235,6 +270,7 @@ export default function Buffer() {
           onDelete={handleDelete}
           onRowUpdated={(updated) => {
             setData((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
+            fetchSummary();
           }}
         />
       )}

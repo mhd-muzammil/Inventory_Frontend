@@ -33,6 +33,7 @@ import type { PartRequest, PaginationMeta, UserRole, PartRequestMessage } from "
 import { PART_REQUEST_STATUS_LABELS } from "@/types";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { getPartRequest, addPartRequestMessage } from "@/api/partRequests";
+import { useAuthStore } from "@/store/authStore";
 
 interface PartRequestsTableProps {
   data: PartRequest[];
@@ -63,12 +64,14 @@ interface PartRequestDetailDialogProps {
   request: PartRequest | null;
   isOpen: boolean;
   onClose: () => void;
+  onMessagesSeen?: (requestId: number, messages: PartRequestMessage[]) => void;
 }
 
 function PartRequestDetailDialog({
   request,
   isOpen,
   onClose,
+  onMessagesSeen,
 }: PartRequestDetailDialogProps) {
   const [activeDocIndex, setActiveDocIndex] = useState(0);
   const [activeDocType, setActiveDocType] = useState<"cso" | "part">("part");
@@ -102,6 +105,12 @@ function PartRequestDetailDialog({
       setMessages([]);
     }
   }, [request?.id]);
+
+  useEffect(() => {
+    if (request?.id && messages.length > 0 && onMessagesSeen) {
+      onMessagesSeen(request.id, messages);
+    }
+  }, [request?.id, messages, onMessagesSeen]);
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -622,6 +631,55 @@ export function PartRequestsTable({
 }: PartRequestsTableProps) {
   const [selectedRequest, setSelectedRequest] = useState<PartRequest | null>(null);
 
+  const user = useAuthStore((s) => s.user);
+
+  const [seenMap, setSeenMap] = useState<Record<string, number>>(() => {
+    if (!user?.id) return {};
+    try {
+      const stored = localStorage.getItem(`seen_messages_user_${user.id}`);
+      return stored ? JSON.parse(stored) : {};
+    } catch (e) {
+      return {};
+    }
+  });
+
+  useEffect(() => {
+    if (user?.id) {
+      try {
+        const stored = localStorage.getItem(`seen_messages_user_${user.id}`);
+        setSeenMap(stored ? JSON.parse(stored) : {});
+      } catch (e) {
+        setSeenMap({});
+      }
+    } else {
+      setSeenMap({});
+    }
+  }, [user?.id]);
+
+  const markAsRead = (requestId: number, messages: PartRequestMessage[]) => {
+    if (!user?.id || messages.length === 0) return;
+    const maxId = Math.max(...messages.map((m) => m.id));
+    const currentSeen = seenMap[requestId] || 0;
+    if (maxId > currentSeen) {
+      const updated = { ...seenMap, [requestId]: maxId };
+      setSeenMap(updated);
+      try {
+        localStorage.setItem(`seen_messages_user_${user.id}`, JSON.stringify(updated));
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  };
+
+  const getUnreadCount = (pr: PartRequest) => {
+    if (!user?.id || !pr.messages || pr.messages.length === 0) return 0;
+    const lastSeenId = seenMap[pr.id] || 0;
+    const unreadMessages = pr.messages.filter(
+      (msg) => msg.sender.id !== user.id && msg.id > lastSeenId
+    );
+    return unreadMessages.length;
+  };
+
   if (loading) {
     return (
       <div className="space-y-3">
@@ -649,6 +707,7 @@ export function PartRequestsTable({
   const start = (pagination.page - 1) * pagination.per_page + 1;
   const end = Math.min(pagination.page * pagination.per_page, pagination.total);
   const isManager = userRole === "manager" || userRole === "admin" || userRole === "super_admin";
+  const showRegion = isManager || userRole === "sub_admin";
 
   return (
     <div>
@@ -657,7 +716,7 @@ export function PartRequestsTable({
           <TableHeader>
             <TableRow className="bg-slate-50 dark:bg-slate-800/50">
               <TableHead>Ticket #</TableHead>
-              {isManager && <TableHead>Region</TableHead>}
+              {showRegion && <TableHead>Region</TableHead>}
               <TableHead>Part Number</TableHead>
               <TableHead>Part Name</TableHead>
               <TableHead>Qty</TableHead>
@@ -668,16 +727,28 @@ export function PartRequestsTable({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {data.map((pr, i) => (
-              <motion.tr
-                key={pr.id}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: i * 0.05 }}
-                className="border-b border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
-              >
-                <TableCell className="font-medium">{pr.ticket_number}</TableCell>
-                {isManager && (
+            {data.map((pr, i) => {
+              const unreadCount = getUnreadCount(pr);
+              return (
+                <motion.tr
+                  key={pr.id}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: i * 0.05 }}
+                  className="border-b border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+                >
+                  <TableCell className="font-medium">
+                    <div className="flex items-center gap-2">
+                      <span>{pr.ticket_number}</span>
+                      {unreadCount > 0 && (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-950/30 px-2 py-0.5 rounded-full border border-red-100 dark:border-red-900/30 shadow-sm animate-pulse">
+                          <MessageSquare className="w-3 h-3" />
+                          {unreadCount} New
+                        </span>
+                      )}
+                    </div>
+                  </TableCell>
+                {showRegion && (
                   <TableCell>
                     <Badge variant="outline" className="capitalize">
                       {pr.region_display || pr.region}
@@ -716,10 +787,16 @@ export function PartRequestsTable({
                       variant="ghost"
                       size="icon"
                       onClick={() => setSelectedRequest(pr)}
-                      className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950"
+                      className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950 relative"
                       title="View Details"
                     >
                       <Eye className="w-4 h-4" />
+                      {unreadCount > 0 && (
+                        <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                        </span>
+                      )}
                     </Button>
                     {isManager && pr.status === "pending" && (
                       <>
@@ -746,7 +823,8 @@ export function PartRequestsTable({
                   </div>
                 </TableCell>
               </motion.tr>
-            ))}
+              );
+            })}
           </TableBody>
         </Table>
       </div>
@@ -782,6 +860,7 @@ export function PartRequestsTable({
         request={selectedRequest}
         isOpen={selectedRequest !== null}
         onClose={() => setSelectedRequest(null)}
+        onMessagesSeen={markAsRead}
       />
     </div>
   );
