@@ -12,7 +12,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Trash2, Printer, FileText, Loader2 } from "lucide-react";
 import renderlogo from "@/assets/renderlogo.png";
 import bobQr from "@/assets/bob_qr.png";
-import stampImg from "@/assets/stamp.png";
 
 type DocumentStyle = "classic" | "orange";
 type LineItemId = number | string;
@@ -679,10 +678,8 @@ export function QuotationFormDialog({
                               </div>
                               <div style={{ textAlign: 'right', position: 'relative', minWidth: '220px' }}>
                                 <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>For {senderCompany}</div>
-                                {/* The generated stamp asset overlay */}
-                                <div style={{ display: 'flex', justifyContent: 'center', marginTop: '5px' }}>
-                                  <img src={stampImg} alt="stamp" style={{ height: '55px', objectFit: 'contain', mixBlendMode: 'multiply' }} />
-                                </div>
+                                {/* Blank space reserved for stamp/seal */}
+                                <div style={{ height: '55px', marginTop: '5px' }} />
                                 <div style={{ fontWeight: 'bold', marginTop: '5px' }}>Authorized Signatory</div>
                               </div>
                             </div>
@@ -925,7 +922,7 @@ export function QuotationFormDialog({
                           <div style={{ fontStyle: 'italic', color: '#555' }}>{terms}</div>
                         </td>
                         <td style={{ width: '200px', textAlign: 'center', verticalAlign: 'bottom' }}>
-                          <img src={stampImg} alt="stamp" style={{ height: '45px', objectFit: 'contain', mixBlendMode: 'multiply', marginBottom: '2px' }} />
+                          <div style={{ height: '45px', marginBottom: '2px' }} />
                           <div style={{ width: '100%', height: '1px', backgroundColor: '#d1d5db', margin: '3px 0' }}></div>
                           <div style={{ fontWeight: 'bold', fontSize: '12px', color: '#111' }}>Provider Signature</div>
                         </td>
