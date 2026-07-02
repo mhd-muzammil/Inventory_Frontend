@@ -1,26 +1,36 @@
 import { useState, useEffect, useCallback } from "react";
-import type { ReportSummary, CategoryBreakdown } from "@/types";
-import { mockReportSummary, mockCategories } from "@/lib/mock-data";
+import type { CategoryBreakdown } from "@/types";
+import { getSummary, getByCategory, getRecentMovements, type ReportSummary, type UnifiedRecentMovements } from "@/api/reports";
 
 export function useReports() {
   const [summary, setSummary] = useState<ReportSummary | null>(null);
   const [categories, setCategories] = useState<CategoryBreakdown[]>([]);
+  const [movements, setMovements] = useState<UnifiedRecentMovements | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetch = useCallback(() => {
+  const fetch = useCallback(async () => {
     setLoading(true);
     setError(null);
-    setTimeout(() => {
-      setSummary(mockReportSummary);
-      setCategories(mockCategories);
+    try {
+      const [summaryData, categoriesData, movementsData] = await Promise.all([
+        getSummary(),
+        getByCategory(),
+        getRecentMovements(),
+      ]);
+      setSummary(summaryData);
+      setCategories(categoriesData);
+      setMovements(movementsData);
+    } catch (err: any) {
+      setError(err.response?.data?.detail || "Failed to fetch reports");
+    } finally {
       setLoading(false);
-    }, 500);
+    }
   }, []);
 
   useEffect(() => {
     fetch();
   }, [fetch]);
 
-  return { summary, categories, loading, error, refetch: fetch };
+  return { summary, categories, movements, loading, error, refetch: fetch };
 }
