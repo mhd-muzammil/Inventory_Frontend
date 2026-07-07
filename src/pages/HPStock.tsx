@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import { AlertCircle, Plus, Search, MapPin, Globe, BarChart3, Layers } from "lucide-react";
+import { AlertCircle, Plus, Search, MapPin, Globe, BarChart3, Layers, Calendar } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,7 +30,14 @@ export default function HPStock() {
   
   const [viewMode, setViewMode] = useState<"my_region" | "overall">(showToggle ? "my_region" : "overall");
   const [selectedRegion, setSelectedRegion] = useState<string>("all");
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      return params.get("search") || "";
+    }
+    return "";
+  });
+  const [selectedDate, setSelectedDate] = useState<string>("");
   const [page, setPage] = useState(1);
   const [activeTab, setActiveTab] = useState<"active" | "closed">("active");
   const [data, setData] = useState<HPStockItem[]>([]);
@@ -75,6 +82,7 @@ export default function HPStock() {
         page,
         per_page: 20,
         is_closed: activeTab === "closed",
+        date: selectedDate || undefined,
       });
       setData(res.items);
       setPagination({ total: res.total, page: res.page, per_page: res.per_page, pages: res.pages });
@@ -83,10 +91,20 @@ export default function HPStock() {
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, viewMode, page, isAdmin, selectedRegion, activeTab]);
+  }, [debouncedSearch, viewMode, page, isAdmin, selectedRegion, activeTab, selectedDate]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
   useEffect(() => { fetchSummary(); }, [fetchSummary]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const queryVal = params.get("search");
+      if (queryVal !== null && queryVal !== search) {
+        setSearch(queryVal);
+      }
+    }
+  }, []);
 
   const handleMutated = () => {
     fetchData();
@@ -238,6 +256,25 @@ export default function HPStock() {
             className="pl-9"
           />
         </div>
+
+        <div className="relative w-full sm:w-44">
+          <Calendar className="absolute left-3 top-2.5 w-4 h-4 text-slate-400 pointer-events-none" />
+          <Input
+            type="date"
+            value={selectedDate}
+            onChange={(e) => { setSelectedDate(e.target.value); setPage(1); }}
+            className="pl-9 pr-8"
+          />
+          {selectedDate && (
+            <button
+              onClick={() => { setSelectedDate(""); setPage(1); }}
+              className="absolute right-3 top-2.5 text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+
         <Button onClick={() => setAddDialogOpen(true)} className="gap-2 ml-auto">
           <Plus className="w-4 h-4" /> Add Record
         </Button>

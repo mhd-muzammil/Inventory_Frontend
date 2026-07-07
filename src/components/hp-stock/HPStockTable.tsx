@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { Edit, Trash2, ArrowRight, ChevronDown, CheckCircle, Clock, Package, ClipboardCheck, User, ShieldCheck, Activity, RotateCcw } from "lucide-react";
+import { Edit, Trash2, ArrowRight, ChevronDown, CheckCircle, Clock, Package, ClipboardCheck, User, ShieldCheck, Activity, RotateCcw, Eye } from "lucide-react";
 import { format } from "date-fns";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -195,6 +195,7 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
   const [generatedOtp, setGeneratedOtp] = useState("");
   const [remarks, setRemarks] = useState("");
   const [savingTransition, setSavingTransition] = useState(false);
+  const [detailOpen, setDetailOpen] = useState(false);
   const [engineers, setEngineers] = useState<Engineer[]>([]);
   const [loadingEngineers, setLoadingEngineers] = useState(false);
 
@@ -211,7 +212,7 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
       setLoadingEngineers(false);
     }
   };
-  
+
   const canConfirm = useMemo(() => {
     if (!activeRow) return false;
     if (showEngineerField) {
@@ -245,6 +246,11 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
     setTrackOpen(true);
   };
 
+  const openDetail = (row: HPStockItem) => {
+    setActiveRow(row);
+    setDetailOpen(true);
+  };
+
   const handleSendOTP = async () => {
     if (!activeRow || !engineerPhone || engineerPhone.trim().length !== 10) {
       toast({ title: "Please enter a valid 10-digit Indian phone number first", variant: "destructive" });
@@ -258,12 +264,12 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
       });
       setOtpSent(true);
       setGeneratedOtp(res.otp);
-      
+
       // Open prefilled WhatsApp URL in new window
       if (res.whatsapp_url) {
         window.open(res.whatsapp_url, "_blank");
       }
-      
+
       toast({ title: "OTP generated! Pre-filled WhatsApp tab opened to send the code." });
     } catch (err) {
       toast({ title: extractApiError(err), variant: "destructive" });
@@ -329,6 +335,7 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
             <TableHeader>
               <TableRow className="bg-slate-50 dark:bg-slate-800/50">
                 <TableHead className="font-semibold">Case ID / WO</TableHead>
+                <TableHead className="font-semibold">Customer & Part</TableHead>
                 <TableHead className="font-semibold">Delivery / Service Event</TableHead>
                 <TableHead className="font-semibold">Material / Sales Order</TableHead>
                 <TableHead className="font-semibold">GVRMA No</TableHead>
@@ -345,6 +352,21 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
                   <TableCell>
                     <div className="font-medium text-slate-900 dark:text-slate-100">{item.case_id || "N/A"}</div>
                     <div className="text-xs text-slate-500">{item.work_order_id || "N/A"}</div>
+                    {item.case_created_time ? (
+                      <div className="text-[10px] text-indigo-600 dark:text-indigo-400 font-semibold mt-1" title="Case Created Time">
+                        Opened: {format(new Date(item.case_created_time), "dd/MM/yyyy")}
+                      </div>
+                    ) : (
+                      <div className="text-[10px] text-slate-400 mt-1" title="Record Created Time">
+                        Created: {format(new Date(item.created_at), "dd/MM/yyyy")}
+                      </div>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{item.customer_name || "N/A"}</div>
+                    <div className="text-xs text-slate-500 max-w-[220px] truncate" title={item.part_description || ""}>
+                      {item.part_description || "N/A"}
+                    </div>
                   </TableCell>
                   <TableCell>
                     <div className="text-sm text-slate-900 dark:text-slate-100">{item.delivery_no || "N/A"}</div>
@@ -413,6 +435,9 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
+                      <Button variant="ghost" size="icon" onClick={() => openDetail(item)} className="h-8 w-8 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 dark:hover:bg-indigo-900/50" title="Opencall Case Details">
+                        <Eye className="w-4 h-4" />
+                      </Button>
                       <Button variant="ghost" size="icon" onClick={() => onEdit(item)} className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/50">
                         <Edit className="w-4 h-4" />
                       </Button>
@@ -429,7 +454,7 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
           </Table>
         </div>
       </div>
-      
+
       {pagination.total > 0 && (
         <div className="flex items-center justify-between mt-4 text-sm text-slate-500 dark:text-slate-400">
           <span>
@@ -511,16 +536,16 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
                 <div className="space-y-2">
                   <Label>Engineer Phone (10 digits) *</Label>
                   <div className="flex gap-2">
-                    <Input 
-                      value={engineerPhone} 
-                      onChange={(e) => setEngineerPhone(e.target.value)} 
-                      placeholder="e.g. 9876543210" 
+                    <Input
+                      value={engineerPhone}
+                      onChange={(e) => setEngineerPhone(e.target.value)}
+                      placeholder="e.g. 9876543210"
                       maxLength={10}
                       disabled={otpSent}
                     />
-                    <Button 
-                      type="button" 
-                      onClick={handleSendOTP} 
+                    <Button
+                      type="button"
+                      onClick={handleSendOTP}
                       disabled={sendingOtp || engineerPhone.trim().length !== 10}
                       className="bg-indigo-600 hover:bg-indigo-700 whitespace-nowrap"
                     >
@@ -534,10 +559,10 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
                     <Label className="text-emerald-600 dark:text-emerald-400 font-medium">
                       Enter 6-Digit OTP *
                     </Label>
-                    <Input 
-                      value={otp} 
-                      onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))} 
-                      placeholder="Enter 6-digit OTP code" 
+                    <Input
+                      value={otp}
+                      onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
+                      placeholder="Enter 6-digit OTP code"
                       maxLength={6}
                       className="border-emerald-500 focus-visible:ring-emerald-500 text-center tracking-widest font-mono text-lg font-bold"
                     />
@@ -580,13 +605,13 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
             <div className="space-y-6">
               {/* Stepper Progress */}
               {(() => {
-                const hasUnused = activeRow.status === "UNUSED_RETURN" || 
+                const hasUnused = activeRow.status === "UNUSED_RETURN" ||
                   (activeRow.transition_history || []).some(h => h.to_status === "UNUSED_RETURN" || h.from_status === "UNUSED_RETURN");
-                const hasDefective = activeRow.status === "DEFECTIVE_RETURN" || 
+                const hasDefective = activeRow.status === "DEFECTIVE_RETURN" ||
                   (activeRow.transition_history || []).some(h => h.to_status === "DEFECTIVE_RETURN" || h.from_status === "DEFECTIVE_RETURN");
-                const hasDOA = activeRow.status === "DOA" || 
+                const hasDOA = activeRow.status === "DOA" ||
                   (activeRow.transition_history || []).some(h => h.to_status === "DOA" || h.from_status === "DOA");
-                
+
                 const steps = ["PENDING", "STOCK_CHECK", "ISSUED", "WORK_STATUS"];
                 if (hasUnused) {
                   steps.push("UNUSED_RETURN");
@@ -599,8 +624,8 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
                 }
                 steps.push("HANDOVER", "CLOSED");
 
-                const colsClass = steps.length === 6 
-                  ? "grid grid-cols-2 md:grid-cols-6 gap-3" 
+                const colsClass = steps.length === 6
+                  ? "grid grid-cols-2 md:grid-cols-6 gap-3"
                   : "grid grid-cols-2 md:grid-cols-7 gap-3";
 
                 return (
@@ -625,7 +650,7 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
                   </div>
                 );
               })()}
-              
+
               {/* Timeline Logs */}
               <div className="relative max-h-[380px] overflow-y-auto pr-2 pl-10 py-2 space-y-6">
                 {/* Vertical Line */}
@@ -717,6 +742,233 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Opencalls Details Modal */}
+      <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          {activeRow && (() => {
+            const details = activeRow.opencall_case_details || {};
+            const output = details.output || {};
+            
+            const readVal = (key: string): string => {
+              const v = output[key];
+              if (v === null || v === undefined || v === "") return "—";
+              return String(v);
+            };
+
+            const ticketId = readVal("Ticket ID");
+            const caseId = readVal("Case ID");
+            const customerName = readVal("Customer Name");
+            const customerEmail = readVal("Customer Mail");
+            const workLocation = readVal("Work Location");
+            const location = readVal("Location");
+            const regionName = readVal("Region");
+            const rtplStatus = readVal("RTPL status");
+            const flexStatus = readVal("Flex Status");
+            const segment = readVal("Segment");
+            const woOtcCode = readVal("WO OTC Code");
+            const productLine = readVal("Product Line");
+            const caseCreated = readVal("Case Created") || readVal("Case Opened");
+            
+            const daysOpen = details.days_open != null ? String(details.days_open) : "0";
+            const appearances = details.appearances != null ? String(details.appearances) : "1";
+            const actionsTaken = details.actions_taken != null ? String(details.actions_taken) : "0";
+            const sinceLastAction = "0d";
+
+            // Parse timeline from inventory_details
+            const timelineEntries = (activeRow.inventory_details || "")
+              .split("\n\n")
+              .filter(Boolean)
+              .map((line) => {
+                const lines = line.split("\n");
+                const header = lines[0] || "";
+                const remarks = lines[1] || "";
+                return { header, remarks };
+              });
+
+            return (
+              <div className="space-y-6">
+                {/* Header */}
+                <div className="border-b pb-4">
+                  <div className="text-xs font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+                    CASE DETAILS
+                  </div>
+                  <h2 className="text-2xl font-bold text-indigo-900 dark:text-indigo-100 mt-1">
+                    Ticket ID: <span className="text-indigo-600 dark:text-indigo-400">{ticketId}</span>
+                  </h2>
+                  <p className="text-xs text-slate-500 mt-1 font-medium">
+                    {customerName} · {workLocation}
+                  </p>
+                </div>
+
+                {/* Pills Row */}
+                <div className="flex flex-wrap gap-2">
+                  <span className="px-2.5 py-1 text-xs font-semibold rounded-full bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200">
+                    {segment}
+                  </span>
+                  <span className="px-2.5 py-1 text-xs font-semibold rounded-full bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-900">
+                    NEW
+                  </span>
+                  <span className="px-2.5 py-1 text-xs font-semibold rounded-full bg-indigo-50 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-900">
+                    FLEX: {flexStatus}
+                  </span>
+                  <span className="px-2.5 py-1 text-xs font-semibold rounded-full bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200">
+                    SEGMENT: {segment}
+                  </span>
+                </div>
+
+                {/* Metrics Grid */}
+                <div className="grid grid-cols-4 gap-4 bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800">
+                  <div className="text-center">
+                    <div className="text-xl font-bold text-slate-900 dark:text-slate-50">{daysOpen}</div>
+                    <div className="text-[10px] text-slate-400 uppercase tracking-wider mt-0.5">DAYS OPEN</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-xl font-bold text-slate-900 dark:text-slate-50">{sinceLastAction}</div>
+                    <div className="text-[10px] text-slate-400 uppercase tracking-wider mt-0.5">SINCE LAST ACTION</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-xl font-bold text-slate-900 dark:text-slate-50">{appearances}</div>
+                    <div className="text-[10px] text-slate-400 uppercase tracking-wider mt-0.5">APPEARANCES</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-xl font-bold text-slate-900 dark:text-slate-50">{actionsTaken}</div>
+                    <div className="text-[10px] text-slate-400 uppercase tracking-wider mt-0.5">ACTIONS TAKEN</div>
+                  </div>
+                </div>
+
+                {/* Main Content Layout */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Left Column: Details Cards */}
+                  <div className="space-y-6">
+                    {/* CUSTOMER section */}
+                    <div className="bg-white dark:bg-slate-900/20 p-5 rounded-xl border border-slate-200 dark:border-slate-800 space-y-4">
+                      <h3 className="font-semibold text-sm text-slate-900 dark:text-slate-50 border-b pb-1.5 uppercase tracking-wide">
+                        Customer
+                      </h3>
+                      <div className="grid grid-cols-2 gap-4 text-xs">
+                        <div>
+                          <span className="text-slate-400 block mb-0.5">CUSTOMER NAME</span>
+                          <span className="font-semibold text-slate-800 dark:text-slate-200">{customerName}</span>
+                        </div>
+                        <div>
+                          <span className="text-slate-400 block mb-0.5">CUSTOMER EMAIL</span>
+                          <span className="font-semibold text-slate-800 dark:text-slate-200 break-all">{customerEmail}</span>
+                        </div>
+                        <div>
+                          <span className="text-slate-400 block mb-0.5">WORK LOCATION (ASP)</span>
+                          <span className="font-semibold text-slate-800 dark:text-slate-200">{workLocation}</span>
+                        </div>
+                        <div>
+                          <span className="text-slate-400 block mb-0.5">LOCATION</span>
+                          <span className="font-semibold text-slate-800 dark:text-slate-200">{location}</span>
+                        </div>
+                        <div className="col-span-2">
+                          <span className="text-slate-400 block mb-0.5">REGION</span>
+                          <span className="font-semibold text-slate-800 dark:text-slate-200">{regionName}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* CASE & PRODUCT section */}
+                    <div className="bg-white dark:bg-slate-900/20 p-5 rounded-xl border border-slate-200 dark:border-slate-800 space-y-4">
+                      <h3 className="font-semibold text-sm text-slate-900 dark:text-slate-50 border-b pb-1.5 uppercase tracking-wide">
+                        Case &amp; Product
+                      </h3>
+                      <div className="grid grid-cols-2 gap-4 text-xs">
+                        <div>
+                          <span className="text-slate-400 block mb-0.5">CASE ID</span>
+                          <span className="font-semibold text-slate-800 dark:text-slate-200">{caseId}</span>
+                        </div>
+                        <div>
+                          <span className="text-slate-400 block mb-0.5">WO OTC CODE</span>
+                          <span className="font-semibold text-slate-800 dark:text-slate-200">{woOtcCode}</span>
+                        </div>
+                        <div className="col-span-2">
+                          <span className="text-slate-400 block mb-0.5">PRODUCT LINE</span>
+                          <span className="font-semibold text-slate-800 dark:text-slate-200">{productLine}</span>
+                        </div>
+                        <div>
+                          <span className="text-slate-400 block mb-0.5">SEGMENT</span>
+                          <span className="font-semibold text-slate-800 dark:text-slate-200">{segment}</span>
+                        </div>
+                        <div>
+                          <span className="text-slate-400 block mb-0.5">CASE CREATED</span>
+                          <span className="font-semibold text-slate-800 dark:text-slate-200">{caseCreated}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* STATUS & ASSIGNMENT section */}
+                    <div className="bg-white dark:bg-slate-900/20 p-5 rounded-xl border border-slate-200 dark:border-slate-800 space-y-4">
+                      <h3 className="font-semibold text-sm text-slate-900 dark:text-slate-50 border-b pb-1.5 uppercase tracking-wide">
+                        Status &amp; Assignment
+                      </h3>
+                      <div className="grid grid-cols-2 gap-4 text-xs">
+                        <div>
+                          <span className="text-slate-400 block mb-0.5">RTPL STATUS</span>
+                          <span className="font-semibold text-slate-800 dark:text-slate-200">{rtplStatus}</span>
+                        </div>
+                        <div>
+                          <span className="text-slate-400 block mb-0.5">FLEX STATUS</span>
+                          <span className="font-semibold text-slate-800 dark:text-slate-200">{flexStatus}</span>
+                        </div>
+                        <div>
+                          <span className="text-slate-400 block mb-0.5">ENGINEER</span>
+                          <span className="font-semibold text-slate-800 dark:text-slate-200">{activeRow.engineer_name || "Unassigned"}</span>
+                        </div>
+                        <div>
+                          <span className="text-slate-400 block mb-0.5">HP OWNER STATUS</span>
+                          <span className="font-semibold text-slate-800 dark:text-slate-200">{readVal("HP Owner Status")}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right Column: Status Timeline */}
+                  <div className="bg-slate-50/50 dark:bg-slate-900/10 p-5 rounded-xl border border-slate-200 dark:border-slate-800 space-y-4 h-fit">
+                    <div className="border-b pb-2">
+                      <h3 className="font-semibold text-sm text-slate-900 dark:text-slate-50 uppercase tracking-wide">
+                        RTPL Status Timeline
+                      </h3>
+                      <p className="text-[10px] text-slate-400 mt-0.5">Each status change and the date it happened.</p>
+                    </div>
+
+                    {timelineEntries.length === 0 ? (
+                      <div className="text-xs text-slate-400 py-4 text-center">
+                        No status changes recorded for this case yet.
+                      </div>
+                    ) : (
+                      <div className="relative pl-6 space-y-6 pt-2">
+                        {/* Timeline vertical bar */}
+                        <div className="absolute left-[7px] top-3 bottom-3 w-0.5 bg-slate-200 dark:bg-slate-800" />
+                        
+                        {timelineEntries.map((entry, index) => (
+                          <div key={index} className="relative group text-xs">
+                            {/* Timeline dot */}
+                            <div className="absolute -left-[23px] top-1.5 w-3 h-3 rounded-full border-2 border-white dark:border-slate-900 bg-indigo-500 shadow-sm z-10" />
+                            
+                            <div className="bg-white dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-800/80 shadow-sm space-y-1">
+                              <p className="font-medium text-slate-900 dark:text-slate-100">{entry.header}</p>
+                              {entry.remarks && (
+                                <p className="text-slate-500 italic mt-0.5">{entry.remarks}</p>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <DialogFooter className="border-t pt-4">
+                  <Button onClick={() => setDetailOpen(false)}>Close Details</Button>
+                </DialogFooter>
+              </div>
+            );
+          })()}
         </DialogContent>
       </Dialog>
     </div>

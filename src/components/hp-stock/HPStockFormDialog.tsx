@@ -43,6 +43,8 @@ const DEFAULT_FORM = {
   status: "PENDING",
   engineer_name: "",
   engineer_phone: "",
+  part_description: "",
+  customer_name: "",
 };
 
 export function HPStockFormDialog({ open, onOpenChange, editing, onSuccess }: Props) {
@@ -66,6 +68,8 @@ export function HPStockFormDialog({ open, onOpenChange, editing, onSuccess }: Pr
           status: editing.status || "PENDING",
           engineer_name: editing.engineer_name || "",
           engineer_phone: editing.engineer_phone || "",
+          part_description: editing.part_description || "",
+          customer_name: editing.customer_name || "",
         });
       } else {
         setFormData({
@@ -122,7 +126,25 @@ export function HPStockFormDialog({ open, onOpenChange, editing, onSuccess }: Pr
                 placeholder="Enter Work Order ID"
               />
             </div>
-            
+
+            <div className="space-y-2">
+              <Label>Customer Name</Label>
+              <Input
+                value={formData.customer_name}
+                onChange={(e) => setFormData({ ...formData, customer_name: e.target.value })}
+                placeholder="Enter Customer Name"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Part Description</Label>
+              <Input
+                value={formData.part_description}
+                onChange={(e) => setFormData({ ...formData, part_description: e.target.value })}
+                placeholder="Enter Part Description"
+              />
+            </div>
+
             <div className="space-y-2">
               <Label>Delivery No</Label>
               <Input

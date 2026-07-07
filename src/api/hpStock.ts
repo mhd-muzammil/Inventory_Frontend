@@ -14,6 +14,10 @@ export interface HPStockItem {
   status: string;
   engineer_name: string;
   engineer_phone?: string;
+  part_description?: string;
+  customer_name?: string;
+  inventory_details?: string;
+  opencall_case_details?: Record<string, any>;
   created_by_name?: string;
   transition_history?: Array<{
     from_status: string;
@@ -26,6 +30,7 @@ export interface HPStockItem {
   }>;
   created_at: string;
   updated_at: string;
+  case_created_time?: string;
 }
 
 export interface HPStockSummary {
@@ -42,6 +47,7 @@ export interface GetHPStockParams {
   region?: string;
   view?: 'my_region' | 'overall';
   is_closed?: boolean;
+  date?: string;
 }
 
 export interface GetHPStockResponse {
