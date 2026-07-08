@@ -33,6 +33,7 @@ const navLinks = [
   { to: "/invoice", label: "Invoice", icon: Receipt },
   { to: "/stock", label: "RTPL Stock", icon: Warehouse },
   { to: "/hp-stock", label: "HP Stock", icon: Warehouse },
+  { to: "/hp-stock-rma", label: "HP Stock RMA", icon: FileText },
   { to: "/buffer", label: "Buffer", icon: Layers },
   // { to: "/buffer-stock", label: "Buffer Stock Mgmt", icon: Layers },
   { to: "/purchase-order", label: "Purchase Order", icon: ShoppingCart },
@@ -57,6 +58,10 @@ export function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
   const isManager = user?.role === "manager";
 
   const filteredNavLinks = navLinks.filter((link) => {
+    if (link.to === "/hp-stock-rma") {
+      const isAdmin = user?.role === "admin" || user?.role === "super_admin" || user?.role === "manager";
+      if (!isAdmin) return false;
+    }
     if (isManager) {
       return user?.allowed_sections?.includes(link.to);
     }

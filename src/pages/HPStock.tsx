@@ -14,6 +14,7 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { HPStockTable } from "@/components/hp-stock/HPStockTable";
 import { HPStockFormDialog } from "@/components/hp-stock/HPStockFormDialog";
+import { HPStockHistoryView } from "@/components/hp-stock/HPStockHistoryView";
 import { getHPStockItems, deleteHPStockItem, getHPStockSummary } from "@/api/hpStock";
 import type { HPStockItem, HPStockSummary } from "@/api/hpStock";
 import { extractApiError } from "@/api/client";
@@ -39,7 +40,7 @@ export default function HPStock() {
   });
   const [selectedDate, setSelectedDate] = useState<string>("");
   const [page, setPage] = useState(1);
-  const [activeTab, setActiveTab] = useState<"active" | "closed">("active");
+  const [activeTab, setActiveTab] = useState<"active" | "dc_cut_request" | "closed">("active");
   const [data, setData] = useState<HPStockItem[]>([]);
   const dataRef = useRef(data);
   useEffect(() => {
@@ -52,6 +53,7 @@ export default function HPStock() {
 
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<HPStockItem | null>(null);
+  const [selectedHistoryItem, setSelectedHistoryItem] = useState<HPStockItem | null>(null);
 
   const [summary, setSummary] = useState<HPStockSummary | null>(null);
 
@@ -81,7 +83,7 @@ export default function HPStock() {
         region: apiRegion,
         page,
         per_page: 20,
-        is_closed: activeTab === "closed",
+        is_closed: activeTab === "closed" ? "true" : activeTab === "dc_cut_request" ? "dc_cut_request" : "false",
         date: selectedDate || undefined,
       });
       setData(res.items);
@@ -137,10 +139,17 @@ export default function HPStock() {
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">HP Stock RMA Workflow</h1>
-        <p className="text-slate-500 dark:text-slate-400 mt-1">Manage HP stock and logistics.</p>
-      </div>
+      {selectedHistoryItem ? (
+        <HPStockHistoryView
+          item={selectedHistoryItem}
+          onBack={() => setSelectedHistoryItem(null)}
+        />
+      ) : (
+        <>
+          <div className="mb-6">
+            <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">HP Stock RMA Workflow</h1>
+            <p className="text-slate-500 dark:text-slate-400 mt-1">Manage HP stock and logistics.</p>
+          </div>
 
       {summary && summary.regions.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 mb-6">
@@ -164,6 +173,11 @@ export default function HPStock() {
                   <div className="text-center">
                     <span className="text-sm font-semibold text-slate-800 dark:text-slate-100">{r.active || 0}</span>
                     <div className="text-[9px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">Active</div>
+                  </div>
+                  <div className="w-[1px] h-6 bg-slate-200 dark:bg-slate-700/50 mx-0.5" />
+                  <div className="text-center">
+                    <span className="text-sm font-semibold text-cyan-600 dark:text-cyan-400">{r.dc_cut_request || 0}</span>
+                    <div className="text-[9px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">DC Cut</div>
                   </div>
                   <div className="w-[1px] h-6 bg-slate-200 dark:bg-slate-700/50 mx-0.5" />
                   <div className="text-center">
@@ -193,7 +207,14 @@ export default function HPStock() {
               </div>
               <div className="w-[1px] h-6 bg-indigo-200 dark:bg-indigo-800/50 mx-0.5" />
               <div className="text-center">
-                <span className="text-sm font-semibold text-indigo-600/80 dark:text-indigo-400/80">
+                <span className="text-sm font-semibold text-cyan-700 dark:text-cyan-400">
+                  {summary.dc_cut_request_total || 0}
+                </span>
+                <div className="text-[9px] font-medium text-indigo-600/70 dark:text-indigo-400/70 uppercase tracking-wider">DC Cut</div>
+              </div>
+              <div className="w-[1px] h-6 bg-indigo-200 dark:bg-indigo-800/50 mx-0.5" />
+              <div className="text-center">
+                <span className="text-sm font-semibold text-indigo-650/80 dark:text-indigo-400/80">
                   {summary.closed_total || 0}
                 </span>
                 <div className="text-[9px] font-medium text-indigo-600/70 dark:text-indigo-400/70 uppercase tracking-wider">Closed</div>
@@ -284,14 +305,17 @@ export default function HPStock() {
         <Tabs
           value={activeTab}
           onValueChange={(v) => {
-            setActiveTab(v as "active" | "closed");
+            setActiveTab(v as "active" | "dc_cut_request" | "closed");
             setPage(1);
           }}
-          className="w-full sm:w-[400px]"
+          className="w-full sm:w-[500px]"
         >
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="active" className="text-sm font-medium">
               Active Cases
+            </TabsTrigger>
+            <TabsTrigger value="dc_cut_request" className="text-sm font-medium">
+              DC Cut Request
             </TabsTrigger>
             <TabsTrigger value="closed" className="text-sm font-medium">
               Closed Cases
@@ -316,7 +340,10 @@ export default function HPStock() {
           onEdit={(item) => setEditingItem(item)}
           onDelete={handleDelete}
           onRowUpdated={handleMutated}
+          onViewHistory={(item) => setSelectedHistoryItem(item)}
         />
+      )}
+        </>
       )}
 
       <HPStockFormDialog

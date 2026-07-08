@@ -10,6 +10,8 @@ export interface HPStockItem {
   material_order_no: string;
   hp_sales_order_no: string;
   gvrma_no: string;
+  good_part_image?: string;
+  return_part_image?: string;
   region: string;
   status: string;
   engineer_name: string;
@@ -36,8 +38,9 @@ export interface HPStockItem {
 export interface HPStockSummary {
   total: number;
   active_total?: number;
+  dc_cut_request_total?: number;
   closed_total?: number;
-  regions: { region: string; total: number; active?: number; closed?: number }[];
+  regions: { region: string; total: number; active?: number; dc_cut_request?: number; closed?: number }[];
 }
 
 export interface GetHPStockParams {
@@ -46,7 +49,7 @@ export interface GetHPStockParams {
   search?: string;
   region?: string;
   view?: 'my_region' | 'overall';
-  is_closed?: boolean;
+  is_closed?: boolean | string;
   date?: string;
 }
 
@@ -74,13 +77,17 @@ export const getHPStockSummary = async (view: 'my_region' | 'overall', region?: 
   return data;
 };
 
-export const createHPStockItem = async (payload: Partial<HPStockItem>): Promise<HPStockItem> => {
-  const { data } = await api.post('/hp-stock/items/', payload);
+export const createHPStockItem = async (payload: Partial<HPStockItem> | FormData): Promise<HPStockItem> => {
+  const { data } = await api.post('/hp-stock/items/', payload, {
+    headers: payload instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : undefined
+  });
   return data;
 };
 
-export const updateHPStockItem = async (id: number, payload: Partial<HPStockItem>): Promise<HPStockItem> => {
-  const { data } = await api.patch(`/hp-stock/items/${id}/`, payload);
+export const updateHPStockItem = async (id: number, payload: Partial<HPStockItem> | FormData): Promise<HPStockItem> => {
+  const { data } = await api.patch(`/hp-stock/items/${id}/`, payload, {
+    headers: payload instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : undefined
+  });
   return data;
 };
 
@@ -90,9 +97,11 @@ export const deleteHPStockItem = async (id: number): Promise<void> => {
 
 export const transitionHPStockItem = async (
   id: number,
-  payload: { engineer_name?: string; engineer_phone?: string; otp?: string; remarks?: string; to_status?: string }
+  payload: { engineer_name?: string; engineer_phone?: string; otp?: string; remarks?: string; to_status?: string } | FormData
 ): Promise<HPStockItem> => {
-  const { data } = await api.post(`/hp-stock/items/${id}/transition/`, payload);
+  const { data } = await api.post(`/hp-stock/items/${id}/transition/`, payload, {
+    headers: payload instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : undefined
+  });
   return data;
 };
 

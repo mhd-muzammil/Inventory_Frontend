@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { Edit, Trash2, ArrowRight, ChevronDown, CheckCircle, Clock, Package, ClipboardCheck, User, ShieldCheck, Activity, RotateCcw, Eye } from "lucide-react";
+import { Edit, Trash2, ArrowRight, ChevronDown, CheckCircle, Clock, Package, ClipboardCheck, User, ShieldCheck, Activity, RotateCcw, Eye, Camera, FileText } from "lucide-react";
 import { format } from "date-fns";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -26,61 +26,75 @@ type WorkflowStatus = HPStockItem["status"];
 
 const AVAILABLE_TRANSITIONS: Record<string, string[]> = {
   PENDING: ["STOCK_CHECK"],
-  STOCK_CHECK: ["ISSUED"],
+  STOCK_CHECK: ["GOOD_PART_PHOTO"],
+  GOOD_PART_PHOTO: ["ISSUED"],
   ISSUED: ["WORK_STATUS"],
   WORK_STATUS: ["UNUSED_RETURN", "DEFECTIVE_RETURN", "DOA"],
   UNUSED_RETURN: ["HANDOVER"],
   DEFECTIVE_RETURN: ["HANDOVER"],
   DOA: ["HANDOVER"],
-  HANDOVER: ["CLOSED"],
+  HANDOVER: ["RETURN_PART_PHOTO"],
+  RETURN_PART_PHOTO: ["DC_CUT_REQUEST"],
+  DC_CUT_REQUEST: ["CLOSED"],
 };
 
 const TRANSITION_LABELS: Record<string, string> = {
   STOCK_CHECK: "Perform Stock Check",
+  GOOD_PART_PHOTO: "Good Part Photo",
   ISSUED: "Part Taken by Engineer",
   WORK_STATUS: "Verify Work Status",
   UNUSED_RETURN: "Mark as Unused Part",
   DEFECTIVE_RETURN: "Mark as Old/Defective Part",
   DOA: "Death on Arrival",
   HANDOVER: "Record Engineer Handover",
+  RETURN_PART_PHOTO: "Return Part Photo",
+  DC_CUT_REQUEST: "DC Cut Request",
   CLOSED: "Close the Case",
 };
 
-const STATUS_LABELS: Record<string, string> = {
+export const STATUS_LABELS: Record<string, string> = {
   PENDING: "Stock Entry",
   STOCK_CHECK: "Stock Check",
   RECEIVED: "Stock Check",
+  GOOD_PART_PHOTO: "Good Part Photo",
   ISSUED: "Part Taken by Engineer",
   WORK_STATUS: "Work Status",
   UNUSED_RETURN: "Unused Part",
   DEFECTIVE_RETURN: "Old/Defective Part",
   DOA: "Death on Arrival",
   HANDOVER: "Part Handover by Engineer",
+  RETURN_PART_PHOTO: "Return Part Photo",
+  DC_CUT_REQUEST: "DC Cut Request",
   CLOSED: "Close the Case",
 };
 
-const STATUS_STYLE_MAP: Record<string, { bg: string; text: string; dot: string }> = {
+export const STATUS_STYLE_MAP: Record<string, { bg: string; text: string; dot: string }> = {
   PENDING: { bg: "bg-blue-50 dark:bg-blue-900/20", text: "text-blue-700 dark:text-blue-400", dot: "bg-blue-600" },
   STOCK_CHECK: { bg: "bg-yellow-50 dark:bg-yellow-900/20", text: "text-yellow-700 dark:text-yellow-400", dot: "bg-yellow-500" },
   RECEIVED: { bg: "bg-yellow-50 dark:bg-yellow-900/20", text: "text-yellow-700 dark:text-yellow-400", dot: "bg-yellow-500" },
+  GOOD_PART_PHOTO: { bg: "bg-indigo-50 dark:bg-indigo-900/20", text: "text-indigo-700 dark:text-indigo-400", dot: "bg-indigo-600" },
   ISSUED: { bg: "bg-purple-50 dark:bg-purple-900/20", text: "text-purple-700 dark:text-purple-400", dot: "bg-purple-600" },
   WORK_STATUS: { bg: "bg-orange-50 dark:bg-orange-900/20", text: "text-orange-700 dark:text-orange-400", dot: "bg-orange-600" },
   UNUSED_RETURN: { bg: "bg-teal-50 dark:bg-teal-900/20", text: "text-teal-700 dark:text-teal-400", dot: "bg-teal-600" },
   DEFECTIVE_RETURN: { bg: "bg-rose-50 dark:bg-rose-900/20", text: "text-rose-700 dark:text-rose-400", dot: "bg-rose-600" },
   DOA: { bg: "bg-red-50 dark:bg-red-900/20", text: "text-red-700 dark:text-red-400", dot: "bg-red-600" },
   HANDOVER: { bg: "bg-indigo-50 dark:bg-indigo-900/20", text: "text-indigo-700 dark:text-indigo-400", dot: "bg-indigo-600" },
+  RETURN_PART_PHOTO: { bg: "bg-blue-50 dark:bg-blue-900/20", text: "text-blue-700 dark:text-blue-400", dot: "bg-blue-600" },
+  DC_CUT_REQUEST: { bg: "bg-cyan-50 dark:bg-cyan-900/20", text: "text-cyan-700 dark:text-cyan-400", dot: "bg-cyan-600" },
   CLOSED: { bg: "bg-emerald-50 dark:bg-emerald-900/20", text: "text-emerald-700 dark:text-emerald-400", dot: "bg-emerald-600" },
 };
 
-const TRACK_STEPS = ["PENDING", "STOCK_CHECK", "ISSUED", "WORK_STATUS", "UNUSED_RETURN", "DEFECTIVE_RETURN", "DOA", "HANDOVER", "CLOSED"];
+const TRACK_STEPS = ["PENDING", "STOCK_CHECK", "GOOD_PART_PHOTO", "ISSUED", "WORK_STATUS", "UNUSED_RETURN", "DEFECTIVE_RETURN", "DOA", "HANDOVER", "RETURN_PART_PHOTO", "DC_CUT_REQUEST", "CLOSED"];
 
-const getStatusIcon = (status: string) => {
+export const getStatusIcon = (status: string) => {
   switch (status) {
     case "PENDING":
       return <Package className="w-3.5 h-3.5" />;
     case "STOCK_CHECK":
     case "RECEIVED":
       return <ClipboardCheck className="w-3.5 h-3.5" />;
+    case "GOOD_PART_PHOTO":
+      return <Camera className="w-3.5 h-3.5" />;
     case "ISSUED":
       return <User className="w-3.5 h-3.5" />;
     case "WORK_STATUS":
@@ -92,6 +106,10 @@ const getStatusIcon = (status: string) => {
       return <Activity className="w-3.5 h-3.5" />;
     case "HANDOVER":
       return <User className="w-3.5 h-3.5" />;
+    case "RETURN_PART_PHOTO":
+      return <Camera className="w-3.5 h-3.5" />;
+    case "DC_CUT_REQUEST":
+      return <FileText className="w-3.5 h-3.5" />;
     case "CLOSED":
       return <ShieldCheck className="w-3.5 h-3.5" />;
     default:
@@ -108,6 +126,14 @@ const getTransitionNote = (status: string) => {
         icon: <ClipboardCheck className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />,
         bg: "bg-yellow-50/80 dark:bg-yellow-950/20 border-yellow-200 dark:border-yellow-800/60",
         text: "text-yellow-800 dark:text-yellow-300",
+      };
+    case "GOOD_PART_PHOTO":
+      return {
+        title: "Good Part Photo Verification",
+        message: "Confirm that a clear photo of the good part is taken and stored/verified properly.",
+        icon: <Camera className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />,
+        bg: "bg-indigo-50/80 dark:bg-indigo-950/20 border-indigo-200 dark:border-indigo-800/60",
+        text: "text-indigo-800 dark:text-indigo-300",
       };
     case "ISSUED":
       return {
@@ -157,6 +183,22 @@ const getTransitionNote = (status: string) => {
         bg: "bg-indigo-50/80 dark:bg-indigo-950/20 border-indigo-200 dark:border-indigo-800/60",
         text: "text-indigo-800 dark:text-indigo-300",
       };
+    case "RETURN_PART_PHOTO":
+      return {
+        title: "Return Part Photo Verification",
+        message: "Please upload a clear photo of the returned (defective/old or unused) part to continue.",
+        icon: <Camera className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />,
+        bg: "bg-indigo-50/80 dark:bg-indigo-950/20 border-indigo-200 dark:border-indigo-800/60",
+        text: "text-indigo-800 dark:text-indigo-300",
+      };
+    case "DC_CUT_REQUEST":
+      return {
+        title: "DC Cut Request",
+        message: "Request a DC cut for this HP stock item. Ensure all logs and details are completed before raising the request.",
+        icon: <FileText className="w-5 h-5 text-cyan-600 dark:text-cyan-400" />,
+        bg: "bg-cyan-50/80 dark:bg-cyan-950/20 border-cyan-200 dark:border-cyan-800/60",
+        text: "text-cyan-800 dark:text-cyan-300",
+      };
     case "CLOSED":
       return {
         title: "Final Case Closure",
@@ -178,9 +220,10 @@ interface Props {
   onEdit: (item: HPStockItem) => void;
   onDelete: (id: number) => void;
   onRowUpdated: (item: HPStockItem) => void;
+  onViewHistory?: (item: HPStockItem) => void;
 }
 
-export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, onDelete, onRowUpdated }: Props) {
+export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, onDelete, onRowUpdated, onViewHistory }: Props) {
   const user = useAuthStore((s) => s.user);
   const isSubAdmin = user?.role === "sub_admin";
   const [transitionOpen, setTransitionOpen] = useState(false);
@@ -194,6 +237,7 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
   const [sendingOtp, setSendingOtp] = useState(false);
   const [generatedOtp, setGeneratedOtp] = useState("");
   const [remarks, setRemarks] = useState("");
+  const [goodPartFile, setGoodPartFile] = useState<File | null>(null);
   const [savingTransition, setSavingTransition] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [engineers, setEngineers] = useState<Engineer[]>([]);
@@ -222,8 +266,11 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
         otp.trim().length === 6
       );
     }
+    if (pendingToStatus === "GOOD_PART_PHOTO") {
+      return goodPartFile !== null;
+    }
     return true;
-  }, [activeRow, engineerName, engineerPhone, otp, showEngineerField]);
+  }, [activeRow, engineerName, engineerPhone, otp, showEngineerField, pendingToStatus, goodPartFile]);
 
   const openTransition = (row: HPStockItem, target: string) => {
     setActiveRow(row);
@@ -235,6 +282,7 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
     setOtp("");
     setOtpSent(false);
     setGeneratedOtp("");
+    setGoodPartFile(null);
     setTransitionOpen(true);
     if (target === "ISSUED" || target === "HANDOVER") {
       fetchEngineers(row.region || undefined);
@@ -242,8 +290,12 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
   };
 
   const openTrack = (row: HPStockItem) => {
-    setActiveRow(row);
-    setTrackOpen(true);
+    if (onViewHistory) {
+      onViewHistory(row);
+    } else {
+      setActiveRow(row);
+      setTrackOpen(true);
+    }
   };
 
   const openDetail = (row: HPStockItem) => {
@@ -282,13 +334,31 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
     if (!activeRow || !canConfirm) return;
     setSavingTransition(true);
     try {
-      const updated = await transitionHPStockItem(activeRow.id, {
-        engineer_name: showEngineerField ? engineerName.trim() || undefined : undefined,
-        engineer_phone: showEngineerField ? engineerPhone.trim() : undefined,
-        otp: showEngineerField ? otp.trim() : undefined,
-        remarks: remarks.trim() || undefined,
-        to_status: pendingToStatus || undefined,
-      });
+      let payload: any;
+      if (goodPartFile) {
+        const formData = new FormData();
+        formData.append("to_status", pendingToStatus || "");
+        if (remarks.trim()) {
+          formData.append("remarks", remarks.trim());
+        }
+        formData.append("good_part_image", goodPartFile);
+        if (showEngineerField) {
+          formData.append("engineer_name", engineerName.trim());
+          formData.append("engineer_phone", engineerPhone.trim());
+          formData.append("otp", otp.trim());
+        }
+        payload = formData;
+      } else {
+        payload = {
+          engineer_name: showEngineerField ? engineerName.trim() || undefined : undefined,
+          engineer_phone: showEngineerField ? engineerPhone.trim() : undefined,
+          otp: showEngineerField ? otp.trim() : undefined,
+          remarks: remarks.trim() || undefined,
+          to_status: pendingToStatus || undefined,
+        };
+      }
+
+      const updated = await transitionHPStockItem(activeRow.id, payload);
       onRowUpdated(updated);
       setTransitionOpen(false);
       toast({ title: "HP Stock status updated and verified successfully" });
@@ -578,6 +648,27 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
                 )}
               </div>
             )}
+            {(pendingToStatus === "GOOD_PART_PHOTO" || pendingToStatus === "RETURN_PART_PHOTO") && (
+              <div className="space-y-2 border-l-2 border-indigo-500 pl-3 py-1">
+                <Label className="text-indigo-600 dark:text-indigo-400 font-medium">
+                  {pendingToStatus === "GOOD_PART_PHOTO" ? "Upload Good Part Photo *" : "Upload Return Part Photo *"}
+                </Label>
+                <Input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0] || null;
+                    setGoodPartFile(file);
+                  }}
+                  className="cursor-pointer"
+                />
+                <p className="text-[11px] text-slate-500 mt-1">
+                  {pendingToStatus === "GOOD_PART_PHOTO"
+                    ? "Please upload a clear photograph of the good part. This is required."
+                    : "Please upload a clear photograph of the returned part. This is required."}
+                </p>
+              </div>
+            )}
             <div className="space-y-2">
               <Label>Remarks / Comments</Label>
               <Textarea value={remarks} onChange={(e) => setRemarks(e.target.value)} placeholder="Optional comments about this transition" />
@@ -612,7 +703,7 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
                 const hasDOA = activeRow.status === "DOA" ||
                   (activeRow.transition_history || []).some(h => h.to_status === "DOA" || h.from_status === "DOA");
 
-                const steps = ["PENDING", "STOCK_CHECK", "ISSUED", "WORK_STATUS"];
+                const steps = ["PENDING", "STOCK_CHECK", "GOOD_PART_PHOTO", "ISSUED", "WORK_STATUS"];
                 if (hasUnused) {
                   steps.push("UNUSED_RETURN");
                 } else if (hasDefective) {
@@ -622,11 +713,9 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
                 } else {
                   steps.push("UNUSED_RETURN");
                 }
-                steps.push("HANDOVER", "CLOSED");
+                steps.push("HANDOVER", "RETURN_PART_PHOTO", "CLOSED");
 
-                const colsClass = steps.length === 6
-                  ? "grid grid-cols-2 md:grid-cols-6 gap-3"
-                  : "grid grid-cols-2 md:grid-cols-7 gap-3";
+                const colsClass = "grid grid-cols-2 md:grid-cols-9 gap-3";
 
                 return (
                   <div className={colsClass}>
@@ -665,6 +754,7 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
                       comment: "Stock entry registered successfully.",
                       engineer_name: "",
                       engineer_phone: "",
+                      image: "",
                     }
                   ];
 
@@ -678,6 +768,7 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
                         comment: h.comment || "",
                         engineer_name: h.engineer_name || "",
                         engineer_phone: h.engineer_phone || "",
+                        image: h.image || "",
                       });
                     });
                   }
@@ -722,10 +813,18 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
                                 </span>
                               </div>
                             )}
-                            {m.comment && (
+                             {m.comment && (
                               <div className="flex items-start gap-2 mt-1 pt-1.5 border-t border-slate-100 dark:border-slate-800/40">
                                 <span className="text-slate-400 dark:text-slate-500 w-24 shrink-0 font-medium">Remarks:</span>
                                 <span className="text-slate-700 dark:text-slate-300 italic">"{m.comment}"</span>
+                              </div>
+                            )}
+                            {m.image && (
+                              <div className="flex items-start gap-2 mt-2 pt-2 border-t border-slate-100 dark:border-slate-800/40">
+                                <span className="text-slate-400 dark:text-slate-500 w-24 shrink-0 font-medium">Attachment:</span>
+                                <div className="relative rounded-lg overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 aspect-video max-h-32 max-w-[160px] flex items-center justify-center cursor-pointer hover:scale-[1.03] transition-transform duration-200" onClick={() => window.open(m.image, "_blank")}>
+                                  <img src={m.image} alt="Transition Attachment" className="object-contain w-full h-full" />
+                                </div>
                               </div>
                             )}
                           </div>
@@ -925,6 +1024,44 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
                         </div>
                       </div>
                     </div>
+
+                    {/* GOOD PART PHOTO section */}
+                    {activeRow.good_part_image && (
+                      <div className="bg-white dark:bg-slate-900/20 p-5 rounded-xl border border-slate-200 dark:border-slate-800 space-y-4">
+                        <h3 className="font-semibold text-sm text-slate-900 dark:text-slate-50 border-b pb-1.5 uppercase tracking-wide flex items-center gap-2">
+                          <Camera className="w-4 h-4 text-indigo-500" />
+                          Good Part Photo
+                        </h3>
+                        <div className="relative rounded-lg overflow-hidden border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 aspect-video max-h-60 flex items-center justify-center">
+                          <img
+                            src={activeRow.good_part_image}
+                            alt="Good Part"
+                            className="object-contain w-full h-full cursor-pointer hover:scale-[1.02] transition-transform duration-200"
+                            onClick={() => window.open(activeRow.good_part_image, "_blank")}
+                          />
+                        </div>
+                        <p className="text-[10px] text-slate-400 text-center font-medium">Click the photo to open in full size</p>
+                      </div>
+                    )}
+
+                    {/* RETURN PART PHOTO section */}
+                    {activeRow.return_part_image && (
+                      <div className="bg-white dark:bg-slate-900/20 p-5 rounded-xl border border-slate-200 dark:border-slate-800 space-y-4">
+                        <h3 className="font-semibold text-sm text-slate-900 dark:text-slate-50 border-b pb-1.5 uppercase tracking-wide flex items-center gap-2">
+                          <Camera className="w-4 h-4 text-indigo-500" />
+                          Return Part Photo
+                        </h3>
+                        <div className="relative rounded-lg overflow-hidden border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 aspect-video max-h-60 flex items-center justify-center">
+                          <img
+                            src={activeRow.return_part_image}
+                            alt="Return Part"
+                            className="object-contain w-full h-full cursor-pointer hover:scale-[1.02] transition-transform duration-200"
+                            onClick={() => window.open(activeRow.return_part_image, "_blank")}
+                          />
+                        </div>
+                        <p className="text-[10px] text-slate-400 text-center font-medium">Click the photo to open in full size</p>
+                      </div>
+                    )}
                   </div>
 
                   {/* Right Column: Status Timeline */}

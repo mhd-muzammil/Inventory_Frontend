@@ -49,12 +49,16 @@ const DEFAULT_FORM = {
 
 export function HPStockFormDialog({ open, onOpenChange, editing, onSuccess }: Props) {
   const [formData, setFormData] = useState(DEFAULT_FORM);
+  const [goodPartFile, setGoodPartFile] = useState<File | null>(null);
+  const [returnPartFile, setReturnPartFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const user = useAuthStore((s) => s.user);
   const isAdmin = user?.role === "admin" || user?.role === "super_admin" || user?.role === "manager";
 
   useEffect(() => {
     if (open) {
+      setGoodPartFile(null);
+      setReturnPartFile(null);
       if (editing) {
         setFormData({
           case_id: editing.case_id || "",
@@ -84,11 +88,28 @@ export function HPStockFormDialog({ open, onOpenChange, editing, onSuccess }: Pr
     e.preventDefault();
     setSubmitting(true);
     try {
+      let payload: any;
+      if (goodPartFile || returnPartFile) {
+        const formDataPayload = new FormData();
+        Object.entries(formData).forEach(([key, val]) => {
+          formDataPayload.append(key, val);
+        });
+        if (goodPartFile) {
+          formDataPayload.append("good_part_image", goodPartFile);
+        }
+        if (returnPartFile) {
+          formDataPayload.append("return_part_image", returnPartFile);
+        }
+        payload = formDataPayload;
+      } else {
+        payload = formData;
+      }
+
       if (editing) {
-        await updateHPStockItem(editing.id, formData);
+        await updateHPStockItem(editing.id, payload);
         toast({ title: "HP stock updated successfully" });
       } else {
-        await createHPStockItem(formData);
+        await createHPStockItem(payload);
         toast({ title: "HP stock created successfully" });
       }
       onSuccess();
@@ -187,6 +208,37 @@ export function HPStockFormDialog({ open, onOpenChange, editing, onSuccess }: Pr
                 placeholder="Enter GVRMA No"
               />
             </div>
+
+            <div className="space-y-2">
+              <Label>Good Part Photo</Label>
+              <Input
+                type="file"
+                accept="image/*"
+                onChange={(e) => setGoodPartFile(e.target.files?.[0] || null)}
+                className="cursor-pointer"
+              />
+              {editing?.good_part_image && (
+                <p className="text-xs text-slate-500 mt-1">
+                  Current: <a href={editing.good_part_image} target="_blank" rel="noreferrer" className="text-indigo-600 underline hover:text-indigo-800">View current photo</a>
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label>Return Part Photo</Label>
+              <Input
+                type="file"
+                accept="image/*"
+                onChange={(e) => setReturnPartFile(e.target.files?.[0] || null)}
+                className="cursor-pointer"
+              />
+              {editing?.return_part_image && (
+                <p className="text-xs text-slate-500 mt-1">
+                  Current: <a href={editing.return_part_image} target="_blank" rel="noreferrer" className="text-indigo-600 underline hover:text-indigo-800">View current photo</a>
+                </p>
+              )}
+            </div>
+
             <div className="space-y-2">
               <Label>Region</Label>
               <Select
@@ -220,11 +272,13 @@ export function HPStockFormDialog({ open, onOpenChange, editing, onSuccess }: Pr
                 <SelectContent>
                   <SelectItem value="PENDING">Stock Entry</SelectItem>
                   <SelectItem value="STOCK_CHECK">Stock Check</SelectItem>
+                  <SelectItem value="GOOD_PART_PHOTO">Good Part Photo</SelectItem>
                   <SelectItem value="ISSUED">Part Taken by Engineer</SelectItem>
                   <SelectItem value="WORK_STATUS">Work Status</SelectItem>
                   <SelectItem value="UNUSED_RETURN">Unused Part</SelectItem>
                   <SelectItem value="DEFECTIVE_RETURN">Old/Defective Part</SelectItem>
                   <SelectItem value="HANDOVER">Part Handover by Engineer</SelectItem>
+                  <SelectItem value="RETURN_PART_PHOTO">Return Part Photo</SelectItem>
                   <SelectItem value="CLOSED">Close the Case</SelectItem>
                 </SelectContent>
               </Select>
