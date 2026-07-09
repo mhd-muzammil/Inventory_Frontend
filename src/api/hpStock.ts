@@ -12,6 +12,13 @@ export interface HPStockItem {
   gvrma_no: string;
   good_part_image?: string;
   return_part_image?: string;
+  dc_cut_request_message?: string;
+  dc_cut_approved?: boolean;
+  dc_cut_chat?: Array<{
+    sender: string;
+    message: string;
+    timestamp: string;
+  }>;
   region: string;
   status: string;
   engineer_name: string;
@@ -97,7 +104,7 @@ export const deleteHPStockItem = async (id: number): Promise<void> => {
 
 export const transitionHPStockItem = async (
   id: number,
-  payload: { engineer_name?: string; engineer_phone?: string; otp?: string; remarks?: string; to_status?: string } | FormData
+  payload: { engineer_name?: string; engineer_phone?: string; otp?: string; remarks?: string; to_status?: string; dc_cut_request_message?: string } | FormData
 ): Promise<HPStockItem> => {
   const { data } = await api.post(`/hp-stock/items/${id}/transition/`, payload, {
     headers: payload instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : undefined
@@ -110,5 +117,15 @@ export const sendHPStockOTP = async (
   payload: { phone: string; to_status: string }
 ): Promise<{ otp: string; whatsapp_url: string; detail: string }> => {
   const { data } = await api.post(`/hp-stock/items/${id}/send_otp/`, payload);
+  return data;
+};
+
+export const approveHPStockDCCut = async (id: number): Promise<HPStockItem> => {
+  const { data } = await api.post(`/hp-stock/items/${id}/approve_dc_cut/`);
+  return data;
+};
+
+export const sendHPStockDCCutChatMessage = async (id: number, message: string): Promise<HPStockItem> => {
+  const { data } = await api.post(`/hp-stock/items/${id}/send_dc_cut_chat_message/`, { message });
   return data;
 };

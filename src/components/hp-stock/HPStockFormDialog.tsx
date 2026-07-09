@@ -9,6 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -45,6 +46,7 @@ const DEFAULT_FORM = {
   engineer_phone: "",
   part_description: "",
   customer_name: "",
+  dc_cut_request_message: "",
 };
 
 export function HPStockFormDialog({ open, onOpenChange, editing, onSuccess }: Props) {
@@ -74,6 +76,7 @@ export function HPStockFormDialog({ open, onOpenChange, editing, onSuccess }: Pr
           engineer_phone: editing.engineer_phone || "",
           part_description: editing.part_description || "",
           customer_name: editing.customer_name || "",
+          dc_cut_request_message: editing.dc_cut_request_message || "",
         });
       } else {
         setFormData({
@@ -279,11 +282,24 @@ export function HPStockFormDialog({ open, onOpenChange, editing, onSuccess }: Pr
                   <SelectItem value="DEFECTIVE_RETURN">Old/Defective Part</SelectItem>
                   <SelectItem value="HANDOVER">Part Handover by Engineer</SelectItem>
                   <SelectItem value="RETURN_PART_PHOTO">Return Part Photo</SelectItem>
+                  <SelectItem value="DC_CUT_REQUEST">DC Cut Request</SelectItem>
                   <SelectItem value="CLOSED">Close the Case</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
+
+          {(formData.status === "DC_CUT_REQUEST" || formData.dc_cut_request_message) && (
+            <div className="space-y-2 mt-4">
+              <Label>DC Cut Request Message</Label>
+              <Textarea
+                value={formData.dc_cut_request_message}
+                onChange={(e) => setFormData({ ...formData, dc_cut_request_message: e.target.value })}
+                placeholder="Enter DC Cut Request Message"
+                className="min-h-[80px]"
+              />
+            </div>
+          )}
 
           <DialogFooter className="pt-4">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>

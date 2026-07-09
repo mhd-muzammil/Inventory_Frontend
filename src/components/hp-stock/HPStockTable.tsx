@@ -1,8 +1,9 @@
 import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { Edit, Trash2, ArrowRight, ChevronDown, CheckCircle, Clock, Package, ClipboardCheck, User, ShieldCheck, Activity, RotateCcw, Eye, Camera, FileText } from "lucide-react";
+import { Edit, Trash2, ArrowRight, ChevronDown, CheckCircle, Clock, Package, ClipboardCheck, User, ShieldCheck, Activity, RotateCcw, Eye, Camera, FileText, MessageSquare } from "lucide-react";
 import { format } from "date-fns";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { DCCutChatDialog } from "./DCCutChatDialog";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -238,10 +239,13 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
   const [generatedOtp, setGeneratedOtp] = useState("");
   const [remarks, setRemarks] = useState("");
   const [goodPartFile, setGoodPartFile] = useState<File | null>(null);
+  const [dcCutRequestMessage, setDcCutRequestMessage] = useState("");
   const [savingTransition, setSavingTransition] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [engineers, setEngineers] = useState<Engineer[]>([]);
   const [loadingEngineers, setLoadingEngineers] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [activeChatRow, setActiveChatRow] = useState<HPStockItem | null>(null);
 
   const showEngineerField = pendingToStatus === "ISSUED" || pendingToStatus === "HANDOVER";
 
@@ -283,6 +287,7 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
     setOtpSent(false);
     setGeneratedOtp("");
     setGoodPartFile(null);
+    setDcCutRequestMessage(target === "DC_CUT_REQUEST" ? (row.dc_cut_request_message || "") : "");
     setTransitionOpen(true);
     if (target === "ISSUED" || target === "HANDOVER") {
       fetchEngineers(row.region || undefined);
@@ -347,6 +352,9 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
           formData.append("engineer_phone", engineerPhone.trim());
           formData.append("otp", otp.trim());
         }
+        if (pendingToStatus === "DC_CUT_REQUEST") {
+          formData.append("dc_cut_request_message", dcCutRequestMessage.trim());
+        }
         payload = formData;
       } else {
         payload = {
@@ -355,6 +363,7 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
           otp: showEngineerField ? otp.trim() : undefined,
           remarks: remarks.trim() || undefined,
           to_status: pendingToStatus || undefined,
+          dc_cut_request_message: pendingToStatus === "DC_CUT_REQUEST" ? dcCutRequestMessage.trim() : undefined,
         };
       }
 
@@ -376,6 +385,7 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
           <TableHeader>
             <TableRow>
               <TableHead>Case ID / WO</TableHead>
+              <TableHead>Opened Date</TableHead>
               <TableHead>Delivery / Service Event</TableHead>
               <TableHead>Material / Sales Order</TableHead>
               <TableHead>Region & Engineer</TableHead>
@@ -386,7 +396,7 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
           <TableBody>
             {Array.from({ length: 5 }).map((_, i) => (
               <TableRow key={i}>
-                {Array.from({ length: 6 }).map((_, j) => (
+                {Array.from({ length: 7 }).map((_, j) => (
                   <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>
                 ))}
               </TableRow>
@@ -405,6 +415,7 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
             <TableHeader>
               <TableRow className="bg-slate-50 dark:bg-slate-800/50">
                 <TableHead className="font-semibold">Case ID / WO</TableHead>
+                <TableHead className="font-semibold">Opened Date</TableHead>
                 <TableHead className="font-semibold">Customer & Part</TableHead>
                 <TableHead className="font-semibold">Delivery / Service Event</TableHead>
                 <TableHead className="font-semibold">Material / Sales Order</TableHead>
@@ -413,6 +424,7 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
                 <TableHead className="font-semibold">Status</TableHead>
                 <TableHead className="font-semibold">Next Action</TableHead>
                 <TableHead className="text-center font-semibold">History</TableHead>
+                <TableHead className="text-center font-semibold">Chat</TableHead>
                 <TableHead className="text-right font-semibold">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -422,14 +434,16 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
                   <TableCell>
                     <div className="font-medium text-slate-900 dark:text-slate-100">{item.case_id || "N/A"}</div>
                     <div className="text-xs text-slate-500">{item.work_order_id || "N/A"}</div>
+                  </TableCell>
+                  <TableCell>
                     {item.case_created_time ? (
-                      <div className="text-[10px] text-indigo-600 dark:text-indigo-400 font-semibold mt-1" title="Case Created Time">
-                        Opened: {format(new Date(item.case_created_time), "dd/MM/yyyy")}
-                      </div>
+                      <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400">
+                        {format(new Date(item.case_created_time), "dd/MM/yyyy")}
+                      </span>
                     ) : (
-                      <div className="text-[10px] text-slate-400 mt-1" title="Record Created Time">
-                        Created: {format(new Date(item.created_at), "dd/MM/yyyy")}
-                      </div>
+                      <span className="text-xs text-slate-400">
+                        {format(new Date(item.created_at), "dd/MM/yyyy")}
+                      </span>
                     )}
                   </TableCell>
                   <TableCell>
@@ -473,7 +487,14 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
                     })()}
                   </TableCell>
                   <TableCell>
-                    {AVAILABLE_TRANSITIONS[item.status || "PENDING"]?.length > 0 ? (
+                    {item.status === "DC_CUT_REQUEST" && !item.dc_cut_approved ? (
+                      <Badge
+                        variant="outline"
+                        className="border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-950 dark:bg-amber-950/20 dark:text-amber-400 font-semibold whitespace-nowrap"
+                      >
+                        Awaiting RMA Approval
+                      </Badge>
+                    ) : AVAILABLE_TRANSITIONS[item.status || "PENDING"]?.length > 0 ? (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button size="sm" className="gap-1 text-xs">
@@ -498,10 +519,33 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
                       <Badge variant="outline" className="text-slate-400 border-slate-200">Completed</Badge>
                     )}
                   </TableCell>
-                  <TableCell className="text-center">
+                   <TableCell className="text-center">
                     <Button size="sm" variant="ghost" className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:text-indigo-300 font-medium" onClick={() => openTrack(item)}>
                       History
                     </Button>
+                  </TableCell>
+                  <TableCell className="text-center">
+                    {item.status === "DC_CUT_REQUEST" || (item.dc_cut_chat && item.dc_cut_chat.length > 0) ? (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          setActiveChatRow(item);
+                          setChatOpen(true);
+                        }}
+                        className="relative text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:text-indigo-300 font-medium gap-1.5"
+                      >
+                        <MessageSquare className="w-4 h-4" />
+                        <span>Chat</span>
+                        {item.dc_cut_chat && item.dc_cut_chat.length > 0 && (
+                          <Badge className="h-5 min-w-[20px] px-1 bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                            {item.dc_cut_chat.length}
+                          </Badge>
+                        )}
+                      </Button>
+                    ) : (
+                      <span className="text-slate-400">—</span>
+                    )}
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
@@ -666,6 +710,22 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
                   {pendingToStatus === "GOOD_PART_PHOTO"
                     ? "Please upload a clear photograph of the good part. This is required."
                     : "Please upload a clear photograph of the returned part. This is required."}
+                </p>
+              </div>
+            )}
+            {pendingToStatus === "DC_CUT_REQUEST" && (
+              <div className="space-y-2 border-l-2 border-cyan-500 pl-3 py-1">
+                <Label className="text-cyan-600 dark:text-cyan-400 font-medium">
+                  DC Cut Request Message
+                </Label>
+                <Textarea
+                  value={dcCutRequestMessage}
+                  onChange={(e) => setDcCutRequestMessage(e.target.value)}
+                  placeholder="Enter DC Cut Request Message"
+                  className="min-h-[80px]"
+                />
+                <p className="text-[11px] text-slate-500 mt-1">
+                  Provide details or message for the DC Cut request.
                 </p>
               </div>
             )}
@@ -1062,6 +1122,18 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
                         <p className="text-[10px] text-slate-400 text-center font-medium">Click the photo to open in full size</p>
                       </div>
                     )}
+
+                    {activeRow.dc_cut_request_message && (
+                      <div className="bg-white dark:bg-slate-900/20 p-5 rounded-xl border border-slate-200 dark:border-slate-800 space-y-3">
+                        <h3 className="font-semibold text-sm text-slate-900 dark:text-slate-50 border-b pb-1.5 uppercase tracking-wide flex items-center gap-2">
+                          <FileText className="w-4 h-4 text-cyan-500" />
+                          DC Cut Request Message
+                        </h3>
+                        <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 font-medium whitespace-pre-wrap">
+                          {activeRow.dc_cut_request_message}
+                        </p>
+                      </div>
+                    )}
                   </div>
 
                   {/* Right Column: Status Timeline */}
@@ -1108,6 +1180,16 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
           })()}
         </DialogContent>
       </Dialog>
+
+      <DCCutChatDialog
+        open={chatOpen}
+        onOpenChange={setChatOpen}
+        item={activeChatRow}
+        onMessageSent={(updated) => {
+          setActiveChatRow(updated);
+          onRowUpdated(updated);
+        }}
+      />
     </div>
   );
 }
