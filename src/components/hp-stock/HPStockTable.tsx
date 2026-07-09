@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { Edit, Trash2, ArrowRight, ChevronDown, CheckCircle, Clock, Package, ClipboardCheck, User, ShieldCheck, Activity, RotateCcw, Eye, Camera, FileText, MessageSquare } from "lucide-react";
 import { format } from "date-fns";
@@ -247,6 +247,35 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
   const [chatOpen, setChatOpen] = useState(false);
   const [activeChatRow, setActiveChatRow] = useState<HPStockItem | null>(null);
 
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!goodPartFile) {
+      setPreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(goodPartFile);
+    setPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [goodPartFile]);
+
+  const [goodPartBackFile, setGoodPartBackFile] = useState<File | null>(null);
+  const [previewBackUrl, setPreviewBackUrl] = useState<string | null>(null);
+  const fileInputBackRef = useRef<HTMLInputElement>(null);
+  const cameraInputBackRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!goodPartBackFile) {
+      setPreviewBackUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(goodPartBackFile);
+    setPreviewBackUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [goodPartBackFile]);
+
   const showEngineerField = pendingToStatus === "ISSUED" || pendingToStatus === "HANDOVER";
 
   const fetchEngineers = async (region?: string) => {
@@ -271,10 +300,10 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
       );
     }
     if (pendingToStatus === "GOOD_PART_PHOTO") {
-      return goodPartFile !== null;
+      return goodPartFile !== null && goodPartBackFile !== null;
     }
     return true;
-  }, [activeRow, engineerName, engineerPhone, otp, showEngineerField, pendingToStatus, goodPartFile]);
+  }, [activeRow, engineerName, engineerPhone, otp, showEngineerField, pendingToStatus, goodPartFile, goodPartBackFile]);
 
   const openTransition = (row: HPStockItem, target: string) => {
     setActiveRow(row);
@@ -287,6 +316,7 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
     setOtpSent(false);
     setGeneratedOtp("");
     setGoodPartFile(null);
+    setGoodPartBackFile(null);
     setDcCutRequestMessage(target === "DC_CUT_REQUEST" ? (row.dc_cut_request_message || "") : "");
     setTransitionOpen(true);
     if (target === "ISSUED" || target === "HANDOVER") {
@@ -340,13 +370,18 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
     setSavingTransition(true);
     try {
       let payload: any;
-      if (goodPartFile) {
+      if (goodPartFile || goodPartBackFile) {
         const formData = new FormData();
         formData.append("to_status", pendingToStatus || "");
         if (remarks.trim()) {
           formData.append("remarks", remarks.trim());
         }
-        formData.append("good_part_image", goodPartFile);
+        if (goodPartFile) {
+          formData.append("good_part_image", goodPartFile);
+        }
+        if (goodPartBackFile) {
+          formData.append("good_part_image_back", goodPartBackFile);
+        }
         if (showEngineerField) {
           formData.append("engineer_name", engineerName.trim());
           formData.append("engineer_phone", engineerPhone.trim());
@@ -588,7 +623,7 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
 
       {/* Transition Ticket Dialog */}
       <Dialog open={transitionOpen} onOpenChange={setTransitionOpen}>
-        <DialogContent className="sm:max-w-[520px]">
+        <DialogContent className="sm:max-w-[520px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Transition HP Stock Status</DialogTitle>
           </DialogHeader>
@@ -692,24 +727,199 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
                 )}
               </div>
             )}
-            {(pendingToStatus === "GOOD_PART_PHOTO" || pendingToStatus === "RETURN_PART_PHOTO") && (
-              <div className="space-y-2 border-l-2 border-indigo-500 pl-3 py-1">
+            {pendingToStatus === "GOOD_PART_PHOTO" && (
+              <div className="space-y-4 border-l-2 border-indigo-500 pl-3 py-1">
+                {/* Front Photo */}
+                <div className="space-y-2">
+                  <Label className="text-indigo-600 dark:text-indigo-400 font-medium text-xs uppercase tracking-wider">
+                    Good Part Front Box Photo *
+                  </Label>
+                  <div className="flex flex-col gap-2">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      ref={fileInputRef}
+                      className="hidden"
+                      onChange={(e) => setGoodPartFile(e.target.files?.[0] || null)}
+                    />
+                    <input
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      ref={cameraInputRef}
+                      className="hidden"
+                      onChange={(e) => setGoodPartFile(e.target.files?.[0] || null)}
+                    />
+
+                    {previewUrl ? (
+                      <div className="relative border border-slate-200 dark:border-slate-800 rounded-xl p-3 bg-slate-50 dark:bg-slate-900/50 flex flex-col items-center gap-2">
+                        <img src={previewUrl} alt="Front Photo Preview" className="max-h-[140px] rounded-lg shadow-sm object-contain" />
+                        <div className="flex items-center justify-between w-full text-xs text-slate-500">
+                          <span className="truncate max-w-[200px]">{goodPartFile?.name}</span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setGoodPartFile(null)}
+                            className="text-red-500 hover:text-red-650 font-medium h-7 px-2"
+                          >
+                            Remove
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => cameraInputRef.current?.click()}
+                          className="h-16 flex flex-col items-center justify-center gap-1.5 border-dashed border-slate-300 dark:border-slate-700 hover:border-indigo-500 hover:text-indigo-600 dark:hover:border-indigo-400"
+                        >
+                          <Camera className="w-4 h-4 text-slate-400 dark:text-slate-500" />
+                          <span className="text-[11px] font-semibold">Take Front Live Photo</span>
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => fileInputRef.current?.click()}
+                          className="h-16 flex flex-col items-center justify-center gap-1.5 border-dashed border-slate-300 dark:border-slate-700 hover:border-indigo-500 hover:text-indigo-600 dark:hover:border-indigo-400"
+                        >
+                          <FileText className="w-4 h-4 text-slate-400 dark:text-slate-500" />
+                          <span className="text-[11px] font-semibold">Upload Front File</span>
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Back Photo */}
+                <div className="space-y-2">
+                  <Label className="text-indigo-600 dark:text-indigo-400 font-medium text-xs uppercase tracking-wider">
+                    Good Part Back Box Photo *
+                  </Label>
+                  <div className="flex flex-col gap-2">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      ref={fileInputBackRef}
+                      className="hidden"
+                      onChange={(e) => setGoodPartBackFile(e.target.files?.[0] || null)}
+                    />
+                    <input
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      ref={cameraInputBackRef}
+                      className="hidden"
+                      onChange={(e) => setGoodPartBackFile(e.target.files?.[0] || null)}
+                    />
+
+                    {previewBackUrl ? (
+                      <div className="relative border border-slate-200 dark:border-slate-800 rounded-xl p-3 bg-slate-50 dark:bg-slate-900/50 flex flex-col items-center gap-2">
+                        <img src={previewBackUrl} alt="Back Photo Preview" className="max-h-[140px] rounded-lg shadow-sm object-contain" />
+                        <div className="flex items-center justify-between w-full text-xs text-slate-500">
+                          <span className="truncate max-w-[200px]">{goodPartBackFile?.name}</span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setGoodPartBackFile(null)}
+                            className="text-red-500 hover:text-red-650 font-medium h-7 px-2"
+                          >
+                            Remove
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => cameraInputBackRef.current?.click()}
+                          className="h-16 flex flex-col items-center justify-center gap-1.5 border-dashed border-slate-300 dark:border-slate-700 hover:border-indigo-500 hover:text-indigo-600 dark:hover:border-indigo-400"
+                        >
+                          <Camera className="w-4 h-4 text-slate-400 dark:text-slate-500" />
+                          <span className="text-[11px] font-semibold">Take Back Live Photo</span>
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => fileInputBackRef.current?.click()}
+                          className="h-16 flex flex-col items-center justify-center gap-1.5 border-dashed border-slate-300 dark:border-slate-700 hover:border-indigo-500 hover:text-indigo-600 dark:hover:border-indigo-400"
+                        >
+                          <FileText className="w-4 h-4 text-slate-400 dark:text-slate-500" />
+                          <span className="text-[11px] font-semibold">Upload Back File</span>
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {pendingToStatus === "RETURN_PART_PHOTO" && (
+              <div className="space-y-3 border-l-2 border-indigo-500 pl-3 py-1">
                 <Label className="text-indigo-600 dark:text-indigo-400 font-medium">
-                  {pendingToStatus === "GOOD_PART_PHOTO" ? "Upload Good Part Photo *" : "Upload Return Part Photo *"}
+                  Return Part Photo *
                 </Label>
-                <Input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0] || null;
-                    setGoodPartFile(file);
-                  }}
-                  className="cursor-pointer"
-                />
+                <div className="flex flex-col gap-2">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    ref={fileInputRef}
+                    className="hidden"
+                    onChange={(e) => setGoodPartFile(e.target.files?.[0] || null)}
+                  />
+                  <input
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    ref={cameraInputRef}
+                    className="hidden"
+                    onChange={(e) => setGoodPartFile(e.target.files?.[0] || null)}
+                  />
+
+                  {previewUrl ? (
+                    <div className="relative border border-slate-200 dark:border-slate-800 rounded-xl p-3 bg-slate-50 dark:bg-slate-900/50 flex flex-col items-center gap-2">
+                      <img src={previewUrl} alt="Return Photo Preview" className="max-h-[160px] rounded-lg shadow-sm object-contain" />
+                      <div className="flex items-center justify-between w-full text-xs text-slate-500">
+                        <span className="truncate max-w-[200px]">{goodPartFile?.name}</span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setGoodPartFile(null)}
+                          className="text-red-500 hover:text-red-650 font-medium h-7 px-2"
+                        >
+                          Remove
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => cameraInputRef.current?.click()}
+                        className="h-20 flex flex-col items-center justify-center gap-1.5 border-dashed border-slate-300 dark:border-slate-700 hover:border-indigo-500 hover:text-indigo-600 dark:hover:border-indigo-400"
+                      >
+                        <Camera className="w-5 h-5 text-slate-400 dark:text-slate-500" />
+                        <span className="text-[11px] font-semibold">Take Live Photo</span>
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="h-20 flex flex-col items-center justify-center gap-1.5 border-dashed border-slate-300 dark:border-slate-700 hover:border-indigo-500 hover:text-indigo-600 dark:hover:border-indigo-400"
+                      >
+                        <FileText className="w-5 h-5 text-slate-400 dark:text-slate-500" />
+                        <span className="text-[11px] font-semibold">Upload from Files</span>
+                      </Button>
+                    </div>
+                  )}
+                </div>
                 <p className="text-[11px] text-slate-500 mt-1">
-                  {pendingToStatus === "GOOD_PART_PHOTO"
-                    ? "Please upload a clear photograph of the good part. This is required."
-                    : "Please upload a clear photograph of the returned part. This is required."}
+                  Please take a live photo or upload a clear photograph of the returned part. This is required.
                 </p>
               </div>
             )}
@@ -815,6 +1025,7 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
                       engineer_name: "",
                       engineer_phone: "",
                       image: "",
+                      image_back: "",
                     }
                   ];
 
@@ -829,6 +1040,7 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
                         engineer_name: h.engineer_name || "",
                         engineer_phone: h.engineer_phone || "",
                         image: h.image || "",
+                        image_back: h.image_back || "",
                       });
                     });
                   }
@@ -879,11 +1091,26 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
                                 <span className="text-slate-700 dark:text-slate-300 italic">"{m.comment}"</span>
                               </div>
                             )}
-                            {m.image && (
-                              <div className="flex items-start gap-2 mt-2 pt-2 border-t border-slate-100 dark:border-slate-800/40">
-                                <span className="text-slate-400 dark:text-slate-500 w-24 shrink-0 font-medium">Attachment:</span>
-                                <div className="relative rounded-lg overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 aspect-video max-h-32 max-w-[160px] flex items-center justify-center cursor-pointer hover:scale-[1.03] transition-transform duration-200" onClick={() => window.open(m.image, "_blank")}>
-                                  <img src={m.image} alt="Transition Attachment" className="object-contain w-full h-full" />
+                            {(m.image || m.image_back) && (
+                              <div className="flex flex-col gap-2 mt-2 pt-2 border-t border-slate-100 dark:border-slate-800/40">
+                                <span className="text-slate-400 dark:text-slate-500 w-24 shrink-0 font-medium">Attachments:</span>
+                                <div className="flex flex-wrap gap-3 pl-0 sm:pl-24">
+                                  {m.image && (
+                                    <div className="space-y-1">
+                                      <p className="text-[10px] text-slate-400 font-semibold uppercase">Front Box</p>
+                                      <div className="relative rounded-lg overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 aspect-video max-h-24 max-w-[140px] flex items-center justify-center cursor-pointer hover:scale-[1.03] transition-transform duration-200" onClick={() => window.open(m.image, "_blank")}>
+                                        <img src={m.image} alt="Front Box" className="object-contain w-full h-full" />
+                                      </div>
+                                    </div>
+                                  )}
+                                  {m.image_back && (
+                                    <div className="space-y-1">
+                                      <p className="text-[10px] text-slate-400 font-semibold uppercase">Back Box</p>
+                                      <div className="relative rounded-lg overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 aspect-video max-h-24 max-w-[140px] flex items-center justify-center cursor-pointer hover:scale-[1.03] transition-transform duration-200" onClick={() => window.open(m.image_back, "_blank")}>
+                                        <img src={m.image_back} alt="Back Box" className="object-contain w-full h-full" />
+                                      </div>
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                             )}
@@ -1086,21 +1313,41 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
                     </div>
 
                     {/* GOOD PART PHOTO section */}
-                    {activeRow.good_part_image && (
+                    {(activeRow.good_part_image || activeRow.good_part_image_back) && (
                       <div className="bg-white dark:bg-slate-900/20 p-5 rounded-xl border border-slate-200 dark:border-slate-800 space-y-4">
                         <h3 className="font-semibold text-sm text-slate-900 dark:text-slate-50 border-b pb-1.5 uppercase tracking-wide flex items-center gap-2">
                           <Camera className="w-4 h-4 text-indigo-500" />
-                          Good Part Photo
+                          Good Part Photos
                         </h3>
-                        <div className="relative rounded-lg overflow-hidden border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 aspect-video max-h-60 flex items-center justify-center">
-                          <img
-                            src={activeRow.good_part_image}
-                            alt="Good Part"
-                            className="object-contain w-full h-full cursor-pointer hover:scale-[1.02] transition-transform duration-200"
-                            onClick={() => window.open(activeRow.good_part_image, "_blank")}
-                          />
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {activeRow.good_part_image && (
+                            <div className="space-y-2">
+                              <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide text-center">Front Box Photo</p>
+                              <div className="relative rounded-lg overflow-hidden border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 aspect-video max-h-48 flex items-center justify-center">
+                                <img
+                                  src={activeRow.good_part_image}
+                                  alt="Good Part Front"
+                                  className="object-contain w-full h-full cursor-pointer hover:scale-[1.02] transition-transform duration-200"
+                                  onClick={() => window.open(activeRow.good_part_image, "_blank")}
+                                />
+                              </div>
+                            </div>
+                          )}
+                          {activeRow.good_part_image_back && (
+                            <div className="space-y-2">
+                              <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide text-center">Back Box Photo</p>
+                              <div className="relative rounded-lg overflow-hidden border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 aspect-video max-h-48 flex items-center justify-center">
+                                <img
+                                  src={activeRow.good_part_image_back}
+                                  alt="Good Part Back"
+                                  className="object-contain w-full h-full cursor-pointer hover:scale-[1.02] transition-transform duration-200"
+                                  onClick={() => window.open(activeRow.good_part_image_back, "_blank")}
+                                />
+                              </div>
+                            </div>
+                          )}
                         </div>
-                        <p className="text-[10px] text-slate-400 text-center font-medium">Click the photo to open in full size</p>
+                        <p className="text-[10px] text-slate-400 text-center font-medium">Click a photo to open in full size</p>
                       </div>
                     )}
 

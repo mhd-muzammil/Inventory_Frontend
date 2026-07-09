@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { Camera, FileText } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -52,7 +53,51 @@ const DEFAULT_FORM = {
 export function HPStockFormDialog({ open, onOpenChange, editing, onSuccess }: Props) {
   const [formData, setFormData] = useState(DEFAULT_FORM);
   const [goodPartFile, setGoodPartFile] = useState<File | null>(null);
+  const [goodPartBackFile, setGoodPartBackFile] = useState<File | null>(null);
   const [returnPartFile, setReturnPartFile] = useState<File | null>(null);
+  const [goodPreviewUrl, setGoodPreviewUrl] = useState<string | null>(null);
+  const [goodBackPreviewUrl, setGoodBackPreviewUrl] = useState<string | null>(null);
+  const [returnPreviewUrl, setReturnPreviewUrl] = useState<string | null>(null);
+
+  const goodFileInputRef = useRef<HTMLInputElement>(null);
+  const goodCameraInputRef = useRef<HTMLInputElement>(null);
+
+  const goodBackFileInputRef = useRef<HTMLInputElement>(null);
+  const goodBackCameraInputRef = useRef<HTMLInputElement>(null);
+
+  const returnFileInputRef = useRef<HTMLInputElement>(null);
+  const returnCameraInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!goodPartFile) {
+      setGoodPreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(goodPartFile);
+    setGoodPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [goodPartFile]);
+
+  useEffect(() => {
+    if (!goodPartBackFile) {
+      setGoodBackPreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(goodPartBackFile);
+    setGoodBackPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [goodPartBackFile]);
+
+  useEffect(() => {
+    if (!returnPartFile) {
+      setReturnPreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(returnPartFile);
+    setReturnPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [returnPartFile]);
+
   const [submitting, setSubmitting] = useState(false);
   const user = useAuthStore((s) => s.user);
   const isAdmin = user?.role === "admin" || user?.role === "super_admin" || user?.role === "manager";
@@ -60,6 +105,7 @@ export function HPStockFormDialog({ open, onOpenChange, editing, onSuccess }: Pr
   useEffect(() => {
     if (open) {
       setGoodPartFile(null);
+      setGoodPartBackFile(null);
       setReturnPartFile(null);
       if (editing) {
         setFormData({
@@ -92,13 +138,16 @@ export function HPStockFormDialog({ open, onOpenChange, editing, onSuccess }: Pr
     setSubmitting(true);
     try {
       let payload: any;
-      if (goodPartFile || returnPartFile) {
+      if (goodPartFile || goodPartBackFile || returnPartFile) {
         const formDataPayload = new FormData();
         Object.entries(formData).forEach(([key, val]) => {
           formDataPayload.append(key, val);
         });
         if (goodPartFile) {
           formDataPayload.append("good_part_image", goodPartFile);
+        }
+        if (goodPartBackFile) {
+          formDataPayload.append("good_part_image_back", goodPartBackFile);
         }
         if (returnPartFile) {
           formDataPayload.append("return_part_image", returnPartFile);
@@ -212,30 +261,195 @@ export function HPStockFormDialog({ open, onOpenChange, editing, onSuccess }: Pr
               />
             </div>
 
-            <div className="space-y-2">
-              <Label>Good Part Photo</Label>
-              <Input
-                type="file"
-                accept="image/*"
-                onChange={(e) => setGoodPartFile(e.target.files?.[0] || null)}
-                className="cursor-pointer"
-              />
-              {editing?.good_part_image && (
+             <div className="space-y-3">
+              <Label>Good Part Front Box Photo</Label>
+              <div className="flex flex-col gap-2">
+                <input
+                  type="file"
+                  accept="image/*"
+                  ref={goodFileInputRef}
+                  className="hidden"
+                  onChange={(e) => setGoodPartFile(e.target.files?.[0] || null)}
+                />
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  ref={goodCameraInputRef}
+                  className="hidden"
+                  onChange={(e) => setGoodPartFile(e.target.files?.[0] || null)}
+                />
+
+                {goodPreviewUrl ? (
+                  <div className="relative border border-slate-200 dark:border-slate-800 rounded-xl p-3 bg-slate-50 dark:bg-slate-900/50 flex flex-col items-center gap-2">
+                    <img src={goodPreviewUrl} alt="Good Part Front Preview" className="max-h-[140px] rounded-lg shadow-sm object-contain" />
+                    <div className="flex items-center justify-between w-full text-xs text-slate-500">
+                      <span className="truncate max-w-[200px]">{goodPartFile?.name}</span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setGoodPartFile(null)}
+                        className="text-red-500 hover:text-red-650 font-medium h-7 px-2"
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => goodCameraInputRef.current?.click()}
+                      className="h-16 flex flex-col items-center justify-center gap-1.5 border-dashed border-slate-300 dark:border-slate-700 hover:border-indigo-500 hover:text-indigo-600 dark:hover:border-indigo-400"
+                    >
+                      <Camera className="w-4 h-4 text-slate-400 dark:text-slate-500" />
+                      <span className="text-[10px] font-semibold">Take Front Live Photo</span>
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => goodFileInputRef.current?.click()}
+                      className="h-16 flex flex-col items-center justify-center gap-1.5 border-dashed border-slate-300 dark:border-slate-700 hover:border-indigo-500 hover:text-indigo-600 dark:hover:border-indigo-400"
+                    >
+                      <FileText className="w-4 h-4 text-slate-400 dark:text-slate-500" />
+                      <span className="text-[10px] font-semibold">Upload Front File</span>
+                    </Button>
+                  </div>
+                )}
+              </div>
+              {editing?.good_part_image && !goodPreviewUrl && (
                 <p className="text-xs text-slate-500 mt-1">
-                  Current: <a href={editing.good_part_image} target="_blank" rel="noreferrer" className="text-indigo-600 underline hover:text-indigo-800">View current photo</a>
+                  Current: <a href={editing.good_part_image} target="_blank" rel="noreferrer" className="text-indigo-600 underline hover:text-indigo-800">View current front photo</a>
                 </p>
               )}
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-3">
+              <Label>Good Part Back Box Photo</Label>
+              <div className="flex flex-col gap-2">
+                <input
+                  type="file"
+                  accept="image/*"
+                  ref={goodBackFileInputRef}
+                  className="hidden"
+                  onChange={(e) => setGoodPartBackFile(e.target.files?.[0] || null)}
+                />
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  ref={goodBackCameraInputRef}
+                  className="hidden"
+                  onChange={(e) => setGoodPartBackFile(e.target.files?.[0] || null)}
+                />
+
+                {goodBackPreviewUrl ? (
+                  <div className="relative border border-slate-200 dark:border-slate-800 rounded-xl p-3 bg-slate-50 dark:bg-slate-900/50 flex flex-col items-center gap-2">
+                    <img src={goodBackPreviewUrl} alt="Good Part Back Preview" className="max-h-[140px] rounded-lg shadow-sm object-contain" />
+                    <div className="flex items-center justify-between w-full text-xs text-slate-500">
+                      <span className="truncate max-w-[200px]">{goodPartBackFile?.name}</span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setGoodPartBackFile(null)}
+                        className="text-red-500 hover:text-red-650 font-medium h-7 px-2"
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => goodBackCameraInputRef.current?.click()}
+                      className="h-16 flex flex-col items-center justify-center gap-1.5 border-dashed border-slate-300 dark:border-slate-700 hover:border-indigo-500 hover:text-indigo-600 dark:hover:border-indigo-400"
+                    >
+                      <Camera className="w-4 h-4 text-slate-400 dark:text-slate-500" />
+                      <span className="text-[10px] font-semibold">Take Back Live Photo</span>
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => goodBackFileInputRef.current?.click()}
+                      className="h-16 flex flex-col items-center justify-center gap-1.5 border-dashed border-slate-300 dark:border-slate-700 hover:border-indigo-500 hover:text-indigo-600 dark:hover:border-indigo-400"
+                    >
+                      <FileText className="w-4 h-4 text-slate-400 dark:text-slate-500" />
+                      <span className="text-[10px] font-semibold">Upload Back File</span>
+                    </Button>
+                  </div>
+                )}
+              </div>
+              {editing?.good_part_image_back && !goodBackPreviewUrl && (
+                <p className="text-xs text-slate-500 mt-1">
+                  Current: <a href={editing.good_part_image_back} target="_blank" rel="noreferrer" className="text-indigo-600 underline hover:text-indigo-800">View current back photo</a>
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-3">
               <Label>Return Part Photo</Label>
-              <Input
-                type="file"
-                accept="image/*"
-                onChange={(e) => setReturnPartFile(e.target.files?.[0] || null)}
-                className="cursor-pointer"
-              />
-              {editing?.return_part_image && (
+              <div className="flex flex-col gap-2">
+                <input
+                  type="file"
+                  accept="image/*"
+                  ref={returnFileInputRef}
+                  className="hidden"
+                  onChange={(e) => setReturnPartFile(e.target.files?.[0] || null)}
+                />
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  ref={returnCameraInputRef}
+                  className="hidden"
+                  onChange={(e) => setReturnPartFile(e.target.files?.[0] || null)}
+                />
+
+                {returnPreviewUrl ? (
+                  <div className="relative border border-slate-200 dark:border-slate-800 rounded-xl p-3 bg-slate-50 dark:bg-slate-900/50 flex flex-col items-center gap-2">
+                    <img src={returnPreviewUrl} alt="Return Part Preview" className="max-h-[140px] rounded-lg shadow-sm object-contain" />
+                    <div className="flex items-center justify-between w-full text-xs text-slate-500">
+                      <span className="truncate max-w-[200px]">{returnPartFile?.name}</span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setReturnPartFile(null)}
+                        className="text-red-500 hover:text-red-650 font-medium h-7 px-2"
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => returnCameraInputRef.current?.click()}
+                      className="h-16 flex flex-col items-center justify-center gap-1.5 border-dashed border-slate-300 dark:border-slate-700 hover:border-indigo-500 hover:text-indigo-600 dark:hover:border-indigo-400"
+                    >
+                      <Camera className="w-4 h-4 text-slate-400 dark:text-slate-500" />
+                      <span className="text-[10px] font-semibold">Take Live Photo</span>
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => returnFileInputRef.current?.click()}
+                      className="h-16 flex flex-col items-center justify-center gap-1.5 border-dashed border-slate-300 dark:border-slate-700 hover:border-indigo-500 hover:text-indigo-600 dark:hover:border-indigo-400"
+                    >
+                      <FileText className="w-4 h-4 text-slate-400 dark:text-slate-500" />
+                      <span className="text-[10px] font-semibold">Upload file</span>
+                    </Button>
+                  </div>
+                )}
+              </div>
+              {editing?.return_part_image && !returnPreviewUrl && (
                 <p className="text-xs text-slate-500 mt-1">
                   Current: <a href={editing.return_part_image} target="_blank" rel="noreferrer" className="text-indigo-600 underline hover:text-indigo-800">View current photo</a>
                 </p>

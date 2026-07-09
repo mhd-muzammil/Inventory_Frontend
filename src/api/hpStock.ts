@@ -11,6 +11,7 @@ export interface HPStockItem {
   hp_sales_order_no: string;
   gvrma_no: string;
   good_part_image?: string;
+  good_part_image_back?: string;
   return_part_image?: string;
   dc_cut_request_message?: string;
   dc_cut_approved?: boolean;
