@@ -15,8 +15,8 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { HPStockTable } from "@/components/hp-stock/HPStockTable";
 import { HPStockFormDialog } from "@/components/hp-stock/HPStockFormDialog";
 import { HPStockHistoryView } from "@/components/hp-stock/HPStockHistoryView";
-import { getHPStockItems, deleteHPStockItem, getHPStockSummary } from "@/api/hpStock";
-import type { HPStockItem, HPStockSummary } from "@/api/hpStock";
+import { getHPStockItems, deleteHPStockItem, getHPStockSummary, getHPStockFilterOptions } from "@/api/hpStock";
+import type { HPStockItem, HPStockSummary, HPStockFilterOptions } from "@/api/hpStock";
 import { extractApiError } from "@/api/client";
 import { toast } from "@/components/ui/use-toast";
 import { useDebounce } from "@/hooks/useDebounce";
@@ -39,6 +39,9 @@ export default function HPStock() {
     return "";
   });
   const [selectedDate, setSelectedDate] = useState<string>("");
+  const [warrantyTrade, setWarrantyTrade] = useState<string>("all");
+  const [partShipmentStatus, setPartShipmentStatus] = useState<string>("all");
+  const [filterOptions, setFilterOptions] = useState<HPStockFilterOptions>({ warranty_trade: [], part_shipment_status: [] });
   const [page, setPage] = useState(1);
   const [activeTab, setActiveTab] = useState<"active" | "dc_cut_request" | "closed">("active");
   const [data, setData] = useState<HPStockItem[]>([]);
@@ -85,6 +88,8 @@ export default function HPStock() {
         per_page: 20,
         is_closed: activeTab === "closed" ? "true" : activeTab === "dc_cut_request" ? "dc_cut_request" : "false",
         date: selectedDate || undefined,
+        warranty_trade: warrantyTrade !== "all" ? warrantyTrade : undefined,
+        part_shipment_status: partShipmentStatus !== "all" ? partShipmentStatus : undefined,
       });
       setData(res.items);
       setPagination({ total: res.total, page: res.page, per_page: res.per_page, pages: res.pages });
@@ -93,10 +98,16 @@ export default function HPStock() {
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, viewMode, page, isAdmin, selectedRegion, activeTab, selectedDate]);
+  }, [debouncedSearch, viewMode, page, isAdmin, selectedRegion, activeTab, selectedDate, warrantyTrade, partShipmentStatus]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
   useEffect(() => { fetchSummary(); }, [fetchSummary]);
+
+  useEffect(() => {
+    getHPStockFilterOptions()
+      .then(setFilterOptions)
+      .catch(() => { /* silent — filters just stay empty */ });
+  }, [viewMode, isAdmin]);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -295,6 +306,30 @@ export default function HPStock() {
             </button>
           )}
         </div>
+
+        <Select value={warrantyTrade} onValueChange={(v) => { setWarrantyTrade(v); setPage(1); }}>
+          <SelectTrigger className="w-full sm:w-44 bg-white dark:bg-slate-900">
+            <SelectValue placeholder="Warranty / Trade" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Warranty / Trade</SelectItem>
+            {filterOptions.warranty_trade.map((v) => (
+              <SelectItem key={v} value={v}>{v}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select value={partShipmentStatus} onValueChange={(v) => { setPartShipmentStatus(v); setPage(1); }}>
+          <SelectTrigger className="w-full sm:w-52 bg-white dark:bg-slate-900">
+            <SelectValue placeholder="Part Shipment Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Shipment Status</SelectItem>
+            {filterOptions.part_shipment_status.map((v) => (
+              <SelectItem key={v} value={v}>{v}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
         <Button onClick={() => setAddDialogOpen(true)} className="gap-2 ml-auto">
           <Plus className="w-4 h-4" /> Add Record

@@ -41,6 +41,11 @@ const DEFAULT_FORM = {
   material_order_no: "",
   hp_sales_order_no: "",
   gvrma_no: "",
+  good_part_number: "",
+  part_order_number: "",
+  so_number: "",
+  warranty_trade: "",
+  part_shipment_status: "",
   region: "",
   status: "PENDING",
   engineer_name: "",
@@ -116,6 +121,11 @@ export function HPStockFormDialog({ open, onOpenChange, editing, onSuccess }: Pr
           material_order_no: editing.material_order_no || "",
           hp_sales_order_no: editing.hp_sales_order_no || "",
           gvrma_no: editing.gvrma_no || "",
+          good_part_number: editing.good_part_number || "",
+          part_order_number: editing.part_order_number || "",
+          so_number: editing.so_number || "",
+          warranty_trade: editing.warranty_trade || "",
+          part_shipment_status: editing.part_shipment_status || "",
           region: editing.region || "",
           status: editing.status || "PENDING",
           engineer_name: editing.engineer_name || "",
@@ -258,6 +268,51 @@ export function HPStockFormDialog({ open, onOpenChange, editing, onSuccess }: Pr
                 value={formData.gvrma_no}
                 onChange={(e) => setFormData({ ...formData, gvrma_no: e.target.value })}
                 placeholder="Enter GVRMA No"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Good Part Number</Label>
+              <Input
+                value={formData.good_part_number}
+                onChange={(e) => setFormData({ ...formData, good_part_number: e.target.value })}
+                placeholder="Enter Good Part Number"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Part Order Number</Label>
+              <Input
+                value={formData.part_order_number}
+                onChange={(e) => setFormData({ ...formData, part_order_number: e.target.value })}
+                placeholder="Enter Part Order Number"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>SO Number</Label>
+              <Input
+                value={formData.so_number}
+                onChange={(e) => setFormData({ ...formData, so_number: e.target.value })}
+                placeholder="Enter SO Number"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Warranty / Trade</Label>
+              <Input
+                value={formData.warranty_trade}
+                onChange={(e) => setFormData({ ...formData, warranty_trade: e.target.value })}
+                placeholder="e.g. Warranty or Trade"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Part Shipment Status</Label>
+              <Input
+                value={formData.part_shipment_status}
+                onChange={(e) => setFormData({ ...formData, part_shipment_status: e.target.value })}
+                placeholder="Enter Part Shipment Status"
               />
             </div>
 

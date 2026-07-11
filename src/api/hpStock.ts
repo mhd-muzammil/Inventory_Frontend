@@ -10,6 +10,11 @@ export interface HPStockItem {
   material_order_no: string;
   hp_sales_order_no: string;
   gvrma_no: string;
+  good_part_number?: string;
+  part_order_number?: string;
+  so_number?: string;
+  warranty_trade?: string;
+  part_shipment_status?: string;
   good_part_image?: string;
   good_part_image_back?: string;
   return_part_image?: string;
@@ -59,6 +64,13 @@ export interface GetHPStockParams {
   view?: 'my_region' | 'overall';
   is_closed?: boolean | string;
   date?: string;
+  warranty_trade?: string;
+  part_shipment_status?: string;
+}
+
+export interface HPStockFilterOptions {
+  warranty_trade: string[];
+  part_shipment_status: string[];
 }
 
 export interface GetHPStockResponse {
@@ -82,6 +94,11 @@ export const getHPStockItems = async (params?: GetHPStockParams): Promise<GetHPS
 
 export const getHPStockSummary = async (view: 'my_region' | 'overall', region?: string): Promise<HPStockSummary> => {
   const { data } = await api.get('/hp-stock/items/summary/', { params: { view, region } });
+  return data;
+};
+
+export const getHPStockFilterOptions = async (): Promise<HPStockFilterOptions> => {
+  const { data } = await api.get('/hp-stock/items/filter_options/');
   return data;
 };
 

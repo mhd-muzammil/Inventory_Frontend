@@ -421,8 +421,8 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
             <TableRow>
               <TableHead>Case ID / WO</TableHead>
               <TableHead>Opened Date</TableHead>
-              <TableHead>Delivery / Service Event</TableHead>
-              <TableHead>Material / Sales Order</TableHead>
+              <TableHead>Good Part Number</TableHead>
+              <TableHead>Part Order Number</TableHead>
               <TableHead>Region & Engineer</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="text-right">Actions</TableHead>
@@ -452,9 +452,9 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
                 <TableHead className="font-semibold">Case ID / WO</TableHead>
                 <TableHead className="font-semibold">Opened Date</TableHead>
                 <TableHead className="font-semibold">Customer & Part</TableHead>
-                <TableHead className="font-semibold">Delivery / Service Event</TableHead>
-                <TableHead className="font-semibold">Material / Sales Order</TableHead>
-                <TableHead className="font-semibold">GVRMA No</TableHead>
+                <TableHead className="font-semibold">Good Part Number</TableHead>
+                <TableHead className="font-semibold">Part Order Number</TableHead>
+                <TableHead className="font-semibold">SO Number</TableHead>
                 <TableHead className="font-semibold">Region & Engineer</TableHead>
                 <TableHead className="font-semibold">Status</TableHead>
                 <TableHead className="font-semibold">Next Action</TableHead>
@@ -488,15 +488,13 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
                     </div>
                   </TableCell>
                   <TableCell>
-                    <div className="text-sm text-slate-900 dark:text-slate-100">{item.delivery_no || "N/A"}</div>
-                    <div className="text-xs text-slate-500">{item.service_event_no || "N/A"}</div>
+                    <span className="text-sm text-slate-900 dark:text-slate-100">{item.good_part_number || "N/A"}</span>
                   </TableCell>
                   <TableCell>
-                    <div className="text-sm text-slate-900 dark:text-slate-100">{item.material_order_no || "N/A"}</div>
-                    <div className="text-xs text-slate-500">{item.hp_sales_order_no || "N/A"}</div>
+                    <span className="text-sm text-slate-900 dark:text-slate-100">{item.part_order_number || "N/A"}</span>
                   </TableCell>
                   <TableCell>
-                    <span className="text-sm">{item.gvrma_no || "N/A"}</span>
+                    <span className="text-sm text-slate-900 dark:text-slate-100">{item.so_number || "N/A"}</span>
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-col gap-1">
