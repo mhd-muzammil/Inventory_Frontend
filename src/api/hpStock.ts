@@ -20,6 +20,16 @@ export interface HPStockItem {
   good_part_image?: string;
   good_part_image_back?: string;
   return_part_image?: string;
+  return_part_ct_image?: string;
+  return_box_front_image?: string;
+  return_box_back_image?: string;
+  return_box_corner_right_image?: string;
+  return_box_corner_left_image?: string;
+  return_box_corner_top_image?: string;
+  return_box_corner_bottom_image?: string;
+  return_option_image_1?: string;
+  return_option_image_2?: string;
+  return_option_image_3?: string;
   dc_cut_request_message?: string;
   dc_cut_approved?: boolean;
   dc_cut_chat?: Array<{
@@ -44,6 +54,9 @@ export interface HPStockItem {
     timestamp: string;
     engineer_name?: string;
     engineer_phone?: string;
+    image?: string;
+    image_back?: string;
+    return_images?: Array<{ label: string; url: string }>;
   }>;
   created_at: string;
   updated_at: string;

@@ -45,6 +45,7 @@ export function HPStockHistoryView({ item, onBack }: HPStockHistoryViewProps) {
       engineer_phone: "",
       image: "",
       image_back: "",
+      return_images: [] as Array<{ label: string; url: string }>,
     }
   ];
 
@@ -60,6 +61,9 @@ export function HPStockHistoryView({ item, onBack }: HPStockHistoryViewProps) {
         engineer_phone: h.engineer_phone || "",
         image: h.image || "",
         image_back: h.image_back || "",
+        return_images: (h.return_images || []).map((ri: any) =>
+          typeof ri === "string" ? { label: "Return Part Photo", url: ri } : ri
+        ),
       });
     });
   }
@@ -281,14 +285,33 @@ export function HPStockHistoryView({ item, onBack }: HPStockHistoryViewProps) {
                         {m.image_back && (
                           <div className="space-y-1">
                             <span className="text-[10px] text-slate-400 font-semibold uppercase">Back Box</span>
-                            <div 
-                              className="relative rounded-lg overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 aspect-video max-h-48 w-full flex items-center justify-center cursor-pointer hover:scale-[1.02] transition-transform duration-200" 
+                            <div
+                              className="relative rounded-lg overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 aspect-video max-h-48 w-full flex items-center justify-center cursor-pointer hover:scale-[1.02] transition-transform duration-200"
                               onClick={() => window.open(m.image_back, "_blank")}
                             >
                               <img src={m.image_back} alt="Back Attachment" className="object-contain w-full h-full" />
                             </div>
                           </div>
                         )}
+                      </div>
+                    </div>
+                  )}
+
+                  {m.return_images && m.return_images.length > 0 && (
+                    <div className="bg-white dark:bg-slate-900/60 p-3 rounded-lg border border-slate-150 dark:border-slate-800/40 text-xs space-y-3">
+                      <span className="text-slate-400 dark:text-slate-500 font-semibold block">Return Part Photos:</span>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {m.return_images.map((ri) => (
+                          <div key={ri.label} className="space-y-1">
+                            <span className="text-[10px] text-slate-400 font-semibold uppercase">{ri.label}</span>
+                            <div
+                              className="relative rounded-lg overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 aspect-video max-h-48 w-full flex items-center justify-center cursor-pointer hover:scale-[1.02] transition-transform duration-200"
+                              onClick={() => window.open(ri.url, "_blank")}
+                            >
+                              <img src={ri.url} alt={ri.label} className="object-contain w-full h-full" />
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   )}

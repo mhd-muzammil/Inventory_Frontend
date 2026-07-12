@@ -213,6 +213,106 @@ const getTransitionNote = (status: string) => {
   }
 };
 
+// Return part photo categories (all optional). Keys must match backend model fields.
+const RETURN_PHOTO_FIELDS: { key: keyof HPStockItem; label: string }[] = [
+  { key: "return_part_ct_image", label: "Part CT Image" },
+  { key: "return_box_front_image", label: "Box with Part Front Image" },
+  { key: "return_box_back_image", label: "Box with Part Back Image" },
+  { key: "return_box_corner_right_image", label: "Box with Part Corner Right Side Image" },
+  { key: "return_box_corner_left_image", label: "Box with Part Corner Left Side Image" },
+  { key: "return_box_corner_top_image", label: "Box with Part Corner Top Side Image" },
+  { key: "return_box_corner_bottom_image", label: "Box with Part Corner Bottom Side Image" },
+  { key: "return_option_image_1", label: "Option Image 1" },
+  { key: "return_option_image_2", label: "Option Image 2" },
+  { key: "return_option_image_3", label: "Option Image 3" },
+];
+
+// Self-contained camera/upload picker for a single return-part photo category.
+function ReturnPhotoPicker({
+  label,
+  file,
+  onChange,
+}: {
+  label: string;
+  file: File | null;
+  onChange: (f: File | null) => void;
+}) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
+  const [preview, setPreview] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!file) {
+      setPreview(null);
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    setPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [file]);
+
+  return (
+    <div className="space-y-2">
+      <Label className="text-indigo-600 dark:text-indigo-400 font-medium text-xs uppercase tracking-wider">
+        {label}
+      </Label>
+      <input
+        type="file"
+        accept="image/*"
+        ref={fileRef}
+        className="hidden"
+        onChange={(e) => onChange(e.target.files?.[0] || null)}
+      />
+      <input
+        type="file"
+        accept="image/*"
+        capture="environment"
+        ref={cameraRef}
+        className="hidden"
+        onChange={(e) => onChange(e.target.files?.[0] || null)}
+      />
+      {preview ? (
+        <div className="relative border border-slate-200 dark:border-slate-800 rounded-xl p-3 bg-slate-50 dark:bg-slate-900/50 flex flex-col items-center gap-2">
+          <img src={preview} alt={`${label} Preview`} className="max-h-[140px] rounded-lg shadow-sm object-contain" />
+          <div className="flex items-center justify-between w-full text-xs text-slate-500">
+            <span className="truncate max-w-[200px]">{file?.name}</span>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => onChange(null)}
+              className="text-red-500 hover:text-red-650 font-medium h-7 px-2"
+            >
+              Remove
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => cameraRef.current?.click()}
+            className="h-16 flex flex-col items-center justify-center gap-1.5 border-dashed border-slate-300 dark:border-slate-700 hover:border-indigo-500 hover:text-indigo-600 dark:hover:border-indigo-400"
+          >
+            <Camera className="w-4 h-4 text-slate-400 dark:text-slate-500" />
+            <span className="text-[11px] font-semibold">Take Live Photo</span>
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => fileRef.current?.click()}
+            className="h-16 flex flex-col items-center justify-center gap-1.5 border-dashed border-slate-300 dark:border-slate-700 hover:border-indigo-500 hover:text-indigo-600 dark:hover:border-indigo-400"
+          >
+            <FileText className="w-4 h-4 text-slate-400 dark:text-slate-500" />
+            <span className="text-[11px] font-semibold">Upload File</span>
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 interface Props {
   data: HPStockItem[];
   loading: boolean;
@@ -239,6 +339,7 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
   const [generatedOtp, setGeneratedOtp] = useState("");
   const [remarks, setRemarks] = useState("");
   const [goodPartFile, setGoodPartFile] = useState<File | null>(null);
+  const [returnFiles, setReturnFiles] = useState<Record<string, File | null>>({});
   const [dcCutRequestMessage, setDcCutRequestMessage] = useState("");
   const [savingTransition, setSavingTransition] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -317,6 +418,7 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
     setGeneratedOtp("");
     setGoodPartFile(null);
     setGoodPartBackFile(null);
+    setReturnFiles({});
     setDcCutRequestMessage(target === "DC_CUT_REQUEST" ? (row.dc_cut_request_message || "") : "");
     setTransitionOpen(true);
     if (target === "ISSUED" || target === "HANDOVER") {
@@ -370,7 +472,8 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
     setSavingTransition(true);
     try {
       let payload: any;
-      if (goodPartFile || goodPartBackFile) {
+      const returnFileEntries = Object.entries(returnFiles).filter(([, f]) => f) as [string, File][];
+      if (goodPartFile || goodPartBackFile || returnFileEntries.length > 0) {
         const formData = new FormData();
         formData.append("to_status", pendingToStatus || "");
         if (remarks.trim()) {
@@ -381,6 +484,9 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
         }
         if (goodPartBackFile) {
           formData.append("good_part_image_back", goodPartBackFile);
+        }
+        for (const [key, f] of returnFileEntries) {
+          formData.append(key, f);
         }
         if (showEngineerField) {
           formData.append("engineer_name", engineerName.trim());
@@ -864,69 +970,20 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
             )}
 
             {pendingToStatus === "RETURN_PART_PHOTO" && (
-              <div className="space-y-3 border-l-2 border-indigo-500 pl-3 py-1">
-                <Label className="text-indigo-600 dark:text-indigo-400 font-medium">
-                  Return Part Photo *
-                </Label>
-                <div className="flex flex-col gap-2">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    ref={fileInputRef}
-                    className="hidden"
-                    onChange={(e) => setGoodPartFile(e.target.files?.[0] || null)}
-                  />
-                  <input
-                    type="file"
-                    accept="image/*"
-                    capture="environment"
-                    ref={cameraInputRef}
-                    className="hidden"
-                    onChange={(e) => setGoodPartFile(e.target.files?.[0] || null)}
-                  />
-
-                  {previewUrl ? (
-                    <div className="relative border border-slate-200 dark:border-slate-800 rounded-xl p-3 bg-slate-50 dark:bg-slate-900/50 flex flex-col items-center gap-2">
-                      <img src={previewUrl} alt="Return Photo Preview" className="max-h-[160px] rounded-lg shadow-sm object-contain" />
-                      <div className="flex items-center justify-between w-full text-xs text-slate-500">
-                        <span className="truncate max-w-[200px]">{goodPartFile?.name}</span>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setGoodPartFile(null)}
-                          className="text-red-500 hover:text-red-650 font-medium h-7 px-2"
-                        >
-                          Remove
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => cameraInputRef.current?.click()}
-                        className="h-20 flex flex-col items-center justify-center gap-1.5 border-dashed border-slate-300 dark:border-slate-700 hover:border-indigo-500 hover:text-indigo-600 dark:hover:border-indigo-400"
-                      >
-                        <Camera className="w-5 h-5 text-slate-400 dark:text-slate-500" />
-                        <span className="text-[11px] font-semibold">Take Live Photo</span>
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => fileInputRef.current?.click()}
-                        className="h-20 flex flex-col items-center justify-center gap-1.5 border-dashed border-slate-300 dark:border-slate-700 hover:border-indigo-500 hover:text-indigo-600 dark:hover:border-indigo-400"
-                      >
-                        <FileText className="w-5 h-5 text-slate-400 dark:text-slate-500" />
-                        <span className="text-[11px] font-semibold">Upload from Files</span>
-                      </Button>
-                    </div>
-                  )}
-                </div>
-                <p className="text-[11px] text-slate-500 mt-1">
-                  Please take a live photo or upload a clear photograph of the returned part. This is required.
+              <div className="space-y-4 border-l-2 border-indigo-500 pl-3 py-1">
+                <p className="text-[11px] text-slate-500">
+                  Take a live photo or upload for each category below. All photos are optional.
                 </p>
+                {RETURN_PHOTO_FIELDS.map((f) => (
+                  <ReturnPhotoPicker
+                    key={f.key as string}
+                    label={f.label}
+                    file={returnFiles[f.key as string] || null}
+                    onChange={(file) =>
+                      setReturnFiles((prev) => ({ ...prev, [f.key as string]: file }))
+                    }
+                  />
+                ))}
               </div>
             )}
             {pendingToStatus === "DC_CUT_REQUEST" && (
@@ -1032,6 +1089,7 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
                       engineer_phone: "",
                       image: "",
                       image_back: "",
+                      return_images: [] as Array<{ label: string; url: string }>,
                     }
                   ];
 
@@ -1047,6 +1105,9 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
                         engineer_phone: h.engineer_phone || "",
                         image: h.image || "",
                         image_back: h.image_back || "",
+                        return_images: (h.return_images || []).map((ri: any) =>
+                          typeof ri === "string" ? { label: "Return Part Photo", url: ri } : ri
+                        ),
                       });
                     });
                   }
@@ -1117,6 +1178,21 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
                                       </div>
                                     </div>
                                   )}
+                                </div>
+                              </div>
+                            )}
+                            {m.return_images && m.return_images.length > 0 && (
+                              <div className="flex flex-col gap-2 mt-2 pt-2 border-t border-slate-100 dark:border-slate-800/40">
+                                <span className="text-slate-400 dark:text-slate-500 w-24 shrink-0 font-medium">Return Part Photos:</span>
+                                <div className="flex flex-wrap gap-3 pl-0 sm:pl-24">
+                                  {m.return_images.map((ri) => (
+                                    <div key={ri.label} className="space-y-1">
+                                      <p className="text-[10px] text-slate-400 font-semibold uppercase max-w-[140px]">{ri.label}</p>
+                                      <div className="relative rounded-lg overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 aspect-video max-h-24 max-w-[140px] flex items-center justify-center cursor-pointer hover:scale-[1.03] transition-transform duration-200" onClick={() => window.open(ri.url, "_blank")}>
+                                        <img src={ri.url} alt={ri.label} className="object-contain w-full h-full" />
+                                      </div>
+                                    </div>
+                                  ))}
                                 </div>
                               </div>
                             )}
@@ -1373,6 +1449,35 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
                           />
                         </div>
                         <p className="text-[10px] text-slate-400 text-center font-medium">Click the photo to open in full size</p>
+                      </div>
+                    )}
+
+                    {/* RETURN PART PHOTO categories */}
+                    {RETURN_PHOTO_FIELDS.some((f) => activeRow[f.key]) && (
+                      <div className="bg-white dark:bg-slate-900/20 p-5 rounded-xl border border-slate-200 dark:border-slate-800 space-y-4">
+                        <h3 className="font-semibold text-sm text-slate-900 dark:text-slate-50 border-b pb-1.5 uppercase tracking-wide flex items-center gap-2">
+                          <Camera className="w-4 h-4 text-indigo-500" />
+                          Return Part Photos
+                        </h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          {RETURN_PHOTO_FIELDS.filter((f) => activeRow[f.key]).map((f) => {
+                            const url = activeRow[f.key] as string;
+                            return (
+                              <div key={f.key as string} className="space-y-1.5">
+                                <p className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">{f.label}</p>
+                                <div className="relative rounded-lg overflow-hidden border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 aspect-video max-h-48 flex items-center justify-center">
+                                  <img
+                                    src={url}
+                                    alt={f.label}
+                                    className="object-contain w-full h-full cursor-pointer hover:scale-[1.02] transition-transform duration-200"
+                                    onClick={() => window.open(url, "_blank")}
+                                  />
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        <p className="text-[10px] text-slate-400 text-center font-medium">Click a photo to open in full size</p>
                       </div>
                     )}
 
