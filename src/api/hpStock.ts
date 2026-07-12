@@ -13,6 +13,8 @@ export interface HPStockItem {
   good_part_number?: string;
   part_order_number?: string;
   so_number?: string;
+  // Read-only: matched from the HP Stock RMA Part catalog by good_part_number.
+  price?: number | null;
   warranty_trade?: string;
   part_shipment_status?: string;
   good_part_image?: string;
@@ -94,6 +96,27 @@ export const getHPStockItems = async (params?: GetHPStockParams): Promise<GetHPS
 
 export const getHPStockSummary = async (view: 'my_region' | 'overall', region?: string): Promise<HPStockSummary> => {
   const { data } = await api.get('/hp-stock/items/summary/', { params: { view, region } });
+  return data;
+};
+
+export interface DailyRegionCount {
+  day: string;      // YYYY-MM-DD
+  region: string;
+  count: number;
+}
+
+export interface DailyRegionCountsResponse {
+  rows: DailyRegionCount[];
+  region_totals: Record<string, number>;
+  day_totals: Record<string, number>;
+  total: number;
+}
+
+// Read-only: day-by-day, region-wise count of opencall parts calls.
+export const getDailyRegionCounts = async (
+  params?: { region?: string; days?: number },
+): Promise<DailyRegionCountsResponse> => {
+  const { data } = await api.get('/hp-stock/items/daily_region_counts/', { params });
   return data;
 };
 

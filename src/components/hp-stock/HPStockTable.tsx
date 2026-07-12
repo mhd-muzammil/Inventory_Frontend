@@ -455,6 +455,7 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
                 <TableHead className="font-semibold">Good Part Number</TableHead>
                 <TableHead className="font-semibold">Part Order Number</TableHead>
                 <TableHead className="font-semibold">SO Number</TableHead>
+                <TableHead className="font-semibold text-right">Price</TableHead>
                 <TableHead className="font-semibold">Region & Engineer</TableHead>
                 <TableHead className="font-semibold">Status</TableHead>
                 <TableHead className="font-semibold">Next Action</TableHead>
@@ -495,6 +496,13 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
                   </TableCell>
                   <TableCell>
                     <span className="text-sm text-slate-900 dark:text-slate-100">{item.so_number || "N/A"}</span>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                      {item.price != null
+                        ? `₹${Number(item.price).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                        : "N/A"}
+                    </span>
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-col gap-1">
