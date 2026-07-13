@@ -35,7 +35,6 @@ const navLinks = [
   { to: "/stock", label: "RTPL Stock", icon: Warehouse },
   { to: "/hp-stock", label: "HP Stock", icon: Warehouse },
   { to: "/hp-stock-rma", label: "HP Stock RMA", icon: FileText },
-  { to: "/parts-calls", label: "Parts Calls", icon: CalendarDays },
   { to: "/buffer", label: "Buffer", icon: Layers },
   // { to: "/buffer-stock", label: "Buffer Stock Mgmt", icon: Layers },
   { to: "/purchase-order", label: "Purchase Order", icon: ShoppingCart },

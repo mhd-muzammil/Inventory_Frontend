@@ -10,7 +10,6 @@ import Invoice from "@/pages/Invoice";
 import Stock from "@/pages/Stock";
 import HPStock from "@/pages/HPStock";
 import HPStockRMA from "@/pages/HPStockRMA";
-import PartsCalls from "@/pages/PartsCalls";
 import Buffer from "@/pages/Buffer";
 import PurchaseOrder from "@/pages/PurchaseOrder";
 import Reports from "@/pages/Reports";
@@ -43,7 +42,6 @@ export default function App() {
           <Route path="/stock" element={<Stock />} />
           <Route path="/hp-stock" element={<HPStock />} />
           <Route path="/hp-stock-rma" element={<HPStockRMA />} />
-          <Route path="/parts-calls" element={<PartsCalls />} />
           <Route path="/buffer" element={<Buffer />} />
           <Route path="/buffer-stock" element={<BufferStockManagement />} />
           <Route path="/purchase-order" element={<PurchaseOrder />} />

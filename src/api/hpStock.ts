@@ -112,25 +112,17 @@ export const getHPStockSummary = async (view: 'my_region' | 'overall', region?: 
   return data;
 };
 
-export interface DailyRegionCount {
-  day: string;      // YYYY-MM-DD
+// Region-wise "Active Part Cases" count from the OpenCall Overview, pushed into
+// inventory by OpenCall. Read-only — displayed on the HP Stock region cards.
+export interface PartsCallCount {
+  report_date: string; // YYYY-MM-DD
   region: string;
   count: number;
 }
 
-export interface DailyRegionCountsResponse {
-  rows: DailyRegionCount[];
-  region_totals: Record<string, number>;
-  day_totals: Record<string, number>;
-  total: number;
-}
-
-// Read-only: day-by-day, region-wise count of opencall parts calls.
-export const getDailyRegionCounts = async (
-  params?: { region?: string; days?: number },
-): Promise<DailyRegionCountsResponse> => {
-  const { data } = await api.get('/hp-stock/items/daily_region_counts/', { params });
-  return data;
+export const getPartsCallCounts = async (): Promise<PartsCallCount[]> => {
+  const { data } = await api.get('/hp-stock/parts-call-counts/');
+  return Array.isArray(data) ? data : (data?.results ?? []);
 };
 
 export const getHPStockFilterOptions = async (): Promise<HPStockFilterOptions> => {

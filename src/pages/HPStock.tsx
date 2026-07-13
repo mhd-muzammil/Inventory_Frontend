@@ -15,7 +15,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { HPStockTable } from "@/components/hp-stock/HPStockTable";
 import { HPStockFormDialog } from "@/components/hp-stock/HPStockFormDialog";
 import { HPStockHistoryView } from "@/components/hp-stock/HPStockHistoryView";
-import { getHPStockItems, deleteHPStockItem, getHPStockSummary, getHPStockFilterOptions } from "@/api/hpStock";
+import { getHPStockItems, deleteHPStockItem, getHPStockSummary, getHPStockFilterOptions, getPartsCallCounts } from "@/api/hpStock";
 import type { HPStockItem, HPStockSummary, HPStockFilterOptions } from "@/api/hpStock";
 import { extractApiError } from "@/api/client";
 import { toast } from "@/components/ui/use-toast";
@@ -42,6 +42,32 @@ export default function HPStock() {
   const [warrantyTrade, setWarrantyTrade] = useState<string>("all");
   const [partShipmentStatus, setPartShipmentStatus] = useState<string>("all");
   const [filterOptions, setFilterOptions] = useState<HPStockFilterOptions>({ warranty_trade: [], part_shipment_status: [] });
+  // OpenCall "Active Part Cases" count (region-wise) — pushed in from OpenCall. Count only.
+  const [ocPartsByRegion, setOcPartsByRegion] = useState<Record<string, number>>({});
+  const [ocPartsTotal, setOcPartsTotal] = useState(0);
+
+  useEffect(() => {
+    getPartsCallCounts()
+      .then((rows) => {
+        if (rows.length === 0) return;
+        const latest = rows.reduce(
+          (mx, r) => (r.report_date > mx ? r.report_date : mx),
+          rows[0].report_date,
+        );
+        const map: Record<string, number> = {};
+        let sum = 0;
+        for (const r of rows) {
+          if (r.report_date !== latest) continue;
+          map[r.region] = (map[r.region] || 0) + r.count;
+          sum += r.count;
+        }
+        setOcPartsByRegion(map);
+        setOcPartsTotal(sum);
+      })
+      .catch(() => {
+        /* non-fatal: cards just show 0 */
+      });
+  }, []);
   const [page, setPage] = useState(1);
   const [activeTab, setActiveTab] = useState<"active" | "dc_cut_request" | "closed">("active");
   const [data, setData] = useState<HPStockItem[]>([]);
@@ -182,7 +208,8 @@ export default function HPStock() {
                 </span>
                 <div className="flex items-center gap-2 mt-1.5">
                   <div className="text-center">
-                    <span className="text-sm font-semibold text-slate-800 dark:text-slate-100">{r.active || 0}</span>
+                    {/* Active = OpenCall Overview's "Active Part Cases" count for this region. */}
+                    <span className="text-sm font-semibold text-slate-800 dark:text-slate-100">{ocPartsByRegion[r.region] ?? 0}</span>
                     <div className="text-[9px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">Active</div>
                   </div>
                   <div className="w-[1px] h-6 bg-slate-200 dark:bg-slate-700/50 mx-0.5" />
@@ -211,8 +238,9 @@ export default function HPStock() {
             </span>
             <div className="flex items-center gap-2 mt-1.5">
               <div className="text-center">
+                {/* Active = OpenCall Overview's total "Active Part Cases" count. */}
                 <span className="text-sm font-semibold text-indigo-700 dark:text-indigo-300">
-                  {summary.active_total || 0}
+                  {ocPartsTotal}
                 </span>
                 <div className="text-[9px] font-medium text-indigo-600/70 dark:text-indigo-400/70 uppercase tracking-wider">Active</div>
               </div>
