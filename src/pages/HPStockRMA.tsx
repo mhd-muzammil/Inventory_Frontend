@@ -15,9 +15,9 @@ import type { PaginationMeta, Region } from "@/types";
 import { REGION_LABELS } from "@/types";
 import { extractApiError } from "@/api/client";
 import { format } from "date-fns";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { getHPStockItems, approveHPStockDCCut, getHPStockSummary } from "@/api/hpStock";
-import type { HPStockItem, HPStockSummary } from "@/api/hpStock";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
+import { getHPStockItems, approveHPStockDCCut, getHPStockSummary, getHPStockDCCutValueCounts } from "@/api/hpStock";
+import type { HPStockItem, HPStockSummary, DCCutValueCounts } from "@/api/hpStock";
 import { HPStockHistoryView } from "@/components/hp-stock/HPStockHistoryView";
 import { DCCutChatDialog } from "@/components/hp-stock/DCCutChatDialog";
 import { getPartValueBand } from "@/lib/partValue";
@@ -35,6 +35,9 @@ export default function HPStockRMA() {
   const [pagination, setPagination] = useState<PaginationMeta>({ total: 0, page: 1, per_page: 20, pages: 1 });
   const [error, setError] = useState<string | null>(null);
 
+  // DC Cut approvals are the main view here; the parts catalog is a side trip.
+  const [rmaView, setRmaView] = useState<"approvals" | "catalog">("approvals");
+
   // DC Cut Approvals states
   const [dcRequests, setDcRequests] = useState<HPStockItem[]>([]);
   const [loadingRequests, setLoadingRequests] = useState(false);
@@ -43,6 +46,8 @@ export default function HPStockRMA() {
   const [approvingId, setApprovingId] = useState<number | null>(null);
   const [selectedHistoryItem, setSelectedHistoryItem] = useState<HPStockItem | null>(null);
   const [summary, setSummary] = useState<HPStockSummary | null>(null);
+  // Value band counts across the DC Cut requests only (super-admin only).
+  const [dcValueCounts, setDcValueCounts] = useState<DCCutValueCounts | null>(null);
   const [selectedRequestRegion, setSelectedRequestRegion] = useState<string>("all");
   const [chatOpen, setChatOpen] = useState(false);
   const [activeChatRow, setActiveChatRow] = useState<HPStockItem | null>(null);
@@ -92,6 +97,20 @@ export default function HPStockRMA() {
     }
   }, []);
 
+  // Counts cover every DC Cut request in scope, not just the current page, so they
+  // come from the API rather than from `dcRequests`. Region-scoped like the table.
+  const fetchDCValueCounts = useCallback(async () => {
+    if (!isSuperAdmin) return;
+    try {
+      const res = await getHPStockDCCutValueCounts(
+        selectedRequestRegion !== "all" ? selectedRequestRegion : undefined
+      );
+      setDcValueCounts(res);
+    } catch {
+      setDcValueCounts(null);
+    }
+  }, [isSuperAdmin, selectedRequestRegion]);
+
   const fetchDCRequests = useCallback(async () => {
     setLoadingRequests(true);
     try {
@@ -119,19 +138,21 @@ export default function HPStockRMA() {
     if (isAdmin) {
       fetchDCRequests();
       fetchSummary();
+      fetchDCValueCounts();
     }
-  }, [fetchDCRequests, fetchSummary, isAdmin, selectedRequestRegion]);
+  }, [fetchDCRequests, fetchSummary, fetchDCValueCounts, isAdmin, selectedRequestRegion]);
 
   const handleApproveDCCut = async (id: number) => {
     const confirmed = window.confirm("Are you sure you want to approve the DC Cut for this item?");
     if (!confirmed) return;
-    
+
     setApprovingId(id);
     try {
       await approveHPStockDCCut(id);
       toast({ title: "DC Cut Approved successfully!" });
       fetchDCRequests();
       fetchSummary();
+      fetchDCValueCounts();
     } catch (err) {
       toast({ title: "Failed to approve DC Cut", description: extractApiError(err), variant: "destructive" });
     } finally {
@@ -235,30 +256,45 @@ export default function HPStockRMA() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 flex items-center flex-wrap gap-2">
-            <FileSpreadsheet className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
-            <span>HP Stock RMA Section</span>
+            {rmaView === "catalog" ? (
+              <FileSpreadsheet className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
+            ) : (
+              <FileText className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
+            )}
+            <span>{rmaView === "catalog" ? "Parts Catalog" : "DC Cut Approvals"}</span>
           </h1>
           <p className="text-slate-500 dark:text-slate-400 mt-1">
-            Manage parts catalog and process DC Cut approvals for HP RMA workflow.
+            {rmaView === "catalog"
+              ? "Browse and import the HP RMA parts catalog."
+              : "Review and process DC Cut approvals for the HP RMA workflow."}
           </p>
         </div>
-      </div>
 
-      <Tabs defaultValue="catalog" className="space-y-6">
-        <TabsList className="bg-slate-100 dark:bg-slate-800 p-1 rounded-xl w-fit">
-          <TabsTrigger value="catalog" className="rounded-lg px-4 py-2 text-sm font-semibold flex items-center gap-2">
+        {rmaView === "approvals" ? (
+          <Button
+            variant="outline"
+            onClick={() => setRmaView("catalog")}
+            className="flex items-center gap-2 shrink-0"
+          >
             <FileSpreadsheet className="w-4 h-4" />
             Parts Catalog
-          </TabsTrigger>
-          <TabsTrigger value="approvals" className="rounded-lg px-4 py-2 text-sm font-semibold flex items-center gap-2">
-            <FileText className="w-4 h-4" />
-            DC Cut Approvals
-            {dcRequests.some(r => !r.dc_cut_approved) && (
+          </Button>
+        ) : (
+          <Button
+            variant="outline"
+            onClick={() => setRmaView("approvals")}
+            className="flex items-center gap-2 shrink-0"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to DC Cut Approvals
+            {dcRequests.some((r) => !r.dc_cut_approved) && (
               <span className="flex h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
             )}
-          </TabsTrigger>
-        </TabsList>
+          </Button>
+        )}
+      </div>
 
+      <Tabs value={rmaView} onValueChange={(v) => setRmaView(v as "approvals" | "catalog")} className="space-y-6">
         <TabsContent value="catalog" className="space-y-6">
           {/* Excel Upload Area */}
           <Card className="p-5 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm space-y-4">
@@ -591,6 +627,59 @@ export default function HPStockRMA() {
                     </Card>
                   );
                 })}
+            </div>
+          )}
+
+          {/* Value bands across the DC Cut requests in scope. Price-derived, so super-admin only. */}
+          {isSuperAdmin && dcValueCounts && (
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+              {[
+                {
+                  label: "Low Value Part",
+                  hint: "Up to ₹5,000",
+                  value: dcValueCounts.part_value_low_total || 0,
+                  color: "text-emerald-600 dark:text-emerald-400",
+                  ring: "border-emerald-200 dark:border-emerald-800/60 bg-emerald-50/40 dark:bg-emerald-950/20",
+                  dot: "bg-emerald-500",
+                },
+                {
+                  label: "Mid Value Part",
+                  hint: "₹5,001 – ₹10,000",
+                  value: dcValueCounts.part_value_mid_total || 0,
+                  color: "text-amber-600 dark:text-amber-400",
+                  ring: "border-amber-200 dark:border-amber-800/60 bg-amber-50/40 dark:bg-amber-950/20",
+                  dot: "bg-amber-500",
+                },
+                {
+                  label: "High Value Part",
+                  hint: "₹10,001 – ₹15,000",
+                  value: dcValueCounts.part_value_high_total || 0,
+                  color: "text-orange-600 dark:text-orange-400",
+                  ring: "border-orange-200 dark:border-orange-800/60 bg-orange-50/40 dark:bg-orange-950/20",
+                  dot: "bg-orange-500",
+                },
+                {
+                  label: "Critical Value Part",
+                  hint: "Above ₹15,000",
+                  value: dcValueCounts.part_value_critical_total || 0,
+                  color: "text-red-600 dark:text-red-400",
+                  ring: "border-red-200 dark:border-red-800/60 bg-red-50/40 dark:bg-red-950/20",
+                  dot: "bg-red-500",
+                },
+              ].map((b) => (
+                <Card key={b.label} className={`p-4 flex items-center gap-3 border ${b.ring}`}>
+                  <span className={`shrink-0 w-2.5 h-2.5 rounded-full ${b.dot}`} />
+                  <div className="min-w-0">
+                    <div className={`text-xl font-bold leading-none ${b.color}`}>{b.value}</div>
+                    <div className="text-[11px] font-semibold text-slate-600 dark:text-slate-300 mt-1 truncate">
+                      {b.label}
+                    </div>
+                    <div className="text-[9px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                      {b.hint}
+                    </div>
+                  </div>
+                </Card>
+              ))}
             </div>
           )}
 

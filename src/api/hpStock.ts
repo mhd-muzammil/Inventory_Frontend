@@ -149,6 +149,21 @@ export const getPartsCallCounts = async (): Promise<PartsCallCount[]> => {
   return Array.isArray(data) ? data : (data?.results ?? []);
 };
 
+// Part value band counts across DC Cut requests only. Super-admin only — the API
+// returns {} for everyone else.
+export interface DCCutValueCounts {
+  part_value_low_total?: number;
+  part_value_mid_total?: number;
+  part_value_high_total?: number;
+  part_value_critical_total?: number;
+  total?: number;
+}
+
+export const getHPStockDCCutValueCounts = async (region?: string): Promise<DCCutValueCounts> => {
+  const { data } = await api.get('/hp-stock/items/dc_cut_value_counts/', { params: { region } });
+  return data;
+};
+
 export const getHPStockFilterOptions = async (): Promise<HPStockFilterOptions> => {
   const { data } = await api.get('/hp-stock/items/filter_options/');
   return data;
