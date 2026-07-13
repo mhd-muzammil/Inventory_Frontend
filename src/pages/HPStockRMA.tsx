@@ -20,10 +20,13 @@ import { getHPStockItems, approveHPStockDCCut, getHPStockSummary } from "@/api/h
 import type { HPStockItem, HPStockSummary } from "@/api/hpStock";
 import { HPStockHistoryView } from "@/components/hp-stock/HPStockHistoryView";
 import { DCCutChatDialog } from "@/components/hp-stock/DCCutChatDialog";
+import { getPartValueBand } from "@/lib/partValue";
 
 export default function HPStockRMA() {
   const user = useAuthStore((s) => s.user);
   const isAdmin = user?.role === "admin" || user?.role === "super_admin" || user?.role === "manager";
+  // Price is super-admin-only (the API omits it for everyone else).
+  const isSuperAdmin = user?.role === "super_admin";
 
   const [parts, setParts] = useState<HPStockRMAPart[]>([]);
   const [loading, setLoading] = useState(true);
@@ -599,6 +602,8 @@ export default function HPStockRMA() {
                     <TableHead className="font-semibold">Case ID / WO</TableHead>
                     <TableHead className="font-semibold">Opened Date</TableHead>
                     <TableHead className="font-semibold">Customer & Part</TableHead>
+                    {isSuperAdmin && <TableHead className="font-semibold text-right">Price</TableHead>}
+                    {isSuperAdmin && <TableHead className="font-semibold text-center">Part Value</TableHead>}
                     <TableHead className="font-semibold">Region & Engineer</TableHead>
                     <TableHead className="font-semibold">DC Cut Message</TableHead>
                     <TableHead className="font-semibold text-center">Status</TableHead>
@@ -614,6 +619,8 @@ export default function HPStockRMA() {
                         <TableCell><div className="h-4 bg-slate-150 dark:bg-slate-800 rounded animate-pulse w-24" /></TableCell>
                         <TableCell><div className="h-4 bg-slate-150 dark:bg-slate-800 rounded animate-pulse w-20" /></TableCell>
                         <TableCell><div className="h-4 bg-slate-150 dark:bg-slate-800 rounded animate-pulse w-48" /></TableCell>
+                        {isSuperAdmin && <TableCell><div className="h-4 bg-slate-150 dark:bg-slate-800 rounded animate-pulse w-20 ml-auto" /></TableCell>}
+                        {isSuperAdmin && <TableCell><div className="h-4 bg-slate-150 dark:bg-slate-800 rounded animate-pulse w-24 mx-auto" /></TableCell>}
                         <TableCell><div className="h-4 bg-slate-150 dark:bg-slate-800 rounded animate-pulse w-32" /></TableCell>
                         <TableCell><div className="h-4 bg-slate-150 dark:bg-slate-800 rounded animate-pulse w-64" /></TableCell>
                         <TableCell><div className="h-4 bg-slate-150 dark:bg-slate-800 rounded animate-pulse w-20 mx-auto" /></TableCell>
@@ -624,7 +631,7 @@ export default function HPStockRMA() {
                     ))
                   ) : dcRequests.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={9} className="text-center py-12 text-slate-400">
+                      <TableCell colSpan={isSuperAdmin ? 11 : 9} className="text-center py-12 text-slate-400">
                         <CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto mb-3 opacity-60" />
                         <p className="font-medium text-slate-800 dark:text-slate-200">All caught up!</p>
                         <p className="text-xs text-slate-500">No pending DC Cut requests needing approval.</p>
@@ -654,6 +661,28 @@ export default function HPStockRMA() {
                             {item.part_description || "—"}
                           </div>
                         </TableCell>
+                        {isSuperAdmin && (
+                          <TableCell className="text-right">
+                            <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                              {item.price != null
+                                ? `₹${Number(item.price).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                                : "—"}
+                            </span>
+                          </TableCell>
+                        )}
+                        {isSuperAdmin && (
+                          <TableCell className="text-center">
+                            {(() => {
+                              const band = getPartValueBand(item.price);
+                              if (!band) return <span className="text-slate-400">—</span>;
+                              return (
+                                <Badge className={`${band.className} hover:${band.className} font-semibold border-transparent whitespace-nowrap`}>
+                                  {band.label}
+                                </Badge>
+                              );
+                            })()}
+                          </TableCell>
+                        )}
                         <TableCell>
                           <div className="text-sm font-medium text-slate-800 dark:text-slate-200">{item.engineer_name || "—"}</div>
                           <div className="text-xs text-slate-500">{item.engineer_phone || "—"}</div>

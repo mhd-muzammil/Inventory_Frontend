@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import { AlertCircle, Plus, Search, MapPin, Globe, BarChart3, Layers, Calendar } from "lucide-react";
+import { AlertCircle, Plus, Search, MapPin, Globe, BarChart3, Layers, Calendar, Camera, RotateCcw, UserCheck, PackageCheck } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,6 +27,8 @@ import type { PaginationMeta, Region } from "@/types";
 export default function HPStock() {
   const user = useAuthStore((s) => s.user);
   const isAdmin = user?.role === "admin" || user?.role === "super_admin" || user?.role === "manager";
+  // Part value is derived from price, which is super-admin-only.
+  const isSuperAdmin = user?.role === "super_admin";
   const showToggle = !isAdmin && !!user?.region;
   
   const [viewMode, setViewMode] = useState<"my_region" | "overall">(showToggle ? "my_region" : "overall");
@@ -39,6 +41,12 @@ export default function HPStock() {
     return "";
   });
   const [selectedDate, setSelectedDate] = useState<string>("");
+  // When set, the table lists cases that completed this stage (a stage count card
+  // is selected). It supersedes the active/dc-cut/closed tab so the row count
+  // matches the number on the card.
+  const [stageFilter, setStageFilter] = useState<string | null>(null);
+  // Same idea for the part value bands (super-admin only, like price itself).
+  const [valueBandFilter, setValueBandFilter] = useState<string | null>(null);
   const [warrantyTrade, setWarrantyTrade] = useState<string>("all");
   const [partShipmentStatus, setPartShipmentStatus] = useState<string>("all");
   const [filterOptions, setFilterOptions] = useState<HPStockFilterOptions>({ warranty_trade: [], part_shipment_status: [] });
@@ -112,7 +120,12 @@ export default function HPStock() {
         region: apiRegion,
         page,
         per_page: 20,
-        is_closed: activeTab === "closed" ? "true" : activeTab === "dc_cut_request" ? "dc_cut_request" : "false",
+        // A stage/value filter spans every tab, so the tab filter is dropped while one is on.
+        is_closed: (stageFilter || valueBandFilter)
+          ? undefined
+          : activeTab === "closed" ? "true" : activeTab === "dc_cut_request" ? "dc_cut_request" : "false",
+        stage_done: stageFilter || undefined,
+        value_band: valueBandFilter || undefined,
         date: selectedDate || undefined,
         warranty_trade: warrantyTrade !== "all" ? warrantyTrade : undefined,
         part_shipment_status: partShipmentStatus !== "all" ? partShipmentStatus : undefined,
@@ -124,7 +137,7 @@ export default function HPStock() {
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, viewMode, page, isAdmin, selectedRegion, activeTab, selectedDate, warrantyTrade, partShipmentStatus]);
+  }, [debouncedSearch, viewMode, page, isAdmin, selectedRegion, activeTab, selectedDate, warrantyTrade, partShipmentStatus, stageFilter, valueBandFilter]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
   useEffect(() => { fetchSummary(); }, [fetchSummary]);
@@ -195,7 +208,7 @@ export default function HPStock() {
             return (
               <Card
                 key={r.region}
-                onClick={() => { setSelectedRegion(isSelected ? "all" : r.region); setPage(1); }}
+                onClick={() => { setSelectedRegion(isSelected ? "all" : r.region); setStageFilter(null); setValueBandFilter(null); setPage(1); }}
                 className={`p-4 flex flex-col items-center gap-1 border cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all select-none ${
                   isSelected
                     ? "border-indigo-600 bg-indigo-50/40 dark:bg-indigo-950/30 ring-1 ring-indigo-600"
@@ -226,40 +239,181 @@ export default function HPStock() {
               </Card>
             );
           })}
-          <Card
-            onClick={() => { setSelectedRegion("all"); setPage(1); }}
-            className={`p-4 flex flex-col items-center gap-1 border cursor-pointer hover:bg-indigo-100/50 dark:hover:bg-indigo-900/40 transition-all select-none bg-indigo-50 dark:bg-indigo-950/30 border-indigo-200 dark:border-indigo-800 ${
-              selectedRegion === "all" ? "ring-2 ring-indigo-600" : ""
-            }`}
-          >
-            <BarChart3 className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-            <span className="text-xs font-medium text-indigo-600 dark:text-indigo-400 uppercase tracking-wide">
-              Total
-            </span>
-            <div className="flex items-center gap-2 mt-1.5">
-              <div className="text-center">
-                {/* Active = OpenCall Overview's total "Active Part Cases" count. */}
-                <span className="text-sm font-semibold text-indigo-700 dark:text-indigo-300">
-                  {ocPartsTotal}
-                </span>
-                <div className="text-[9px] font-medium text-indigo-600/70 dark:text-indigo-400/70 uppercase tracking-wider">Active</div>
+          {/* Total spans every region, so only full admins see it. */}
+          {isAdmin && (
+            <Card
+              onClick={() => { setSelectedRegion("all"); setStageFilter(null); setValueBandFilter(null); setPage(1); }}
+              className={`p-4 flex flex-col items-center gap-1 border cursor-pointer hover:bg-indigo-100/50 dark:hover:bg-indigo-900/40 transition-all select-none bg-indigo-50 dark:bg-indigo-950/30 border-indigo-200 dark:border-indigo-800 ${
+                selectedRegion === "all" ? "ring-2 ring-indigo-600" : ""
+              }`}
+            >
+              <BarChart3 className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+              <span className="text-xs font-medium text-indigo-600 dark:text-indigo-400 uppercase tracking-wide">
+                Total
+              </span>
+              <div className="flex items-center gap-2 mt-1.5">
+                <div className="text-center">
+                  {/* Active = OpenCall Overview's total "Active Part Cases" count. */}
+                  <span className="text-sm font-semibold text-indigo-700 dark:text-indigo-300">
+                    {ocPartsTotal}
+                  </span>
+                  <div className="text-[9px] font-medium text-indigo-600/70 dark:text-indigo-400/70 uppercase tracking-wider">Active</div>
+                </div>
+                <div className="w-[1px] h-6 bg-indigo-200 dark:bg-indigo-800/50 mx-0.5" />
+                <div className="text-center">
+                  <span className="text-sm font-semibold text-cyan-700 dark:text-cyan-400">
+                    {summary.dc_cut_request_total || 0}
+                  </span>
+                  <div className="text-[9px] font-medium text-indigo-600/70 dark:text-indigo-400/70 uppercase tracking-wider">DC Cut</div>
+                </div>
+                <div className="w-[1px] h-6 bg-indigo-200 dark:bg-indigo-800/50 mx-0.5" />
+                <div className="text-center">
+                  <span className="text-sm font-semibold text-indigo-650/80 dark:text-indigo-400/80">
+                    {summary.closed_total || 0}
+                  </span>
+                  <div className="text-[9px] font-medium text-indigo-600/70 dark:text-indigo-400/70 uppercase tracking-wider">Closed</div>
+                </div>
               </div>
-              <div className="w-[1px] h-6 bg-indigo-200 dark:bg-indigo-800/50 mx-0.5" />
-              <div className="text-center">
-                <span className="text-sm font-semibold text-cyan-700 dark:text-cyan-400">
-                  {summary.dc_cut_request_total || 0}
-                </span>
-                <div className="text-[9px] font-medium text-indigo-600/70 dark:text-indigo-400/70 uppercase tracking-wider">DC Cut</div>
-              </div>
-              <div className="w-[1px] h-6 bg-indigo-200 dark:bg-indigo-800/50 mx-0.5" />
-              <div className="text-center">
-                <span className="text-sm font-semibold text-indigo-650/80 dark:text-indigo-400/80">
-                  {summary.closed_total || 0}
-                </span>
-                <div className="text-[9px] font-medium text-indigo-600/70 dark:text-indigo-400/70 uppercase tracking-wider">Closed</div>
-              </div>
-            </div>
-          </Card>
+            </Card>
+          )}
+        </div>
+      )}
+
+      {/* Stage completion counts — how many cases have done each action. */}
+      {summary && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+          {[
+            {
+              stage: "GOOD_PART_PHOTO",
+              label: "Good Part Photo",
+              value: summary.good_part_photo_total || 0,
+              icon: Camera,
+              color: "text-indigo-600 dark:text-indigo-400",
+              ring: "border-indigo-200 dark:border-indigo-800/60 bg-indigo-50/40 dark:bg-indigo-950/20",
+              activeRing: "ring-2 ring-indigo-600",
+            },
+            {
+              stage: "RETURN_PART_PHOTO",
+              label: "Return Part Photo",
+              value: summary.return_part_photo_total || 0,
+              icon: RotateCcw,
+              color: "text-blue-600 dark:text-blue-400",
+              ring: "border-blue-200 dark:border-blue-800/60 bg-blue-50/40 dark:bg-blue-950/20",
+              activeRing: "ring-2 ring-blue-600",
+            },
+            {
+              stage: "ISSUED",
+              label: "Part Taken by Engineer",
+              value: summary.issued_total || 0,
+              icon: UserCheck,
+              color: "text-amber-600 dark:text-amber-400",
+              ring: "border-amber-200 dark:border-amber-800/60 bg-amber-50/40 dark:bg-amber-950/20",
+              activeRing: "ring-2 ring-amber-600",
+            },
+            {
+              stage: "HANDOVER",
+              label: "Handover by Engineer",
+              value: summary.handover_total || 0,
+              icon: PackageCheck,
+              color: "text-emerald-600 dark:text-emerald-400",
+              ring: "border-emerald-200 dark:border-emerald-800/60 bg-emerald-50/40 dark:bg-emerald-950/20",
+              activeRing: "ring-2 ring-emerald-600",
+            },
+          ].map((s) => {
+            const isSelected = stageFilter === s.stage;
+            return (
+              <Card
+                key={s.stage}
+                onClick={() => { setStageFilter(isSelected ? null : s.stage); setValueBandFilter(null); setPage(1); }}
+                className={`p-4 flex items-center gap-3 border cursor-pointer select-none transition-all hover:shadow-md ${s.ring} ${
+                  isSelected ? s.activeRing : ""
+                }`}
+              >
+                <div className={`shrink-0 ${s.color}`}>
+                  <s.icon className="w-5 h-5" />
+                </div>
+                <div className="min-w-0">
+                  <div className={`text-xl font-bold leading-none ${s.color}`}>{s.value}</div>
+                  <div className="text-[11px] font-semibold text-slate-600 dark:text-slate-300 mt-1 truncate">
+                    {s.label}
+                  </div>
+                  <div className="text-[9px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                    {isSelected ? "Click to clear" : "Click to view"}
+                  </div>
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Part value bands — derived from price, so super-admin only. */}
+      {summary && isSuperAdmin && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+          {[
+            {
+              band: "LOW",
+              label: "Low Value Part",
+              hint: "Up to ₹5,000",
+              value: summary.part_value_low_total || 0,
+              color: "text-emerald-600 dark:text-emerald-400",
+              ring: "border-emerald-200 dark:border-emerald-800/60 bg-emerald-50/40 dark:bg-emerald-950/20",
+              activeRing: "ring-2 ring-emerald-600",
+              dot: "bg-emerald-500",
+            },
+            {
+              band: "MID",
+              label: "Mid Value Part",
+              hint: "₹5,001 – ₹10,000",
+              value: summary.part_value_mid_total || 0,
+              color: "text-amber-600 dark:text-amber-400",
+              ring: "border-amber-200 dark:border-amber-800/60 bg-amber-50/40 dark:bg-amber-950/20",
+              activeRing: "ring-2 ring-amber-600",
+              dot: "bg-amber-500",
+            },
+            {
+              band: "HIGH",
+              label: "High Value Part",
+              hint: "₹10,001 – ₹15,000",
+              value: summary.part_value_high_total || 0,
+              color: "text-orange-600 dark:text-orange-400",
+              ring: "border-orange-200 dark:border-orange-800/60 bg-orange-50/40 dark:bg-orange-950/20",
+              activeRing: "ring-2 ring-orange-600",
+              dot: "bg-orange-500",
+            },
+            {
+              band: "CRITICAL",
+              label: "Critical Value Part",
+              hint: "Above ₹15,000",
+              value: summary.part_value_critical_total || 0,
+              color: "text-red-600 dark:text-red-400",
+              ring: "border-red-200 dark:border-red-800/60 bg-red-50/40 dark:bg-red-950/20",
+              activeRing: "ring-2 ring-red-600",
+              dot: "bg-red-500",
+            },
+          ].map((b) => {
+            const isSelected = valueBandFilter === b.band;
+            return (
+              <Card
+                key={b.band}
+                onClick={() => { setValueBandFilter(isSelected ? null : b.band); setStageFilter(null); setPage(1); }}
+                className={`p-4 flex items-center gap-3 border cursor-pointer select-none transition-all hover:shadow-md ${b.ring} ${
+                  isSelected ? b.activeRing : ""
+                }`}
+              >
+                <span className={`shrink-0 w-2.5 h-2.5 rounded-full ${b.dot}`} />
+                <div className="min-w-0">
+                  <div className={`text-xl font-bold leading-none ${b.color}`}>{b.value}</div>
+                  <div className="text-[11px] font-semibold text-slate-600 dark:text-slate-300 mt-1 truncate">
+                    {b.label}
+                  </div>
+                  <div className="text-[9px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                    {isSelected ? "Click to clear" : b.hint}
+                  </div>
+                </div>
+              </Card>
+            );
+          })}
         </div>
       )}
 
@@ -369,6 +523,8 @@ export default function HPStock() {
           value={activeTab}
           onValueChange={(v) => {
             setActiveTab(v as "active" | "dc_cut_request" | "closed");
+            setStageFilter(null);
+            setValueBandFilter(null);
             setPage(1);
           }}
           className="w-full sm:w-[500px]"

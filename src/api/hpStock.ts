@@ -68,7 +68,27 @@ export interface HPStockSummary {
   active_total?: number;
   dc_cut_request_total?: number;
   closed_total?: number;
-  regions: { region: string; total: number; active?: number; dc_cut_request?: number; closed?: number }[];
+  // Cases that have completed each stage (workflow only moves forward).
+  good_part_photo_total?: number;
+  return_part_photo_total?: number;
+  issued_total?: number;
+  handover_total?: number;
+  // Part value bands — super-admin only (absent from everyone else's payload).
+  part_value_low_total?: number;
+  part_value_mid_total?: number;
+  part_value_high_total?: number;
+  part_value_critical_total?: number;
+  regions: {
+    region: string;
+    total: number;
+    active?: number;
+    dc_cut_request?: number;
+    closed?: number;
+    good_part_photo?: number;
+    return_part_photo?: number;
+    issued?: number;
+    handover?: number;
+  }[];
 }
 
 export interface GetHPStockParams {
@@ -81,6 +101,10 @@ export interface GetHPStockParams {
   date?: string;
   warranty_trade?: string;
   part_shipment_status?: string;
+  // Lists cases that have completed this stage (matches the summary stage counts).
+  stage_done?: string;
+  // Lists cases in a part value band: LOW | MID | HIGH | CRITICAL (super-admin only).
+  value_band?: string;
 }
 
 export interface HPStockFilterOptions {

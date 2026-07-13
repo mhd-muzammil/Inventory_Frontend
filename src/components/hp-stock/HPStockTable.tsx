@@ -22,6 +22,7 @@ import { useAuthStore } from "@/store/authStore";
 import type { HPStockItem } from "@/api/hpStock";
 import type { PaginationMeta, Region } from "@/types";
 import { REGION_LABELS } from "@/types";
+import { getPartValueBand } from "@/lib/partValue";
 
 type WorkflowStatus = HPStockItem["status"];
 
@@ -327,6 +328,8 @@ interface Props {
 export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, onDelete, onRowUpdated, onViewHistory }: Props) {
   const user = useAuthStore((s) => s.user);
   const isSubAdmin = user?.role === "sub_admin";
+  // Price is super-admin-only (the API omits it for everyone else).
+  const isSuperAdmin = user?.role === "super_admin";
   const [transitionOpen, setTransitionOpen] = useState(false);
   const [trackOpen, setTrackOpen] = useState(false);
   const [activeRow, setActiveRow] = useState<HPStockItem | null>(null);
@@ -561,7 +564,8 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
                 <TableHead className="font-semibold">Good Part Number</TableHead>
                 <TableHead className="font-semibold">Part Order Number</TableHead>
                 <TableHead className="font-semibold">SO Number</TableHead>
-                <TableHead className="font-semibold text-right">Price</TableHead>
+                {isSuperAdmin && <TableHead className="font-semibold text-right">Price</TableHead>}
+                {isSuperAdmin && <TableHead className="font-semibold text-center">Part Value</TableHead>}
                 <TableHead className="font-semibold">Region & Engineer</TableHead>
                 <TableHead className="font-semibold">Status</TableHead>
                 <TableHead className="font-semibold">Next Action</TableHead>
@@ -603,13 +607,28 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
                   <TableCell>
                     <span className="text-sm text-slate-900 dark:text-slate-100">{item.so_number || "N/A"}</span>
                   </TableCell>
-                  <TableCell className="text-right">
-                    <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                      {item.price != null
-                        ? `₹${Number(item.price).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                        : "N/A"}
-                    </span>
-                  </TableCell>
+                  {isSuperAdmin && (
+                    <TableCell className="text-right">
+                      <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                        {item.price != null
+                          ? `₹${Number(item.price).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                          : "N/A"}
+                      </span>
+                    </TableCell>
+                  )}
+                  {isSuperAdmin && (
+                    <TableCell className="text-center">
+                      {(() => {
+                        const band = getPartValueBand(item.price);
+                        if (!band) return <span className="text-slate-400">N/A</span>;
+                        return (
+                          <Badge className={`${band.className} hover:${band.className} font-semibold border-transparent whitespace-nowrap`}>
+                            {band.label}
+                          </Badge>
+                        );
+                      })()}
+                    </TableCell>
+                  )}
                   <TableCell>
                     <div className="flex flex-col gap-1">
                       <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 w-fit">
