@@ -21,10 +21,13 @@ import type { HPStockItem, HPStockSummary, DCCutValueCounts } from "@/api/hpStoc
 import { HPStockHistoryView } from "@/components/hp-stock/HPStockHistoryView";
 import { DCCutChatDialog } from "@/components/hp-stock/DCCutChatDialog";
 import { getPartValueBand } from "@/lib/partValue";
+import { canAccessSection } from "@/lib/sections";
 
 export default function HPStockRMA() {
   const user = useAuthStore((s) => s.user);
-  const isAdmin = user?.role === "admin" || user?.role === "super_admin" || user?.role === "manager";
+  // Access follows the section permission (see @/lib/sections), not the role — an
+  // admin can grant HP Stock RMA to anyone, and the sidebar/route guard already agree.
+  const hasAccess = canAccessSection(user, "/hp-stock-rma");
   // Price is super-admin-only (the API omits it for everyone else).
   const isSuperAdmin = user?.role === "super_admin";
 
@@ -83,10 +86,10 @@ export default function HPStockRMA() {
   }, [debouncedSearch, page]);
 
   useEffect(() => {
-    if (isAdmin) {
+    if (hasAccess) {
       fetchParts();
     }
-  }, [fetchParts, isAdmin]);
+  }, [fetchParts, hasAccess]);
 
   const fetchSummary = useCallback(async () => {
     try {
@@ -135,12 +138,12 @@ export default function HPStockRMA() {
   }, [requestsPage, selectedRequestRegion]);
 
   useEffect(() => {
-    if (isAdmin) {
+    if (hasAccess) {
       fetchDCRequests();
       fetchSummary();
       fetchDCValueCounts();
     }
-  }, [fetchDCRequests, fetchSummary, fetchDCValueCounts, isAdmin, selectedRequestRegion]);
+  }, [fetchDCRequests, fetchSummary, fetchDCValueCounts, hasAccess, selectedRequestRegion]);
 
   const handleApproveDCCut = async (id: number) => {
     const confirmed = window.confirm("Are you sure you want to approve the DC Cut for this item?");
@@ -222,14 +225,14 @@ export default function HPStockRMA() {
     }
   };
 
-  if (!isAdmin) {
+  if (!hasAccess) {
     return (
       <div className="flex flex-col items-center justify-center py-20">
         <Card className="p-8 text-center max-w-md border-red-200 dark:border-red-950 bg-red-50/20">
           <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
           <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-2">Access Denied</h3>
           <p className="text-sm text-slate-500 mb-4">
-            You do not have permission to view the HP Stock RMA Parts Catalog. Only Admins and Managers can access this section.
+            You do not have permission to view HP Stock RMA. Ask an admin to grant you this section.
           </p>
         </Card>
       </div>

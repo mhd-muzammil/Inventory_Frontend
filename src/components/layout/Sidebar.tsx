@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/authStore";
+import { canAccessSection } from "@/lib/sections";
 
 const navLinks = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -56,18 +57,9 @@ interface SidebarProps {
 export function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
   const user = useAuthStore((s) => s.user);
   const isSuperAdmin = user?.role === "super_admin";
-  const isManager = user?.role === "manager";
 
-  const filteredNavLinks = navLinks.filter((link) => {
-    if (link.to === "/hp-stock-rma") {
-      const isAdmin = user?.role === "admin" || user?.role === "super_admin" || user?.role === "manager";
-      if (!isAdmin) return false;
-    }
-    if (isManager) {
-      return user?.allowed_sections?.includes(link.to);
-    }
-    return true;
-  });
+  // Section permissions now apply to every role; admins bypass them.
+  const filteredNavLinks = navLinks.filter((link) => canAccessSection(user, link.to));
 
   const links = isSuperAdmin ? [...filteredNavLinks, ...superAdminLinks] : filteredNavLinks;
 

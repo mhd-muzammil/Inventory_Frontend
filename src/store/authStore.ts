@@ -7,6 +7,8 @@ interface AuthState {
   user: User | null;
   isAuthenticated: boolean;
   login: (access: string, refresh: string, user: User) => void;
+  /** Refresh the cached user (e.g. after an admin edits their section permissions). */
+  setUser: (user: User) => void;
   logout: () => void;
 }
 
@@ -20,6 +22,7 @@ export const useAuthStore = create<AuthState>()(
         localStorage.setItem("refresh-token", refresh);
         set({ user, isAuthenticated: true });
       },
+      setUser: (user) => set({ user }),
       logout: () => {
         tokenStore.clear();
         localStorage.removeItem("refresh-token");

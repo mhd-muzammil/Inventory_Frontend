@@ -9,6 +9,8 @@ export interface SubAdmin {
   region: string;
   region_display: string;
   is_active: boolean;
+  // Section paths this user may open (see @/lib/sections).
+  allowed_sections?: string[];
 }
 
 export interface CreateSubAdminPayload {
@@ -18,6 +20,7 @@ export interface CreateSubAdminPayload {
   first_name?: string;
   last_name?: string;
   region: string;
+  allowed_sections?: string[];
 }
 
 export async function getSubAdmins(): Promise<SubAdmin[]> {

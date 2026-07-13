@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/authStore";
+import { canAccessSection } from "@/lib/sections";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 const mainTabs = [
@@ -59,22 +60,16 @@ export function MobileNav() {
   const [open, setOpen] = useState(false);
 
   const isSuperAdmin = user?.role === "super_admin";
-  const isManager = user?.role === "manager";
 
-  const filteredNavLinks = allLinksList.filter((link) => {
-    if (link.to === "/hp-stock-rma") {
-      const isAdmin = user?.role === "admin" || user?.role === "super_admin" || user?.role === "manager";
-      if (!isAdmin) return false;
-    }
-    if (isManager) {
-      return user?.allowed_sections?.includes(link.to);
-    }
-    return true;
-  });
+  // Section permissions now apply to every role; admins bypass them.
+  const filteredNavLinks = allLinksList.filter((link) => canAccessSection(user, link.to));
 
   const links = isSuperAdmin ? [...filteredNavLinks, ...superAdminLinks] : filteredNavLinks;
 
-  const isMainTabActive = mainTabs.some((tab) =>
+  // The bottom bar was previously unfiltered — it could link into blocked sections.
+  const visibleMainTabs = mainTabs.filter((tab) => canAccessSection(user, tab.to));
+
+  const isMainTabActive = visibleMainTabs.some((tab) =>
     tab.to === "/" ? location.pathname === "/" : location.pathname.startsWith(tab.to)
   );
   const isMoreActive = !isMainTabActive;
@@ -83,7 +78,7 @@ export function MobileNav() {
     <>
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-t border-slate-200 dark:border-slate-700 safe-bottom shadow-[0_-2px_10px_rgba(0,0,0,0.03)]">
         <div className="flex items-center justify-around h-16 px-1">
-          {mainTabs.map((tab) => (
+          {visibleMainTabs.map((tab) => (
             <NavLink
               key={tab.to}
               to={tab.to}

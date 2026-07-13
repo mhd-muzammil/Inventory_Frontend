@@ -17,6 +17,7 @@ import { REGION_LABELS } from "@/types";
 import type { Region } from "@/types";
 import { getSubAdmins, createSubAdmin, updateSubAdmin, deleteSubAdmin } from "@/api/subadmins";
 import type { SubAdmin } from "@/api/subadmins";
+import { SECTIONS } from "@/lib/sections";
 
 const subAdminSchema = z.object({
   username: z.string().min(3, "Username must be at least 3 characters"),
@@ -25,6 +26,7 @@ const subAdminSchema = z.object({
   first_name: z.string().optional().default(""),
   last_name: z.string().optional().default(""),
   region: z.enum(["vellore", "salem", "chennai", "kanchipuram", "hosur"], { message: "Select a region" }),
+  allowed_sections: z.array(z.string()).optional().default([]),
 });
 
 type SubAdminFormData = z.infer<typeof subAdminSchema>;
@@ -42,10 +44,22 @@ export default function UserManagement() {
     register,
     handleSubmit,
     reset,
+    watch,
+    setValue,
     formState: { errors },
   } = useForm<SubAdminFormData>({
     resolver: zodResolver(subAdminSchema),
+    defaultValues: {
+      username: "",
+      password: "",
+      email: "",
+      first_name: "",
+      last_name: "",
+      allowed_sections: [],
+    },
   });
+
+  const watchedSections = watch("allowed_sections") || [];
 
   const fetchAdmins = async () => {
     setLoading(true);
@@ -66,7 +80,17 @@ export default function UserManagement() {
 
   const openCreate = () => {
     setEditing(null);
-    reset({ username: "", password: "", email: "", first_name: "", last_name: "", region: undefined as any });
+    reset({
+      username: "",
+      password: "",
+      email: "",
+      first_name: "",
+      last_name: "",
+      region: undefined as any,
+      // Start with full access, matching what a new user used to get; the admin
+      // unchecks what they should not see.
+      allowed_sections: SECTIONS.map((s) => s.path),
+    });
     setDialogOpen(true);
   };
 
@@ -79,6 +103,7 @@ export default function UserManagement() {
       first_name: admin.first_name || "",
       last_name: admin.last_name || "",
       region: admin.region as Region,
+      allowed_sections: admin.allowed_sections || [],
     });
     setDialogOpen(true);
   };
@@ -178,6 +203,7 @@ export default function UserManagement() {
                 <TableHead>Name</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Region</TableHead>
+                <TableHead>Permissions</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
@@ -195,6 +221,28 @@ export default function UserManagement() {
                   <TableCell>{a.email || "-"}</TableCell>
                   <TableCell>
                     <Badge variant="outline" className="capitalize">{a.region_display}</Badge>
+                  </TableCell>
+                  <TableCell>
+                    {(() => {
+                      const granted = a.allowed_sections || [];
+                      const labels = SECTIONS.filter((s) => granted.includes(s.path)).map((s) => s.label);
+                      if (labels.length === 0) {
+                        return <span className="text-xs text-amber-600 dark:text-amber-400">No access</span>;
+                      }
+                      return (
+                        <div className="max-w-[200px]">
+                          <span className="text-xs font-medium text-slate-700 dark:text-slate-300">
+                            {labels.length} of {SECTIONS.length} sections
+                          </span>
+                          <span
+                            className="block text-[10px] text-slate-400 truncate"
+                            title={labels.join(", ")}
+                          >
+                            {labels.join(", ")}
+                          </span>
+                        </div>
+                      );
+                    })()}
                   </TableCell>
                   <TableCell>
                     <Badge variant={a.is_active ? "success" : "destructive"}>
@@ -215,7 +263,7 @@ export default function UserManagement() {
               ))}
               {admins.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-12 text-slate-400">
+                  <TableCell colSpan={7} className="text-center py-12 text-slate-400">
                     No sub-admins yet. Click "Add Sub Admin" to create one.
                   </TableCell>
                 </TableRow>
@@ -270,6 +318,69 @@ export default function UserManagement() {
               </select>
               {errors.region && <p className="text-xs text-red-500">{errors.region.message}</p>}
             </div>
+
+            {/* Section access */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label>Access Permissions</Label>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] text-slate-400">
+                    {watchedSections.length} of {SECTIONS.length}
+                  </span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-xs"
+                    onClick={() => setValue("allowed_sections", SECTIONS.map((s) => s.path))}
+                  >
+                    Select All
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-xs"
+                    onClick={() => setValue("allowed_sections", [])}
+                  >
+                    Clear All
+                  </Button>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-1.5 max-h-52 overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-700 p-3">
+                {SECTIONS.map((sec) => {
+                  const checked = watchedSections.includes(sec.path);
+                  return (
+                    <label
+                      key={sec.path}
+                      className="flex items-center gap-2 text-sm cursor-pointer rounded-lg px-2 py-1 hover:bg-slate-50 dark:hover:bg-slate-800/50"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={(e) => {
+                          const current = watchedSections;
+                          setValue(
+                            "allowed_sections",
+                            e.target.checked
+                              ? [...current, sec.path]
+                              : current.filter((x) => x !== sec.path),
+                          );
+                        }}
+                        className="h-4 w-4 rounded border-slate-300 accent-indigo-600"
+                      />
+                      <span className="text-slate-700 dark:text-slate-300">{sec.label}</span>
+                    </label>
+                  );
+                })}
+              </div>
+              {watchedSections.length === 0 && (
+                <p className="text-xs text-amber-600 dark:text-amber-400">
+                  No sections selected — this user will not be able to open anything.
+                </p>
+              )}
+            </div>
+
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
               <Button type="submit" disabled={saving} className="gap-2">

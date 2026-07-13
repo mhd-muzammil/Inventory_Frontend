@@ -18,22 +18,7 @@ import type { Region } from "@/types";
 import { getManagers, createManager, updateManager, deleteManager } from "@/api/managers";
 import type { Manager } from "@/api/managers";
 
-const SECTIONS = [
-  { path: "/", label: "Dashboard" },
-  { path: "/customers", label: "Customers" },
-  { path: "/cso-entry", label: "CSO Entry" },
-  { path: "/engineers", label: "Engineers" },
-  { path: "/quotation", label: "Quotation" },
-  { path: "/part-request", label: "Part Request" },
-  { path: "/invoice", label: "Invoice" },
-  { path: "/stock", label: "RTPL Stock" },
-  { path: "/hp-stock", label: "HP Stock" },
-  { path: "/buffer", label: "Buffer" },
-  { path: "/purchase-order", label: "Purchase Order" },
-  { path: "/reports", label: "Report" },
-  { path: "/activity-charges", label: "Activity Charges" },
-  { path: "/settings", label: "Settings" },
-];
+import { SECTIONS } from "@/lib/sections";
 
 const managerSchema = z.object({
   username: z.string().min(3, "Username must be at least 3 characters"),
