@@ -25,7 +25,6 @@ import { extractApiError } from "@/api/client";
 import { REGION_LABELS } from "@/types";
 import type { Region } from "@/types";
 import { useAuthStore } from "@/store/authStore";
-import { compressImages } from "@/lib/compressImage";
 
 interface Props {
   open: boolean;
@@ -156,14 +155,12 @@ export function HPStockFormDialog({ open, onOpenChange, editing, onSuccess }: Pr
       if (returnPartFile) photos.push(["return_part_image", returnPartFile]);
 
       if (photos.length > 0) {
-        // Shrink before upload — see @/lib/compressImage.
-        const compressed = await compressImages(photos.map(([, f]) => f));
-
+        // Photos are uploaded exactly as taken — full resolution, no re-encoding.
         const formDataPayload = new FormData();
         Object.entries(formData).forEach(([key, val]) => {
           formDataPayload.append(key, val);
         });
-        photos.forEach(([field], i) => formDataPayload.append(field, compressed[i]));
+        photos.forEach(([field, file]) => formDataPayload.append(field, file));
         payload = formDataPayload;
       } else {
         payload = formData;

@@ -23,7 +23,6 @@ import type { HPStockItem } from "@/api/hpStock";
 import type { PaginationMeta, Region } from "@/types";
 import { REGION_LABELS } from "@/types";
 import { getPartValueBand } from "@/lib/partValue";
-import { compressImages } from "@/lib/compressImage";
 
 type WorkflowStatus = HPStockItem["status"];
 
@@ -485,16 +484,13 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
       photos.push(...returnFileEntries);
 
       if (photos.length > 0) {
-        // Shrink them first — straight off a phone camera ten photos can be tens of
-        // megabytes, which is what made Confirm Transition slow on production.
-        const compressed = await compressImages(photos.map(([, f]) => f));
-
+        // Photos are uploaded exactly as taken — full resolution, no re-encoding.
         const formData = new FormData();
         formData.append("to_status", pendingToStatus || "");
         if (remarks.trim()) {
           formData.append("remarks", remarks.trim());
         }
-        photos.forEach(([field], i) => formData.append(field, compressed[i]));
+        photos.forEach(([field, file]) => formData.append(field, file));
         if (showEngineerField) {
           formData.append("engineer_name", engineerName.trim());
           formData.append("engineer_phone", engineerPhone.trim());
