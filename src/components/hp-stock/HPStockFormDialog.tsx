@@ -25,6 +25,7 @@ import { extractApiError } from "@/api/client";
 import { REGION_LABELS } from "@/types";
 import type { Region } from "@/types";
 import { useAuthStore } from "@/store/authStore";
+import { compressImages } from "@/lib/compressImage";
 
 interface Props {
   open: boolean;
@@ -148,20 +149,21 @@ export function HPStockFormDialog({ open, onOpenChange, editing, onSuccess }: Pr
     setSubmitting(true);
     try {
       let payload: any;
-      if (goodPartFile || goodPartBackFile || returnPartFile) {
+
+      const photos: [string, File][] = [];
+      if (goodPartFile) photos.push(["good_part_image", goodPartFile]);
+      if (goodPartBackFile) photos.push(["good_part_image_back", goodPartBackFile]);
+      if (returnPartFile) photos.push(["return_part_image", returnPartFile]);
+
+      if (photos.length > 0) {
+        // Shrink before upload — see @/lib/compressImage.
+        const compressed = await compressImages(photos.map(([, f]) => f));
+
         const formDataPayload = new FormData();
         Object.entries(formData).forEach(([key, val]) => {
           formDataPayload.append(key, val);
         });
-        if (goodPartFile) {
-          formDataPayload.append("good_part_image", goodPartFile);
-        }
-        if (goodPartBackFile) {
-          formDataPayload.append("good_part_image_back", goodPartBackFile);
-        }
-        if (returnPartFile) {
-          formDataPayload.append("return_part_image", returnPartFile);
-        }
+        photos.forEach(([field], i) => formDataPayload.append(field, compressed[i]));
         payload = formDataPayload;
       } else {
         payload = formData;
