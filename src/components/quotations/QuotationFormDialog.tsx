@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Trash2, Printer, FileText, Loader2 } from "lucide-react";
 import renderlogo from "@/assets/renderlogo.png";
 import bobQr from "@/assets/bob_qr.png";
+import rtplQuoteSign from "@/assets/rtpl_quote_sign.png";
 
 type DocumentStyle = "classic" | "orange";
 type LineItemId = number | string;
@@ -922,7 +923,7 @@ export function QuotationFormDialog({
                           <div style={{ fontStyle: 'italic', color: '#555' }}>{terms}</div>
                         </td>
                         <td style={{ width: '200px', textAlign: 'center', verticalAlign: 'bottom' }}>
-                          <div style={{ height: '45px', marginBottom: '2px' }} />
+                          <img src={rtplQuoteSign} alt="Provider Signature" style={{ height: '70px', objectFit: 'contain', display: 'block', margin: '0 auto 2px' }} />
                           <div style={{ width: '100%', height: '1px', backgroundColor: '#d1d5db', margin: '3px 0' }}></div>
                           <div style={{ fontWeight: 'bold', fontSize: '12px', color: '#111' }}>Provider Signature</div>
                         </td>
