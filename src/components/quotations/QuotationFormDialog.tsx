@@ -170,10 +170,10 @@ export function QuotationFormDialog({
   );
   const [quoteToGSTIN, setQuoteToGSTIN] = useState("");
 
-  // Ship To Details
+  // Ship To Details — left empty so the print template falls back to Quote To details unless overridden
   const [shipToName, setShipToName] = useState("");
-  const [shipToPhone, setShipToPhone] = useState(initialStyle === "classic" ? "" : "9790191909");
-  const [shipToAddress, setShipToAddress] = useState(initialStyle === "classic" ? "" : "Vellore, Tamil Nadu (TN-33), IN");
+  const [shipToPhone, setShipToPhone] = useState("");
+  const [shipToAddress, setShipToAddress] = useState("");
 
   // Terms & Conditions
   const [terms, setTerms] = useState(initialStyle === "classic" ? "Thanks for your support" : "Thanks for your support");
@@ -518,7 +518,8 @@ export function QuotationFormDialog({
                         <div><Label className="text-[10px]">Sl.No</Label><Input className="h-7 text-xs" value={item.slNo || ''} onChange={(e) => updateItemField(item.id, "slNo", e.target.value)} /></div>
                       </div>
                     )}
-                    <div className="grid grid-cols-4 gap-2">
+                    <div className={quotationStyle === "orange" ? "grid grid-cols-5 gap-2" : "grid grid-cols-4 gap-2"}>
+                      <div><Label className="text-[10px]">Qty</Label><Input type="number" min={1} className="h-7 text-xs" value={item.qty} onChange={(e) => updateItemField(item.id, "qty", Number(e.target.value))} /></div>
                       <div><Label className="text-[10px]">Price</Label><Input type="number" className="h-7 text-xs" value={item.price} onChange={(e) => updateItemField(item.id, "price", Number(e.target.value))} /></div>
                       <div><Label className="text-[10px]">CGST%</Label><Input type="number" className="h-7 text-xs" value={item.cgstPercent} onChange={(e) => updateItemField(item.id, "cgstPercent", Number(e.target.value))} /></div>
                       <div><Label className="text-[10px]">SGST%</Label><Input type="number" className="h-7 text-xs" value={item.sgstPercent} onChange={(e) => updateItemField(item.id, "sgstPercent", Number(e.target.value))} /></div>
