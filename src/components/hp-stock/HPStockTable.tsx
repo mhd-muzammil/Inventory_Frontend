@@ -528,10 +528,12 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-12">S.No</TableHead>
               <TableHead>Case ID / WO</TableHead>
               <TableHead>Opened Date</TableHead>
               <TableHead>Good Part Number</TableHead>
               <TableHead>Part Order Number</TableHead>
+              <TableHead>SN Number</TableHead>
               <TableHead>Region & Engineer</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="text-right">Actions</TableHead>
@@ -540,7 +542,7 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
           <TableBody>
             {Array.from({ length: 5 }).map((_, i) => (
               <TableRow key={i}>
-                {Array.from({ length: 7 }).map((_, j) => (
+                {Array.from({ length: 9 }).map((_, j) => (
                   <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>
                 ))}
               </TableRow>
@@ -558,12 +560,14 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
           <Table>
             <TableHeader>
               <TableRow className="bg-slate-50 dark:bg-slate-800/50">
+                <TableHead className="font-semibold w-12">S.No</TableHead>
                 <TableHead className="font-semibold">Case ID / WO</TableHead>
                 <TableHead className="font-semibold">Opened Date</TableHead>
                 <TableHead className="font-semibold">Customer & Part</TableHead>
                 <TableHead className="font-semibold">Good Part Number</TableHead>
                 <TableHead className="font-semibold">Part Order Number</TableHead>
                 <TableHead className="font-semibold">SO Number</TableHead>
+                <TableHead className="font-semibold">SN Number</TableHead>
                 {isSuperAdmin && <TableHead className="font-semibold text-right">Price</TableHead>}
                 {isSuperAdmin && <TableHead className="font-semibold text-center">Part Value</TableHead>}
                 <TableHead className="font-semibold">Region & Engineer</TableHead>
@@ -575,8 +579,11 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
               </TableRow>
             </TableHeader>
             <TableBody>
-              {data.map((item) => (
+              {data.map((item, i) => (
                 <TableRow key={item.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                  <TableCell className="text-sm text-slate-500 dark:text-slate-400 font-medium">
+                    {(pagination.page - 1) * pagination.per_page + i + 1}
+                  </TableCell>
                   <TableCell>
                     <div className="font-medium text-slate-900 dark:text-slate-100">{item.case_id || "N/A"}</div>
                     <div className="text-xs text-slate-500">{item.work_order_id || "N/A"}</div>
@@ -606,6 +613,9 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
                   </TableCell>
                   <TableCell>
                     <span className="text-sm text-slate-900 dark:text-slate-100">{item.so_number || "N/A"}</span>
+                  </TableCell>
+                  <TableCell>
+                    <span className="text-sm text-slate-900 dark:text-slate-100">{item.sn_number || "N/A"}</span>
                   </TableCell>
                   {isSuperAdmin && (
                     <TableCell className="text-right">

@@ -13,6 +13,7 @@ export interface HPStockItem {
   good_part_number?: string;
   part_order_number?: string;
   so_number?: string;
+  sn_number?: string;
   // Read-only: matched from the HP Stock RMA Part catalog by good_part_number.
   price?: number | null;
   warranty_trade?: string;

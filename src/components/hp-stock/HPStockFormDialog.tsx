@@ -44,6 +44,7 @@ const DEFAULT_FORM = {
   good_part_number: "",
   part_order_number: "",
   so_number: "",
+  sn_number: "",
   warranty_trade: "",
   part_shipment_status: "",
   region: "",
@@ -124,6 +125,7 @@ export function HPStockFormDialog({ open, onOpenChange, editing, onSuccess }: Pr
           good_part_number: editing.good_part_number || "",
           part_order_number: editing.part_order_number || "",
           so_number: editing.so_number || "",
+          sn_number: editing.sn_number || "",
           warranty_trade: editing.warranty_trade || "",
           part_shipment_status: editing.part_shipment_status || "",
           region: editing.region || "",
@@ -294,6 +296,15 @@ export function HPStockFormDialog({ open, onOpenChange, editing, onSuccess }: Pr
                 value={formData.so_number}
                 onChange={(e) => setFormData({ ...formData, so_number: e.target.value })}
                 placeholder="Enter SO Number"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>SN Number</Label>
+              <Input
+                value={formData.sn_number}
+                onChange={(e) => setFormData({ ...formData, sn_number: e.target.value })}
+                placeholder="Enter SN Number"
               />
             </div>
 
