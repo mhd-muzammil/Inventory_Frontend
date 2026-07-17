@@ -448,6 +448,7 @@ export default function HPStockRMA() {
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-slate-50 dark:bg-slate-800/50">
+                        <TableHead className="font-semibold w-12">S.No</TableHead>
                         <TableHead className="font-semibold w-36">Part Number</TableHead>
                         <TableHead className="font-semibold">Description</TableHead>
                         <TableHead className="font-semibold">Category</TableHead>
@@ -463,6 +464,7 @@ export default function HPStockRMA() {
                       {loading ? (
                         Array.from({ length: 6 }).map((_, i) => (
                           <TableRow key={i}>
+                            <TableCell><div className="h-4 bg-slate-150 dark:bg-slate-800 rounded animate-pulse w-8" /></TableCell>
                             <TableCell><div className="h-4 bg-slate-150 dark:bg-slate-800 rounded animate-pulse w-24" /></TableCell>
                             <TableCell><div className="h-4 bg-slate-150 dark:bg-slate-800 rounded animate-pulse w-48" /></TableCell>
                             <TableCell><div className="h-4 bg-slate-150 dark:bg-slate-800 rounded animate-pulse w-28" /></TableCell>
@@ -476,17 +478,20 @@ export default function HPStockRMA() {
                         ))
                       ) : parts.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={9} className="text-center py-8 text-slate-400">
+                          <TableCell colSpan={10} className="text-center py-8 text-slate-400">
                             No matching parts found in the catalog.
                           </TableCell>
                         </TableRow>
                       ) : (
-                        parts.map((p) => {
+                        parts.map((p, i) => {
                           const isEosl = p.eosl_flag?.trim().toLowerCase() === "yes";
                           const isSupported = p.parts_status?.trim().toLowerCase() === "supported";
                           
                           return (
                             <TableRow key={p.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+                              <TableCell className="text-sm text-slate-500 dark:text-slate-400 font-medium">
+                                {(page - 1) * pagination.per_page + i + 1}
+                              </TableCell>
                               <TableCell className="font-semibold font-mono text-indigo-650 dark:text-indigo-400 text-sm">
                                 {p.part_number}
                               </TableCell>
@@ -691,6 +696,7 @@ export default function HPStockRMA() {
               <Table>
                 <TableHeader>
                   <TableRow className="bg-slate-50 dark:bg-slate-800/50">
+                    <TableHead className="font-semibold w-12">S.No</TableHead>
                     <TableHead className="font-semibold">Case ID / WO</TableHead>
                     <TableHead className="font-semibold">Opened Date</TableHead>
                     <TableHead className="font-semibold">Customer & Part</TableHead>
@@ -708,6 +714,7 @@ export default function HPStockRMA() {
                   {loadingRequests ? (
                     Array.from({ length: 4 }).map((_, i) => (
                       <TableRow key={i}>
+                        <TableCell><div className="h-4 bg-slate-150 dark:bg-slate-800 rounded animate-pulse w-8" /></TableCell>
                         <TableCell><div className="h-4 bg-slate-150 dark:bg-slate-800 rounded animate-pulse w-24" /></TableCell>
                         <TableCell><div className="h-4 bg-slate-150 dark:bg-slate-800 rounded animate-pulse w-20" /></TableCell>
                         <TableCell><div className="h-4 bg-slate-150 dark:bg-slate-800 rounded animate-pulse w-48" /></TableCell>
@@ -723,15 +730,18 @@ export default function HPStockRMA() {
                     ))
                   ) : dcRequests.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={isSuperAdmin ? 11 : 9} className="text-center py-12 text-slate-400">
+                      <TableCell colSpan={isSuperAdmin ? 12 : 10} className="text-center py-12 text-slate-400">
                         <CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto mb-3 opacity-60" />
                         <p className="font-medium text-slate-800 dark:text-slate-200">All caught up!</p>
                         <p className="text-xs text-slate-500">No pending DC Cut requests needing approval.</p>
                       </TableCell>
                     </TableRow>
                   ) : (
-                    dcRequests.map((item) => (
+                    dcRequests.map((item, i) => (
                       <TableRow key={item.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+                        <TableCell className="text-sm text-slate-500 dark:text-slate-400 font-medium">
+                          {(requestsPage - 1) * requestsPagination.per_page + i + 1}
+                        </TableCell>
                         <TableCell>
                           <div className="font-semibold text-slate-900 dark:text-slate-150">{item.case_id || "N/A"}</div>
                           <div className="text-xs text-slate-500">{item.work_order_id || "N/A"}</div>

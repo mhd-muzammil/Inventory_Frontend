@@ -27,6 +27,7 @@ export function CustomersTable({ data, loading, pagination, onEdit, onDelete, on
         <Table>
           <TableHeader>
             <TableRow className="bg-slate-50 dark:bg-slate-800/50">
+              <TableHead className="font-semibold text-slate-700 dark:text-slate-300 w-12">S.No</TableHead>
               <TableHead className="font-semibold text-slate-700 dark:text-slate-300">Customer & Case No.</TableHead>
               <TableHead className="font-semibold text-slate-700 dark:text-slate-300">Contact Info</TableHead>
               <TableHead className="font-semibold text-slate-700 dark:text-slate-300">Region</TableHead>
@@ -38,7 +39,7 @@ export function CustomersTable({ data, loading, pagination, onEdit, onDelete, on
           <TableBody>
             {Array.from({ length: 5 }).map((_, i) => (
               <TableRow key={i}>
-                {Array.from({ length: isAdmin ? 6 : 5 }).map((_, j) => (
+                {Array.from({ length: isAdmin ? 7 : 6 }).map((_, j) => (
                   <TableCell key={j}>
                     <Skeleton className="h-4 w-full" />
                   </TableCell>
@@ -61,6 +62,7 @@ export function CustomersTable({ data, loading, pagination, onEdit, onDelete, on
           <Table>
             <TableHeader>
               <TableRow className="bg-slate-50 dark:bg-slate-800/50">
+                <TableHead className="font-semibold text-slate-700 dark:text-slate-300 w-12">S.No</TableHead>
                 <TableHead className="font-semibold text-slate-700 dark:text-slate-300">Customer & Case No.</TableHead>
                 <TableHead className="font-semibold text-slate-700 dark:text-slate-300">Contact Info</TableHead>
                 <TableHead className="font-semibold text-slate-700 dark:text-slate-300">Region</TableHead>
@@ -72,16 +74,19 @@ export function CustomersTable({ data, loading, pagination, onEdit, onDelete, on
             <TableBody>
               {data.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={isAdmin ? 6 : 5} className="h-32 text-center text-slate-400 dark:text-slate-500">
+                  <TableCell colSpan={isAdmin ? 7 : 6} className="h-32 text-center text-slate-400 dark:text-slate-500">
                     No customer records found.
                   </TableCell>
                 </TableRow>
               ) : (
-                data.map((c) => (
+                data.map((c, i) => (
                   <TableRow
                     key={c.id}
                     className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
                   >
+                    <TableCell className="text-sm text-slate-500 dark:text-slate-400 font-medium">
+                      {(pagination.page - 1) * pagination.per_page + i + 1}
+                    </TableCell>
                     {/* Name & Ticket Details */}
                     <TableCell>
                       <div className="font-medium text-slate-900 dark:text-slate-100 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors cursor-pointer">

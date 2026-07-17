@@ -176,6 +176,7 @@ export default function EngineerManagement() {
           <Table>
             <TableHeader>
               <TableRow className="bg-slate-50 dark:bg-slate-800/50">
+                <TableHead className="font-semibold w-12">S.No</TableHead>
                 <TableHead>Name</TableHead>
                 <TableHead>Phone</TableHead>
                 <TableHead>Email</TableHead>
@@ -185,8 +186,11 @@ export default function EngineerManagement() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {engineers.map((eng) => (
+              {engineers.map((eng, i) => (
                 <TableRow key={eng.id} className="border-b border-slate-200 dark:border-slate-700">
+                  <TableCell className="text-sm text-slate-500 dark:text-slate-400 font-medium">
+                    {i + 1}
+                  </TableCell>
                   <TableCell className="font-medium">
                     <div className="flex items-center gap-2">
                       <HardHat className="w-4 h-4 text-indigo-500" />
@@ -240,7 +244,7 @@ export default function EngineerManagement() {
               ))}
               {engineers.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={isSuperAdmin ? 6 : 5} className="text-center py-12 text-slate-400">
+                  <TableCell colSpan={isSuperAdmin ? 7 : 6} className="text-center py-12 text-slate-400">
                     No engineers yet. Click "Add Engineer" to create one.
                   </TableCell>
                 </TableRow>

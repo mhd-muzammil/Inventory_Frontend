@@ -115,6 +115,7 @@ export function TicketsTable({
         <Table>
           <TableHeader>
             <TableRow className="bg-slate-50 dark:bg-slate-800/50">
+              <TableHead className="font-semibold w-12">S.No</TableHead>
               <TableHead>
                 <button onClick={() => onSort("ticket_number")} className="flex items-center gap-1 hover:text-slate-800 dark:hover:text-slate-200">
                   UID <ArrowUpDown className="w-3 h-3" />
@@ -140,7 +141,7 @@ export function TicketsTable({
           <TableBody>
             {data.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={12} className="h-32 text-center text-slate-500 dark:text-slate-400">
+                <TableCell colSpan={13} className="h-32 text-center text-slate-500 dark:text-slate-400">
                   No tickets found.
                 </TableCell>
               </TableRow>
@@ -158,6 +159,9 @@ export function TicketsTable({
                     transition={{ delay: i * 0.03 }}
                     className="border-b border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
                   >
+                    <TableCell className="text-sm text-slate-500 dark:text-slate-400 font-medium">
+                      {(pagination.page - 1) * pagination.per_page + i + 1}
+                    </TableCell>
                     {/* UID */}
                     <TableCell className="font-mono text-xs font-medium">
                       <Link to={`/tickets/${ticket.id}`} className="text-indigo-600 dark:text-indigo-400 hover:underline">
