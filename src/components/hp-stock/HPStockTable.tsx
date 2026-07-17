@@ -1,6 +1,6 @@
-import { useMemo, useState, useEffect, useRef } from "react";
+import { Fragment, useMemo, useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import { Edit, Trash2, ArrowRight, ChevronDown, CheckCircle, Clock, Package, ClipboardCheck, User, ShieldCheck, Activity, RotateCcw, Eye, Camera, FileText, MessageSquare } from "lucide-react";
+import { Edit, Trash2, ArrowRight, ChevronDown, ChevronRight, CheckCircle, Clock, Package, ClipboardCheck, User, ShieldCheck, Activity, RotateCcw, Eye, Camera, FileText, MessageSquare } from "lucide-react";
 import { format } from "date-fns";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DCCutChatDialog } from "./DCCutChatDialog";
@@ -355,6 +355,49 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
+  // Per-work-order grouping. Multiple parts of one work order arrive as separate
+  // HP Stock rows sharing work_order_id; bucket them so a multi-part work order
+  // renders as ONE collapsible group instead of several independent top-level
+  // rows. Groups are collapsed by default and expand on clicking the triangle.
+  const [expandedWorkOrders, setExpandedWorkOrders] = useState<Set<string>>(new Set());
+  const toggleWorkOrder = (key: string) =>
+    setExpandedWorkOrders((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+
+  const workOrderGroups = useMemo(() => {
+    const groups = new Map<string, HPStockItem[]>();
+    const order: string[] = [];
+    for (const item of data) {
+      const key = item.work_order_id?.trim() || `case:${item.case_id ?? item.id}`;
+      if (!groups.has(key)) {
+        groups.set(key, []);
+        order.push(key);
+      }
+      groups.get(key)!.push(item);
+    }
+    return order.map((key) => ({ key, items: groups.get(key)! }));
+  }, [data]);
+
+  // Flat position of each row within the paginated `data`, so the grouped render
+  // can still show the S.No the flat table used.
+  const rowIndexById = useMemo(
+    () => new Map(data.map((d, i) => [d.id, i] as const)),
+    [data],
+  );
+
+  // Column count for the group-header row's colSpan. Base columns: S.No, Case
+  // ID/WO, Opened Date, Customer & Part, Good Part Number, Part Order Number, SO
+  // Number, SN Number, Region & Engineer, Status, Next Action, History, Chat,
+  // Actions (14). Price + Part Value are super-admin-only (+2).
+  const columnCount = 14 + (isSuperAdmin ? 2 : 0);
+
   useEffect(() => {
     if (!goodPartFile) {
       setPreviewUrl(null);
@@ -579,10 +622,11 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
               </TableRow>
             </TableHeader>
             <TableBody>
-              {data.map((item, i) => (
+              {workOrderGroups.map((group) => {
+                const rows = group.items.map((item) => (
                 <TableRow key={item.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                   <TableCell className="text-sm text-slate-500 dark:text-slate-400 font-medium">
-                    {(pagination.page - 1) * pagination.per_page + i + 1}
+                    {(pagination.page - 1) * pagination.per_page + (rowIndexById.get(item.id) ?? 0) + 1}
                   </TableCell>
                   <TableCell>
                     <div className="font-medium text-slate-900 dark:text-slate-100">{item.case_id || "N/A"}</div>
@@ -739,7 +783,53 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
                     </div>
                   </TableCell>
                 </TableRow>
-              ))}
+                ));
+
+                // Single-part work order → render the row directly (no group chrome).
+                if (group.items.length === 1) {
+                  return <Fragment key={group.key}>{rows}</Fragment>;
+                }
+
+                // Multi-part work order → one collapsible header row (collapsed by
+                // default) with the part rows as children shown on expand. This is
+                // what stops a single work order from rendering as several
+                // independent top-level inventory rows.
+                const isExpanded = expandedWorkOrders.has(group.key);
+                const groupPrice = group.items.reduce(
+                  (sum, it) => sum + (it.price != null ? Number(it.price) : 0),
+                  0,
+                );
+                return (
+                  <Fragment key={group.key}>
+                    <TableRow
+                      className="bg-slate-100/70 dark:bg-slate-800/70 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                      onClick={() => toggleWorkOrder(group.key)}
+                    >
+                      <TableCell colSpan={columnCount}>
+                        <div className="flex items-center gap-2">
+                          {isExpanded ? (
+                            <ChevronDown className="w-4 h-4 text-slate-500 flex-shrink-0" />
+                          ) : (
+                            <ChevronRight className="w-4 h-4 text-slate-500 flex-shrink-0" />
+                          )}
+                          <span className="font-semibold text-slate-900 dark:text-slate-100">
+                            WO {group.items[0].work_order_id || "N/A"}
+                          </span>
+                          <Badge variant="outline" className="text-xs font-medium">
+                            {group.items.length} parts
+                          </Badge>
+                          {isSuperAdmin && groupPrice > 0 && (
+                            <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">
+                              ₹{groupPrice.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </span>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                    {isExpanded && rows}
+                  </Fragment>
+                );
+              })}
             </TableBody>
           </Table>
         </div>
