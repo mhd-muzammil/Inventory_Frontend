@@ -88,6 +88,19 @@ export const STATUS_STYLE_MAP: Record<string, { bg: string; text: string; dot: s
 
 const TRACK_STEPS = ["PENDING", "STOCK_CHECK", "GOOD_PART_PHOTO", "ISSUED", "WORK_STATUS", "UNUSED_RETURN", "DEFECTIVE_RETURN", "DOA", "HANDOVER", "RETURN_PART_PHOTO", "DC_CUT_REQUEST", "CLOSED"];
 
+// The row-level engineer fields can be stale (older edits overwrite them); the
+// OTP-verified engineer recorded in transition_history is authoritative.
+export const resolveEngineer = (item: HPStockItem): { name: string; phone: string } => {
+  const history = item.transition_history || [];
+  for (let i = history.length - 1; i >= 0; i--) {
+    const h = history[i];
+    if (h.engineer_name) {
+      return { name: h.engineer_name, phone: h.engineer_phone || item.engineer_phone || "" };
+    }
+  }
+  return { name: item.engineer_name || "", phone: item.engineer_phone || "" };
+};
+
 export const getStatusIcon = (status: string) => {
   switch (status) {
     case "PENDING":
@@ -456,8 +469,9 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
     setActiveRow(row);
     setPendingToStatus(target);
     const isEngineerStep = target === "ISSUED" || target === "HANDOVER";
-    setEngineerName(isEngineerStep ? (row.engineer_name || "") : "");
-    setEngineerPhone(isEngineerStep ? (row.engineer_phone || "") : "");
+    const eng = resolveEngineer(row);
+    setEngineerName(isEngineerStep ? eng.name : "");
+    setEngineerPhone(isEngineerStep ? eng.phone : "");
     setRemarks("");
     setOtp("");
     setOtpSent(false);
@@ -688,10 +702,15 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
                       <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 w-fit">
                         {REGION_LABELS[item.region as Region] || item.region || "No Region"}
                       </span>
-                      <span className="text-xs text-slate-500">
-                        {item.engineer_name || "Unassigned"}
-                        {item.engineer_phone && ` (${item.engineer_phone})`}
-                      </span>
+                      {(() => {
+                        const eng = resolveEngineer(item);
+                        return (
+                          <span className="text-xs text-slate-500">
+                            {eng.name || "Unassigned"}
+                            {eng.phone && ` (${eng.phone})`}
+                          </span>
+                        );
+                      })()}
                     </div>
                   </TableCell>
                   <TableCell>
@@ -1504,7 +1523,7 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
                         </div>
                         <div>
                           <span className="text-slate-400 block mb-0.5">ENGINEER</span>
-                          <span className="font-semibold text-slate-800 dark:text-slate-200">{activeRow.engineer_name || "Unassigned"}</span>
+                          <span className="font-semibold text-slate-800 dark:text-slate-200">{resolveEngineer(activeRow).name || "Unassigned"}</span>
                         </div>
                         <div>
                           <span className="text-slate-400 block mb-0.5">HP OWNER STATUS</span>
