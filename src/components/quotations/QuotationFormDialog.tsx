@@ -680,8 +680,7 @@ export function QuotationFormDialog({
                               </div>
                               <div style={{ textAlign: 'right', position: 'relative', minWidth: '220px' }}>
                                 <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>For {senderCompany}</div>
-                                {/* Blank space reserved for stamp/seal */}
-                                <div style={{ height: '55px', marginTop: '5px' }} />
+                                <img src={rtplQuoteSign} alt="Authorized Signatory" style={{ height: '70px', objectFit: 'contain', display: 'block', margin: '5px 0 0 auto' }} />
                                 <div style={{ fontWeight: 'bold', marginTop: '5px' }}>Authorized Signatory</div>
                               </div>
                             </div>
