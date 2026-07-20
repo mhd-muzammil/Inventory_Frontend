@@ -104,6 +104,9 @@ export interface GetHPStockParams {
   part_shipment_status?: string;
   // Lists cases that have completed this stage (matches the summary stage counts).
   stage_done?: string;
+  // Paired with stage_done: lists only cases that reached that stage on this day
+  // (YYYY-MM-DD), from history — so a date-scoped stage card's rows match its count.
+  stage_on_date?: string;
   // Lists cases in a part value band: LOW | MID | HIGH | CRITICAL (super-admin only).
   value_band?: string;
 }

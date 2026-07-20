@@ -134,6 +134,9 @@ export default function HPStock() {
           ? undefined
           : activeTab === "closed" ? "true" : activeTab === "dc_cut_request" ? "dc_cut_request" : "false",
         stage_done: stageFilter || undefined,
+        // When a stage card is clicked while its date is set, scope the table to the
+        // cases that reached that stage on that day — so the rows match the card count.
+        stage_on_date: stageFilter && summaryDate ? summaryDate : undefined,
         value_band: valueBandFilter || undefined,
         date: selectedDate || undefined,
         warranty_trade: warrantyTrade !== "all" ? warrantyTrade : undefined,
@@ -146,7 +149,7 @@ export default function HPStock() {
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, viewMode, page, isAdmin, selectedRegion, activeTab, selectedDate, warrantyTrade, partShipmentStatus, stageFilter, valueBandFilter]);
+  }, [debouncedSearch, viewMode, page, isAdmin, selectedRegion, activeTab, selectedDate, summaryDate, warrantyTrade, partShipmentStatus, stageFilter, valueBandFilter]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
   useEffect(() => { fetchSummary(); }, [fetchSummary]);
