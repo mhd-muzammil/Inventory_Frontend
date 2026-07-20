@@ -644,25 +644,19 @@ export function QuotationFormDialog({
                         </tr>
                       </thead>
                       <tbody>
-                        {calculatedItems.map((item, index) => {
-                          const isLastItem = index === calculatedItems.length - 1;
-                          // Between items keep a divider; after the last item let the
-                          // column flow open into the spacer (single line before totals).
-                          const blockBorder = isLastItem ? '0' : '1px solid #000';
-                          return (
+                        {calculatedItems.map((item) => (
                           <React.Fragment key={item.id}>
-                            {/* Row 1: Service line. The amount spans this + the two
-                                description sub-rows so the AMOUNT column stays one open
-                                cell (no horizontal lines cutting through it). */}
-                            <tr>
-                              <td style={{ padding: '8px 15px', borderRight: '1px solid #000', borderBottom: '1px solid #000', textAlign: 'center' }}>{item.description}</td>
-                              <td rowSpan={3} style={{ padding: '8px 10px', textAlign: 'right', verticalAlign: 'top', borderBottom: blockBorder }}>
-                                {item.taxableValue.toFixed(2)}
-                              </td>
+                            {/* Service line + amount. Borders sit on the ROW so every
+                                horizontal line runs across BOTH columns (full grid); the
+                                DESCRIPTION|AMOUNT divider is the left cell's borderRight,
+                                kept on every row so it never breaks. */}
+                            <tr style={{ borderBottom: '1px solid #000' }}>
+                              <td style={{ padding: '8px 15px', borderRight: '1px solid #000', textAlign: 'center' }}>{item.description}</td>
+                              <td style={{ padding: '8px 10px', textAlign: 'right', verticalAlign: 'top' }}>{item.taxableValue.toFixed(2)}</td>
                             </tr>
-                            {/* Row 2: Sub-header labels (description column only) */}
-                            <tr>
-                              <td style={{ borderRight: '1px solid #000', borderBottom: '1px solid #000', padding: 0 }}>
+                            {/* Sub-header labels */}
+                            <tr style={{ borderBottom: '1px solid #000' }}>
+                              <td style={{ borderRight: '1px solid #000', padding: 0 }}>
                                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                                   <tbody>
                                     <tr>
@@ -673,10 +667,11 @@ export function QuotationFormDialog({
                                   </tbody>
                                 </table>
                               </td>
+                              <td></td>
                             </tr>
-                            {/* Row 3: Detail values (description column only) */}
-                            <tr>
-                              <td style={{ borderRight: '1px solid #000', borderBottom: blockBorder, padding: 0 }}>
+                            {/* Detail values */}
+                            <tr style={{ borderBottom: '1px solid #000' }}>
+                              <td style={{ borderRight: '1px solid #000', padding: 0 }}>
                                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                                   <tbody>
                                     <tr>
@@ -687,10 +682,10 @@ export function QuotationFormDialog({
                                   </tbody>
                                 </table>
                               </td>
+                              <td></td>
                             </tr>
                           </React.Fragment>
-                          );
-                        })}
+                        ))}
                         {/* Spacer for padding table height to look authentic */}
                         <tr style={{ height: '80px', borderBottom: '1px solid #000' }}>
                           <td style={{ borderRight: '1px solid #000' }}></td>
