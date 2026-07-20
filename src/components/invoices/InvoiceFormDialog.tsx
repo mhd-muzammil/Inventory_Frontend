@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Plus, Trash2, Printer, Receipt, Loader2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import renderlogo from "@/assets/renderlogo.png";
-import stampImg from "@/assets/stamp.png";
+import rtplQuoteSign from "@/assets/rtpl_quote_sign.png";
 
 type DocumentStyle = "classic" | "orange";
 type LineItemId = number | string;
@@ -360,6 +360,7 @@ export function InvoiceFormDialog({
         shipToPhone,
         shipToAddress,
         items: calculatedItems,
+        terms,
         totalTaxableValue,
         totalCGST,
         totalSGST,
@@ -540,6 +541,14 @@ export function InvoiceFormDialog({
                     className="h-8 text-xs"
                     value={senderPhone}
                     onChange={(e) => setSenderPhone(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1 col-span-2">
+                  <Label className="text-xs">Sender Website</Label>
+                  <Input
+                    className="h-8 text-xs"
+                    value={senderWebsite}
+                    onChange={(e) => setSenderWebsite(e.target.value)}
                   />
                 </div>
               </div>
@@ -749,6 +758,21 @@ export function InvoiceFormDialog({
                 ))}
               </div>
             </div>
+
+            {/* TERMS (Tax Invoice / orange template) */}
+            {invoiceStyle === "orange" && (
+              <div className="space-y-3">
+                <h3 className="font-bold text-slate-700 dark:text-slate-200 text-sm border-b pb-1">
+                  Terms &amp; Conditions
+                </h3>
+                <textarea
+                  rows={2}
+                  className="w-full text-xs p-1.5 border rounded-md dark:bg-slate-900 border-slate-200"
+                  value={terms}
+                  onChange={(e) => setTerms(e.target.value)}
+                />
+              </div>
+            )}
           </div>
 
           {/* Hidden print source */}
@@ -966,7 +990,7 @@ export function InvoiceFormDialog({
                               colSpan={5}
                               className="p-1 text-right border-r border-slate-200"
                             >
-                              Total @18%
+                              Total @{(calculatedItems[0]?.cgstPercent ?? 0) + (calculatedItems[0]?.sgstPercent ?? 0)}%
                             </td>
                             <td className="p-1 text-right border-r border-slate-200">
                               {totalTaxableValue.toLocaleString("en-IN", {
@@ -1044,15 +1068,16 @@ export function InvoiceFormDialog({
 
                   {/* 6. Stamp/Signatory Area */}
                   <div className="border-t border-slate-200 pt-3 flex justify-between items-end mt-2 select-none">
-                    <div className="flex flex-col items-center gap-1">
-                      <div className="w-20 h-11 border border-indigo-200 border-dashed rounded flex items-center justify-center text-[7.5px] text-indigo-400 font-bold opacity-60">
-                        Seal & Stamp
-                      </div>
-                    </div>
+                    <div className="flex flex-col items-center gap-1" />
                     <div className="text-right text-[8.5px] text-slate-600">
-                      <p className="mb-5 font-bold">Authorized Signatory</p>
-                      <p className="border-t border-slate-300 w-32 inline-block pt-0.5 mt-2">
-                        For {senderCompany}
+                      <p className="font-bold mb-1">For {senderCompany}</p>
+                      <img
+                        src={rtplQuoteSign}
+                        alt="Authorized Signatory"
+                        style={{ height: "70px", objectFit: "contain", display: "block", margin: "0 0 2px auto" }}
+                      />
+                      <p className="border-t border-slate-300 w-32 inline-block pt-0.5 font-bold">
+                        Authorized Signatory
                       </p>
                     </div>
                   </div>
@@ -1238,7 +1263,7 @@ export function InvoiceFormDialog({
                           <div style={{ fontStyle: 'italic', color: '#555' }}>{terms}</div>
                         </td>
                         <td style={{ width: '200px', textAlign: 'center', verticalAlign: 'bottom' }}>
-                          <img src={stampImg} alt="stamp" style={{ height: '45px', objectFit: 'contain', mixBlendMode: 'multiply', marginBottom: '2px' }} />
+                          <img src={rtplQuoteSign} alt="Provider Signature" style={{ height: '70px', objectFit: 'contain', display: 'block', margin: '0 auto 2px' }} />
                           <div style={{ width: '100%', height: '1px', backgroundColor: '#d1d5db', margin: '3px 0' }}></div>
                           <div style={{ fontWeight: 'bold', fontSize: '12px', color: '#111' }}>Provider Signature</div>
                         </td>
