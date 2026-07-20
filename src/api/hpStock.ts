@@ -132,8 +132,10 @@ export const getHPStockItems = async (params?: GetHPStockParams): Promise<GetHPS
   };
 };
 
-export const getHPStockSummary = async (view: 'my_region' | 'overall', region?: string): Promise<HPStockSummary> => {
-  const { data } = await api.get('/hp-stock/items/summary/', { params: { view, region } });
+export const getHPStockSummary = async (view: 'my_region' | 'overall', region?: string, date?: string): Promise<HPStockSummary> => {
+  // `date` (YYYY-MM-DD) switches the four stage cards to a day-based count: how many
+  // cases reached that stage on that day (from history), instead of the all-time total.
+  const { data } = await api.get('/hp-stock/items/summary/', { params: { view, region, date } });
   return data;
 };
 

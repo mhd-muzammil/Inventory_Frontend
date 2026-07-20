@@ -41,6 +41,14 @@ export default function HPStock() {
     return "";
   });
   const [selectedDate, setSelectedDate] = useState<string>("");
+  // Stage cards use their OWN date, defaulting to today (local, YYYY-MM-DD), so the
+  // four count cards open on today's transition counts without touching the table's
+  // own date filter (selectedDate). Clearing it shows the all-time totals.
+  const [summaryDate, setSummaryDate] = useState<string>(() => {
+    const now = new Date();
+    const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
+    return local.toISOString().slice(0, 10);
+  });
   // When set, the table lists cases that completed this stage (a stage count card
   // is selected). It supersedes the active/dc-cut/closed tab so the row count
   // matches the number on the card.
@@ -99,12 +107,13 @@ export default function HPStock() {
   const fetchSummary = useCallback(async () => {
     try {
       const apiView = isAdmin ? "overall" : viewMode;
-      const res = await getHPStockSummary(apiView, undefined);
+      // Pass the cards' own date so the stage cards count that day's transitions.
+      const res = await getHPStockSummary(apiView, undefined, summaryDate || undefined);
       setSummary(res);
     } catch {
       // silent fail for summary
     }
-  }, [viewMode, isAdmin]);
+  }, [viewMode, isAdmin, summaryDate]);
 
   const fetchData = useCallback(async () => {
     if (dataRef.current.length === 0) {
@@ -279,7 +288,35 @@ export default function HPStock() {
         </div>
       )}
 
-      {/* Stage completion counts — how many cases have done each action. */}
+      {/* Stage completion counts — how many cases did each action on the chosen day. */}
+      {summary && (
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+          <div className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+            Actions on{" "}
+            <span className="text-indigo-600 dark:text-indigo-400">
+              {summaryDate
+                ? new Date(summaryDate).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
+                : "all dates"}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              type="date"
+              value={summaryDate}
+              onChange={(e) => setSummaryDate(e.target.value)}
+              className="h-9 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+            {summaryDate && (
+              <button
+                onClick={() => setSummaryDate("")}
+                className="h-9 rounded-lg border border-slate-200 dark:border-slate-700 px-3 text-xs font-medium text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
+              >
+                Show all-time
+              </button>
+            )}
+          </div>
+        </div>
+      )}
       {summary && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
           {[
