@@ -360,6 +360,7 @@ export function InvoiceFormDialog({
         shipToPhone,
         shipToAddress,
         items: calculatedItems,
+        terms,
         totalTaxableValue,
         totalCGST,
         totalSGST,
@@ -540,6 +541,14 @@ export function InvoiceFormDialog({
                     className="h-8 text-xs"
                     value={senderPhone}
                     onChange={(e) => setSenderPhone(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1 col-span-2">
+                  <Label className="text-xs">Sender Website</Label>
+                  <Input
+                    className="h-8 text-xs"
+                    value={senderWebsite}
+                    onChange={(e) => setSenderWebsite(e.target.value)}
                   />
                 </div>
               </div>
@@ -749,6 +758,21 @@ export function InvoiceFormDialog({
                 ))}
               </div>
             </div>
+
+            {/* TERMS (Tax Invoice / orange template) */}
+            {invoiceStyle === "orange" && (
+              <div className="space-y-3">
+                <h3 className="font-bold text-slate-700 dark:text-slate-200 text-sm border-b pb-1">
+                  Terms &amp; Conditions
+                </h3>
+                <textarea
+                  rows={2}
+                  className="w-full text-xs p-1.5 border rounded-md dark:bg-slate-900 border-slate-200"
+                  value={terms}
+                  onChange={(e) => setTerms(e.target.value)}
+                />
+              </div>
+            )}
           </div>
 
           {/* Hidden print source */}
@@ -966,7 +990,7 @@ export function InvoiceFormDialog({
                               colSpan={5}
                               className="p-1 text-right border-r border-slate-200"
                             >
-                              Total @18%
+                              Total @{(calculatedItems[0]?.cgstPercent ?? 0) + (calculatedItems[0]?.sgstPercent ?? 0)}%
                             </td>
                             <td className="p-1 text-right border-r border-slate-200">
                               {totalTaxableValue.toLocaleString("en-IN", {

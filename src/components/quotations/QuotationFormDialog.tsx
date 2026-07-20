@@ -451,6 +451,18 @@ export function QuotationFormDialog({
                   <Label className="text-xs">Issue Date</Label>
                   <Input className="h-8 text-xs" type="date" value={issueDate} onChange={(e) => setIssueDate(e.target.value)} />
                 </div>
+                {quotationStyle === "orange" && (
+                  <>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Valid Until</Label>
+                      <Input className="h-8 text-xs" type="date" value={validUntil} onChange={(e) => setValidUntil(e.target.value)} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Place of Supply</Label>
+                      <Input className="h-8 text-xs" value={placeOfSupply} onChange={(e) => setPlaceOfSupply(e.target.value)} />
+                    </div>
+                  </>
+                )}
                 <div className="space-y-1">
                   <Label className="text-xs">CASE ID</Label>
                   <Input className="h-8 text-xs" value={caseId} onChange={(e) => setCaseId(e.target.value)} />
@@ -480,12 +492,19 @@ export function QuotationFormDialog({
             <div className="space-y-3">
               <h3 className="font-bold text-indigo-600 text-sm border-b pb-1">Sender Info</h3>
               <div className="grid grid-cols-1 gap-2">
+                <div className="space-y-1"><Label className="text-xs">Company Name</Label><Input className="h-8 text-xs" value={senderCompany} onChange={(e) => setSenderCompany(e.target.value)} /></div>
                 <div className="space-y-1"><Label className="text-xs">Address</Label><textarea className="w-full h-16 text-xs p-1.5 border rounded dark:bg-slate-800" value={senderAddress} onChange={(e) => setSenderAddress(e.target.value)} /></div>
                 <div className="grid grid-cols-2 gap-2">
                   <div className="space-y-1"><Label className="text-xs">GSTIN</Label><Input className="h-8 text-xs" value={senderGSTIN} onChange={(e) => setSenderGSTIN(e.target.value)} /></div>
                   <div className="space-y-1"><Label className="text-xs">PAN</Label><Input className="h-8 text-xs" value={senderPAN} onChange={(e) => setSenderPAN(e.target.value)} /></div>
                 </div>
-                <div className="space-y-1"><Label className="text-xs">Email</Label><Input className="h-8 text-xs" value={senderEmail} onChange={(e) => setSenderEmail(e.target.value)} /></div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1"><Label className="text-xs">Email</Label><Input className="h-8 text-xs" value={senderEmail} onChange={(e) => setSenderEmail(e.target.value)} /></div>
+                  <div className="space-y-1"><Label className="text-xs">Phone</Label><Input className="h-8 text-xs" value={senderPhone} onChange={(e) => setSenderPhone(e.target.value)} /></div>
+                </div>
+                {quotationStyle === "orange" && (
+                  <div className="space-y-1"><Label className="text-xs">Website</Label><Input className="h-8 text-xs" value={senderWebsite} onChange={(e) => setSenderWebsite(e.target.value)} /></div>
+                )}
               </div>
             </div>
 
@@ -498,8 +517,22 @@ export function QuotationFormDialog({
                   <div className="space-y-1"><Label className="text-xs">Phone</Label><Input className="h-8 text-xs" value={quoteToPhone} onChange={(e) => setQuoteToPhone(e.target.value)} /></div>
                   <div className="space-y-1"><Label className="text-xs">Email</Label><Input className="h-8 text-xs" value={quoteToEmail} onChange={(e) => setQuoteToEmail(e.target.value)} /></div>
                 </div>
+                {quotationStyle === "orange" && (
+                  <div className="space-y-1"><Label className="text-xs">GSTIN</Label><Input className="h-8 text-xs" value={quoteToGSTIN} onChange={(e) => setQuoteToGSTIN(e.target.value)} /></div>
+                )}
               </div>
             </div>
+
+            {quotationStyle === "orange" && (
+              <div className="space-y-3">
+                <h3 className="font-bold text-indigo-600 text-sm border-b pb-1">Ship To (leave blank to reuse Quote To)</h3>
+                <div className="grid grid-cols-1 gap-2">
+                  <div className="space-y-1"><Label className="text-xs">Name</Label><Input className="h-8 text-xs" value={shipToName} onChange={(e) => setShipToName(e.target.value)} /></div>
+                  <div className="space-y-1"><Label className="text-xs">Address</Label><textarea className="w-full h-16 text-xs p-1.5 border rounded dark:bg-slate-800" value={shipToAddress} onChange={(e) => setShipToAddress(e.target.value)} /></div>
+                  <div className="space-y-1"><Label className="text-xs">Phone</Label><Input className="h-8 text-xs" value={shipToPhone} onChange={(e) => setShipToPhone(e.target.value)} /></div>
+                </div>
+              </div>
+            )}
 
             <div className="space-y-3">
               <div className="flex items-center justify-between border-b pb-1"><h3 className="font-bold text-indigo-600 text-sm">Line Items</h3><Button size="sm" className="h-6 text-xs" onClick={handleAddItem}>Add Item</Button></div>
@@ -529,6 +562,13 @@ export function QuotationFormDialog({
                 ))}
               </div>
             </div>
+
+            {quotationStyle === "orange" && (
+              <div className="space-y-3">
+                <h3 className="font-bold text-indigo-600 text-sm border-b pb-1">Terms &amp; Conditions</h3>
+                <textarea className="w-full h-16 text-xs p-1.5 border rounded dark:bg-slate-800" value={terms} onChange={(e) => setTerms(e.target.value)} />
+              </div>
+            )}
 
             {quotationStyle === "classic" && (
               <div className="space-y-3">
@@ -652,11 +692,11 @@ export function QuotationFormDialog({
                           <td style={{ padding: '4px 10px', textAlign: 'right' }}>{totalTaxableValue.toFixed(2)}</td>
                         </tr>
                         <tr style={{ borderBottom: '1px solid #000' }}>
-                          <td style={{ padding: '4px 8px', borderRight: '1px solid #000' }}>SGST @ 9 %</td>
+                          <td style={{ padding: '4px 8px', borderRight: '1px solid #000' }}>SGST @ {calculatedItems[0]?.sgstPercent ?? 0} %</td>
                           <td style={{ padding: '4px 10px', textAlign: 'right' }}>{totalSGST.toFixed(2)}</td>
                         </tr>
                         <tr style={{ borderBottom: '1px solid #000' }}>
-                          <td style={{ padding: '4px 8px', borderRight: '1px solid #000' }}>CGST @ 9 %</td>
+                          <td style={{ padding: '4px 8px', borderRight: '1px solid #000' }}>CGST @ {calculatedItems[0]?.cgstPercent ?? 0} %</td>
                           <td style={{ padding: '4px 10px', textAlign: 'right' }}>{totalCGST.toFixed(2)}</td>
                         </tr>
                         <tr style={{ borderBottom: '1px solid #000' }}>
@@ -811,9 +851,11 @@ export function QuotationFormDialog({
                           <div style={{ fontWeight: 'bold', fontSize: '13.5px', marginBottom: '1px' }}>{quoteToName}</div>
                           {quoteToPhone && <div style={{ marginBottom: '1px' }}>{quoteToPhone}</div>}
                           <div style={{ whiteSpace: 'pre-line', wordWrap: 'break-word', overflowWrap: 'break-word' }}>{quoteToAddress}</div>
+                          {quoteToGSTIN && <div style={{ fontWeight: 'bold', color: '#111', marginTop: '2px' }}>GSTIN: {quoteToGSTIN}</div>}
                         </td>
                         <td style={{ width: '45%', verticalAlign: 'top', fontSize: '12px', lineHeight: '1.5' }}>
                           <div style={{ fontWeight: 'bold', fontSize: '12.5px', marginBottom: '3px' }}>Ship To</div>
+                          <div style={{ fontWeight: 'bold', fontSize: '13.5px', marginBottom: '1px' }}>{shipToName || quoteToName}</div>
                           <div style={{ marginBottom: '1px' }}>{shipToPhone ? shipToPhone : (quoteToPhone || '')}</div>
                           <div style={{ whiteSpace: 'pre-line', wordWrap: 'break-word', overflowWrap: 'break-word' }}>{shipToAddress || quoteToAddress}</div>
                         </td>
