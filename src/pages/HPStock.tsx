@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import { AlertCircle, Plus, Search, MapPin, Globe, BarChart3, Layers, Calendar, Camera, RotateCcw, UserCheck, PackageCheck } from "lucide-react";
+import { AlertCircle, Plus, Search, MapPin, Globe, BarChart3, Layers, Calendar, Camera, RotateCcw, UserCheck, PackageCheck, Clock } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -136,7 +136,8 @@ export default function HPStock() {
         stage_done: stageFilter || undefined,
         // When a stage card is clicked while its date is set, scope the table to the
         // cases that reached that stage on that day — so the rows match the card count.
-        stage_on_date: stageFilter && summaryDate ? summaryDate : undefined,
+        // PENDING_RETURN is a current-state card (date-independent), so it opts out.
+        stage_on_date: stageFilter && stageFilter !== "PENDING_RETURN" && summaryDate ? summaryDate : undefined,
         value_band: valueBandFilter || undefined,
         date: selectedDate || undefined,
         warranty_trade: warrantyTrade !== "all" ? warrantyTrade : undefined,
@@ -321,7 +322,7 @@ export default function HPStock() {
         </div>
       )}
       {summary && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
           {[
             {
               stage: "GOOD_PART_PHOTO",
@@ -358,6 +359,17 @@ export default function HPStock() {
               color: "text-emerald-600 dark:text-emerald-400",
               ring: "border-emerald-200 dark:border-emerald-800/60 bg-emerald-50/40 dark:bg-emerald-950/20",
               activeRing: "ring-2 ring-emerald-600",
+            },
+            {
+              // Part still out with an engineer (taken, not yet handed back). Current
+              // state, so it ignores the date filter — always "who is holding a part now".
+              stage: "PENDING_RETURN",
+              label: "Pending Return (with Engineer)",
+              value: summary.pending_return_total || 0,
+              icon: Clock,
+              color: "text-rose-600 dark:text-rose-400",
+              ring: "border-rose-200 dark:border-rose-800/60 bg-rose-50/40 dark:bg-rose-950/20",
+              activeRing: "ring-2 ring-rose-600",
             },
           ].map((s) => {
             const isSelected = stageFilter === s.stage;

@@ -74,6 +74,8 @@ export interface HPStockSummary {
   return_part_photo_total?: number;
   issued_total?: number;
   handover_total?: number;
+  // Part taken by an engineer but not yet handed back (ISSUED..DOA, before HANDOVER).
+  pending_return_total?: number;
   // Part value bands — super-admin only (absent from everyone else's payload).
   part_value_low_total?: number;
   part_value_mid_total?: number;
@@ -89,6 +91,7 @@ export interface HPStockSummary {
     return_part_photo?: number;
     issued?: number;
     handover?: number;
+    pending_return?: number;
   }[];
 }
 
