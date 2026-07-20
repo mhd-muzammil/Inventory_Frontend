@@ -644,43 +644,53 @@ export function QuotationFormDialog({
                         </tr>
                       </thead>
                       <tbody>
-                        {calculatedItems.map((item, index) => (
+                        {calculatedItems.map((item, index) => {
+                          const isLastItem = index === calculatedItems.length - 1;
+                          // Between items keep a divider; after the last item let the
+                          // column flow open into the spacer (single line before totals).
+                          const blockBorder = isLastItem ? '0' : '1px solid #000';
+                          return (
                           <React.Fragment key={item.id}>
-                            {/* Row 1: Service charge display */}
-                            <tr style={{ borderBottom: '1px solid #000' }}>
-                              <td style={{ padding: '8px 15px', borderRight: '1px solid #000', textAlign: 'center' }}>{item.description}</td>
-                              <td style={{ padding: '8px 10px', textAlign: 'right', verticalAlign: 'bottom' }}>
+                            {/* Row 1: Service line. The amount spans this + the two
+                                description sub-rows so the AMOUNT column stays one open
+                                cell (no horizontal lines cutting through it). */}
+                            <tr>
+                              <td style={{ padding: '8px 15px', borderRight: '1px solid #000', borderBottom: '1px solid #000', textAlign: 'center' }}>{item.description}</td>
+                              <td rowSpan={3} style={{ padding: '8px 10px', textAlign: 'right', verticalAlign: 'top', borderBottom: blockBorder }}>
                                 {item.taxableValue.toFixed(2)}
                               </td>
                             </tr>
-                            {/* Row 2: Sub-headers row inside the description column */}
-                            <tr style={{ borderBottom: '1px solid #000' }}>
-                              <td style={{ borderRight: '1px solid #000', padding: 0 }}>
+                            {/* Row 2: Sub-header labels (description column only) */}
+                            <tr>
+                              <td style={{ borderRight: '1px solid #000', borderBottom: '1px solid #000', padding: 0 }}>
                                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                                  <tr>
-                                    <td style={{ padding: '3px 8px', borderRight: '1px solid #000', width: '60%', fontWeight: 'normal' }}>Description</td>
-                                    <td style={{ padding: '3px 8px', borderRight: '1px solid #000', width: '18%', fontWeight: 'normal' }}>Model No</td>
-                                    <td style={{ padding: '3px 8px', fontWeight: 'normal' }}>Sl.No</td>
-                                  </tr>
+                                  <tbody>
+                                    <tr>
+                                      <td style={{ padding: '3px 8px', borderRight: '1px solid #000', width: '60%', fontWeight: 'normal' }}>Description</td>
+                                      <td style={{ padding: '3px 8px', borderRight: '1px solid #000', width: '20%', fontWeight: 'normal' }}>Model No</td>
+                                      <td style={{ padding: '3px 8px', width: '20%', fontWeight: 'normal' }}>Sl.No</td>
+                                    </tr>
+                                  </tbody>
                                 </table>
                               </td>
-                              <td style={{ borderLeft: 'none' }}></td>
                             </tr>
-                            {/* Row 3: The detail value row */}
-                            <tr style={{ borderBottom: (index === calculatedItems.length - 1) ? '0' : '1px solid #000' }}>
-                              <td style={{ borderRight: '1px solid #000', padding: 0 }}>
+                            {/* Row 3: Detail values (description column only) */}
+                            <tr>
+                              <td style={{ borderRight: '1px solid #000', borderBottom: blockBorder, padding: 0 }}>
                                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                                  <tr>
-                                    <td style={{ padding: '5px 8px', borderRight: '1px solid #000', width: '60%' }}>{item.detailDesc}</td>
-                                    <td style={{ padding: '5px 8px', borderRight: '1px solid #000', width: '18%' }}>{item.modelNo}</td>
-                                    <td style={{ padding: '5px 8px' }}>{item.slNo}</td>
-                                  </tr>
+                                  <tbody>
+                                    <tr>
+                                      <td style={{ padding: '5px 8px', borderRight: '1px solid #000', width: '60%' }}>{item.detailDesc}</td>
+                                      <td style={{ padding: '5px 8px', borderRight: '1px solid #000', width: '20%' }}>{item.modelNo}</td>
+                                      <td style={{ padding: '5px 8px', width: '20%' }}>{item.slNo}</td>
+                                    </tr>
+                                  </tbody>
                                 </table>
                               </td>
-                              <td></td>
                             </tr>
                           </React.Fragment>
-                        ))}
+                          );
+                        })}
                         {/* Spacer for padding table height to look authentic */}
                         <tr style={{ height: '80px', borderBottom: '1px solid #000' }}>
                           <td style={{ borderRight: '1px solid #000' }}></td>
