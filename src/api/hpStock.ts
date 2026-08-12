@@ -40,6 +40,15 @@ export interface HPStockItem {
   }>;
   region: string;
   status: string;
+  // Has the spare physically landed? Mirrored from Flex's Good Part Installed
+  // Status every sync, or set at the receiving desk. "" means nobody classified
+  // it yet, which is treated as visible, never as absent.
+  part_received_status?: '' | 'RECEIVED' | 'IN_TRANSIT';
+  part_received_source?: '' | 'FLEX' | 'MANUAL';
+  part_received_at?: string | null;
+  part_received_by_name?: string;
+  // Raw last-seen Flex value, never sticky - the audit trail behind a mismatch.
+  flex_installed_status?: string;
   engineer_name: string;
   engineer_phone?: string;
   part_description?: string;
@@ -67,6 +76,9 @@ export interface HPStockItem {
 export interface HPStockSummary {
   total: number;
   active_total?: number;
+  // Rows the received-spare filter is hiding right now (0 when it is off).
+  in_transit_total?: number;
+  received_spare_only?: boolean;
   dc_cut_request_total?: number;
   closed_total?: number;
   // Cases that have completed each stage (workflow only moves forward).
@@ -92,6 +104,7 @@ export interface HPStockSummary {
     issued?: number;
     handover?: number;
     pending_return?: number;
+    in_transit?: number;
   }[];
 }
 
@@ -101,6 +114,7 @@ export interface GetHPStockParams {
   search?: string;
   region?: string;
   view?: 'my_region' | 'overall';
+  // 'true' closed | 'dc_cut_request' | 'false' active | 'in_transit' receiving desk
   is_closed?: boolean | string;
   date?: string;
   warranty_trade?: string;
@@ -221,5 +235,36 @@ export const approveHPStockDCCut = async (id: number): Promise<HPStockItem> => {
 
 export const sendHPStockDCCutChatMessage = async (id: number, message: string): Promise<HPStockItem> => {
   const { data } = await api.post(`/hp-stock/items/${id}/send_dc_cut_chat_message/`, { message });
+  return data;
+};
+
+// Tick spares off at the receiving desk. The courier drops a batch, so this takes
+// a list - and it is what stops an employee waiting up to 15 minutes for the next
+// Flex export before they can work a part that is already in their hand.
+export const markHPStockReceived = async (
+  ids: number[]
+): Promise<{ updated: number; requested: number }> => {
+  const { data } = await api.post('/hp-stock/items/mark_received/', { ids });
+  return data;
+};
+
+// Org-wide HP Stock display rules. `can_edit` mirrors the server's role check, so
+// the UI can show the switch to everyone but only let admins move it.
+export interface HPStockSettings {
+  received_spare_only: boolean;
+  updated_by_name?: string;
+  updated_at?: string;
+  can_edit?: boolean;
+}
+
+export const getHPStockSettings = async (): Promise<HPStockSettings> => {
+  const { data } = await api.get('/hp-stock/settings/');
+  return data;
+};
+
+export const updateHPStockSettings = async (
+  payload: Partial<Pick<HPStockSettings, 'received_spare_only'>>
+): Promise<HPStockSettings> => {
+  const { data } = await api.patch('/hp-stock/settings/', payload);
   return data;
 };

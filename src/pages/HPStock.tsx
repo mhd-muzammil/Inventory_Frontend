@@ -15,7 +15,8 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { HPStockTable } from "@/components/hp-stock/HPStockTable";
 import { HPStockFormDialog } from "@/components/hp-stock/HPStockFormDialog";
 import { HPStockHistoryView } from "@/components/hp-stock/HPStockHistoryView";
-import { getHPStockItems, deleteHPStockItem, getHPStockSummary, getHPStockFilterOptions, getPartsCallCounts } from "@/api/hpStock";
+import { HPStockInTransitTable } from "@/components/hp-stock/HPStockInTransitTable";
+import { getHPStockItems, deleteHPStockItem, getHPStockSummary, getHPStockFilterOptions, getPartsCallCounts, getHPStockSettings } from "@/api/hpStock";
 import type { HPStockItem, HPStockSummary, HPStockFilterOptions } from "@/api/hpStock";
 import { extractApiError } from "@/api/client";
 import { toast } from "@/components/ui/use-toast";
@@ -85,7 +86,10 @@ export default function HPStock() {
       });
   }, []);
   const [page, setPage] = useState(1);
-  const [activeTab, setActiveTab] = useState<"active" | "dc_cut_request" | "closed">("active");
+  // Org-wide switch. While it is off there is no In Transit tab and every query
+  // below behaves exactly as it always has.
+  const [receivedOnly, setReceivedOnly] = useState(false);
+  const [activeTab, setActiveTab] = useState<"active" | "in_transit" | "dc_cut_request" | "closed">("active");
   const [data, setData] = useState<HPStockItem[]>([]);
   const dataRef = useRef(data);
   useEffect(() => {
@@ -129,8 +133,12 @@ export default function HPStock() {
         region: apiRegion,
         page,
         per_page: 20,
-        // A stage/value filter spans every tab, so the tab filter is dropped while one is on.
-        is_closed: (stageFilter || valueBandFilter)
+        // The receiving desk is its own set (exactly what the filter hides), so it
+        // outranks a stage/value card - those span the visible tabs only.
+        is_closed: activeTab === "in_transit"
+          ? "in_transit"
+          // A stage/value filter spans every tab, so the tab filter is dropped while one is on.
+          : (stageFilter || valueBandFilter)
           ? undefined
           : activeTab === "closed" ? "true" : activeTab === "dc_cut_request" ? "dc_cut_request" : "false",
         stage_done: stageFilter || undefined,
@@ -154,6 +162,21 @@ export default function HPStock() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
   useEffect(() => { fetchSummary(); }, [fetchSummary]);
+
+  useEffect(() => {
+    getHPStockSettings()
+      .then((s) => setReceivedOnly(!!s.received_spare_only))
+      .catch(() => { /* non-fatal: the tab just stays hidden */ });
+  }, []);
+
+  // An admin can turn the filter off while someone is standing on the In Transit
+  // tab; without this they would be left on a tab that no longer exists.
+  useEffect(() => {
+    if (!receivedOnly && activeTab === "in_transit") {
+      setActiveTab("active");
+      setPage(1);
+    }
+  }, [receivedOnly, activeTab]);
 
   useEffect(() => {
     getHPStockFilterOptions()
@@ -376,7 +399,7 @@ export default function HPStock() {
             return (
               <Card
                 key={s.stage}
-                onClick={() => { setStageFilter(isSelected ? null : s.stage); setValueBandFilter(null); setPage(1); }}
+                onClick={() => { setStageFilter(isSelected ? null : s.stage); setValueBandFilter(null); setActiveTab((t) => (t === "in_transit" ? "active" : t)); setPage(1); }}
                 className={`p-4 flex items-center gap-3 border cursor-pointer select-none transition-all hover:shadow-md ${s.ring} ${
                   isSelected ? s.activeRing : ""
                 }`}
@@ -448,7 +471,7 @@ export default function HPStock() {
             return (
               <Card
                 key={b.band}
-                onClick={() => { setValueBandFilter(isSelected ? null : b.band); setStageFilter(null); setPage(1); }}
+                onClick={() => { setValueBandFilter(isSelected ? null : b.band); setStageFilter(null); setActiveTab((t) => (t === "in_transit" ? "active" : t)); setPage(1); }}
                 className={`p-4 flex items-center gap-3 border cursor-pointer select-none transition-all hover:shadow-md ${b.ring} ${
                   isSelected ? b.activeRing : ""
                 }`}
@@ -574,17 +597,29 @@ export default function HPStock() {
         <Tabs
           value={activeTab}
           onValueChange={(v) => {
-            setActiveTab(v as "active" | "dc_cut_request" | "closed");
+            setActiveTab(v as "active" | "in_transit" | "dc_cut_request" | "closed");
             setStageFilter(null);
             setValueBandFilter(null);
             setPage(1);
           }}
-          className="w-full sm:w-[500px]"
+          className={receivedOnly ? "w-full sm:w-[660px]" : "w-full sm:w-[500px]"}
         >
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className={`grid w-full ${receivedOnly ? "grid-cols-4" : "grid-cols-3"}`}>
             <TabsTrigger value="active" className="text-sm font-medium">
               Active Cases
             </TabsTrigger>
+            {/* Only exists while the filter is on - it holds exactly what the
+                filter hides, so nothing is ever invisible, only one tab over. */}
+            {receivedOnly && (
+              <TabsTrigger value="in_transit" className="text-sm font-medium gap-1.5">
+                In Transit
+                {!!summary?.in_transit_total && (
+                  <span className="rounded-full bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 text-[11px] font-semibold px-1.5 py-0.5 leading-none">
+                    {summary.in_transit_total}
+                  </span>
+                )}
+              </TabsTrigger>
+            )}
             <TabsTrigger value="dc_cut_request" className="text-sm font-medium">
               DC Cut Request
             </TabsTrigger>
@@ -595,7 +630,15 @@ export default function HPStock() {
         </Tabs>
       </div>
 
-      {!loading && data.length === 0 && !debouncedSearch ? (
+      {activeTab === "in_transit" ? (
+        <HPStockInTransitTable
+          data={data}
+          loading={loading}
+          pagination={pagination}
+          onPageChange={setPage}
+          onReceived={handleMutated}
+        />
+      ) : !loading && data.length === 0 && !debouncedSearch ? (
         <Card className="p-12 text-center">
           <Layers className="w-12 h-12 text-slate-300 mx-auto mb-4" />
           <p className="text-slate-800 dark:text-slate-100 font-medium mb-1">No records found</p>

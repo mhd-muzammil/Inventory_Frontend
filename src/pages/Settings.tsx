@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   User,
@@ -13,6 +13,8 @@ import {
   Mail,
   ShieldCheck,
   Globe,
+  PackageCheck,
+  Loader2,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -20,11 +22,16 @@ import { Switch } from "@/components/ui/switch";
 import { useAuthStore } from "@/store/authStore";
 import { useThemeStore } from "@/store/themeStore";
 import { SettingSection, SettingItem } from "@/components/settings/SettingElements";
+import { getHPStockSettings, updateHPStockSettings } from "@/api/hpStock";
+import type { HPStockSettings } from "@/api/hpStock";
+import { extractApiError } from "@/api/client";
+import { toast } from "@/components/ui/use-toast";
 import { cn } from "@/lib/utils";
 
 const tabs = [
   { id: "profile", label: "Profile", icon: User },
   { id: "appearance", label: "Appearance", icon: Sun },
+  { id: "hp_stock", label: "HP Stock", icon: PackageCheck },
   { id: "notifications", label: "Notifications", icon: Bell },
   { id: "security", label: "Security", icon: Lock },
   { id: "about", label: "About", icon: Info },
@@ -34,6 +41,34 @@ export default function Settings() {
   const { user } = useAuthStore();
   const { theme, toggleTheme } = useThemeStore();
   const [activeTab, setActiveTab] = useState("profile");
+
+  // HP Stock display rules — org-wide and server-backed, unlike the toggles below.
+  const [hpStock, setHpStock] = useState<HPStockSettings | null>(null);
+  const [savingHpStock, setSavingHpStock] = useState(false);
+
+  useEffect(() => {
+    getHPStockSettings()
+      .then(setHpStock)
+      .catch(() => { /* non-fatal: the section shows as unavailable */ });
+  }, []);
+
+  const handleReceivedOnly = async (next: boolean) => {
+    setSavingHpStock(true);
+    try {
+      const saved = await updateHPStockSettings({ received_spare_only: next });
+      setHpStock(saved);
+      toast({
+        title: next ? "Showing received spares only" : "Showing all part cases",
+        description: next
+          ? "Parts still in transit moved to the In Transit tab in HP Stock."
+          : "HP Stock is back to listing every part case.",
+      });
+    } catch (err) {
+      toast({ title: extractApiError(err), variant: "destructive" });
+    } finally {
+      setSavingHpStock(false);
+    }
+  };
 
   // Mock states for settings toggles
   const [emailAlerts, setEmailAlerts] = useState(true);
@@ -141,6 +176,58 @@ export default function Settings() {
                         {user?.region || "Vellore"}
                       </div>
                     </SettingItem>
+                  </SettingSection>
+                </div>
+              )}
+
+              {activeTab === "hp_stock" && (
+                <div className="space-y-6">
+                  <SettingSection
+                    title="HP Stock"
+                    description="How the HP Stock list decides which parts to show."
+                  >
+                    <SettingItem
+                      icon={<PackageCheck className="w-5 h-5" />}
+                      label="Show received spares only"
+                      description="Hide parts that Flex still reports as in transit. Nothing is lost — they move to the In Transit tab."
+                    >
+                      <div className="flex items-center gap-3">
+                        {savingHpStock && (
+                          <Loader2 className="w-4 h-4 animate-spin text-slate-400" />
+                        )}
+                        <Switch
+                          checked={!!hpStock?.received_spare_only}
+                          onCheckedChange={handleReceivedOnly}
+                          disabled={!hpStock?.can_edit || savingHpStock}
+                          aria-label="Show received spares only"
+                        />
+                      </div>
+                    </SettingItem>
+
+                    <div className="px-4 sm:px-6 py-4 bg-slate-50/60 dark:bg-slate-800/30 text-xs leading-relaxed text-slate-500 dark:text-slate-400 space-y-2">
+                      <p>
+                        This applies to everyone. With it on, the HP Stock table and every
+                        count card read the same set, and a part appears as soon as the desk
+                        ticks it off — or within 15 minutes, when the next Flex export lands.
+                      </p>
+                      {!hpStock?.can_edit && (
+                        <p className="font-medium text-slate-600 dark:text-slate-300">
+                          Only an admin or manager can change this.
+                        </p>
+                      )}
+                      {hpStock?.updated_at && (
+                        <p>
+                          Last changed
+                          {hpStock.updated_by_name ? ` by ${hpStock.updated_by_name}` : ""}
+                          {" on "}
+                          {new Date(hpStock.updated_at).toLocaleString("en-GB", {
+                            day: "2-digit", month: "short", year: "numeric",
+                            hour: "2-digit", minute: "2-digit",
+                          })}
+                          .
+                        </p>
+                      )}
+                    </div>
                   </SettingSection>
                 </div>
               )}
