@@ -152,6 +152,13 @@ export const getHPStockItems = async (params?: GetHPStockParams): Promise<GetHPS
   };
 };
 
+// One item in full. The table's rows leave out inventory_details (a case's whole
+// OpenCall report history, up to ~1 MB), so the case details popup loads it here.
+export const getHPStockItem = async (id: number): Promise<HPStockItem> => {
+  const { data } = await api.get(`/hp-stock/items/${id}/`);
+  return data;
+};
+
 export const getHPStockSummary = async (view: 'my_region' | 'overall', region?: string, date?: string, listDate?: string): Promise<HPStockSummary> => {
   // `date` (YYYY-MM-DD) switches the four stage cards to a day-based count: how many
   // cases reached that stage on that day (from history), instead of the all-time total.

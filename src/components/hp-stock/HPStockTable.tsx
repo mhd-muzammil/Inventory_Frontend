@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
-import { transitionHPStockItem, sendHPStockOTP } from "@/api/hpStock";
+import { transitionHPStockItem, sendHPStockOTP, getHPStockItem } from "@/api/hpStock";
 import { getEngineersForAssignment } from "@/api/engineers";
 import type { Engineer } from "@/types";
 import { extractApiError } from "@/api/client";
@@ -498,6 +498,10 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
   const openDetail = (row: HPStockItem) => {
     setActiveRow(row);
     setDetailOpen(true);
+    // The row from the table has no inventory_details; fetch the full item for the timeline.
+    getHPStockItem(row.id)
+      .then((full) => setActiveRow((cur) => (cur && cur.id === full.id ? full : cur)))
+      .catch(() => { /* the popup still shows everything except the timeline */ });
   };
 
   const handleSendOTP = async () => {
