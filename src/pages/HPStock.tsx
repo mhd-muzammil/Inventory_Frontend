@@ -104,6 +104,7 @@ export default function HPStock() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pagination, setPagination] = useState<PaginationMeta>({ total: 0, page: 1, per_page: 20, pages: 1 });
+  const [workOrders, setWorkOrders] = useState<number | null>(null);
 
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<HPStockItem | null>(null);
@@ -159,6 +160,7 @@ export default function HPStock() {
       });
       setData(res.items);
       setPagination({ total: res.total, page: res.page, per_page: res.per_page, pages: res.pages });
+      setWorkOrders(res.work_orders ?? null);
     } catch (err) {
       setError(extractApiError(err));
     } finally {
@@ -635,6 +637,24 @@ export default function HPStock() {
           </TabsList>
         </Tabs>
       </div>
+
+      {/* A row is one spare part, so a case needing three parts is three rows. OpenCall's
+          Active number counts work orders, so the tab shows both. */}
+      {activeTab === "active" && !stageFilter && !valueBandFilter && !loading && workOrders !== null && pagination.total > 0 && (
+        <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 mb-3 text-sm">
+          <span>
+            <span className="font-semibold text-slate-900 dark:text-slate-100 tabular-nums">{workOrders}</span>{" "}
+            <span className="text-slate-500 dark:text-slate-400">work orders</span>
+          </span>
+          <span>
+            <span className="font-semibold text-slate-900 dark:text-slate-100 tabular-nums">{pagination.total}</span>{" "}
+            <span className="text-slate-500 dark:text-slate-400">parts</span>
+          </span>
+          {pagination.total > workOrders && (
+            <span className="text-xs text-slate-400 dark:text-slate-500">some work orders need more than one part</span>
+          )}
+        </div>
+      )}
 
       {activeTab === "in_transit" ? (
         <HPStockInTransitTable

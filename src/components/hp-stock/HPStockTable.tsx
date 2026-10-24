@@ -862,7 +862,7 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
         <div className="flex items-center justify-between mt-4 text-sm text-slate-500 dark:text-slate-400">
           <span>
             Showing {(pagination.page - 1) * pagination.per_page + 1}-
-            {Math.min(pagination.page * pagination.per_page, pagination.total)} of {pagination.total}
+            {Math.min(pagination.page * pagination.per_page, pagination.total)} of {pagination.total} parts
           </span>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={() => onPageChange(pagination.page - 1)} disabled={pagination.page <= 1}>

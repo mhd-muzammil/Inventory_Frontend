@@ -139,6 +139,8 @@ export interface GetHPStockResponse {
   page: number;
   per_page: number;
   pages: number;
+  // How many work orders the listed parts belong to (`total` counts parts).
+  work_orders?: number;
 }
 
 export const getHPStockItems = async (params?: GetHPStockParams): Promise<GetHPStockResponse> => {
@@ -149,6 +151,7 @@ export const getHPStockItems = async (params?: GetHPStockParams): Promise<GetHPS
     page: data.page,
     per_page: data.per_page,
     pages: data.pages,
+    work_orders: data.work_orders,
   };
 };
 
