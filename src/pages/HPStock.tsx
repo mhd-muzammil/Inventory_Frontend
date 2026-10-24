@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { motion } from "framer-motion";
 import { AlertCircle, Plus, Search, MapPin, Globe, BarChart3, Layers, Calendar, Camera, RotateCcw, UserCheck, PackageCheck, Clock } from "lucide-react";
 import { Card } from "@/components/ui/card";
@@ -17,7 +17,7 @@ import { HPStockFormDialog } from "@/components/hp-stock/HPStockFormDialog";
 import { HPStockHistoryView } from "@/components/hp-stock/HPStockHistoryView";
 import { HPStockInTransitTable } from "@/components/hp-stock/HPStockInTransitTable";
 import { getHPStockItems, deleteHPStockItem, getHPStockSummary, getHPStockFilterOptions, getPartsCallCounts, getHPStockSettings } from "@/api/hpStock";
-import type { HPStockItem, HPStockSummary, HPStockFilterOptions } from "@/api/hpStock";
+import type { HPStockItem, HPStockSummary, HPStockFilterOptions, PartsCallCount } from "@/api/hpStock";
 import { extractApiError } from "@/api/client";
 import { toast } from "@/components/ui/use-toast";
 import { useDebounce } from "@/hooks/useDebounce";
@@ -48,8 +48,9 @@ export default function HPStock() {
     }
     return "";
   });
-  // The table opens on cases opened today (local, YYYY-MM-DD), not every case ever
-  // synced. Clearing the date (✕) lists all dates again.
+  // The table opens on today's snapshot (local, YYYY-MM-DD): Active / In Transit list
+  // the day's OpenCall active part cases, DC Cut and Closed the cases that got there
+  // that day. Clearing the date (✕) lists all dates again.
   const [selectedDate, setSelectedDate] = useState<string>(todayLocal);
   // Stage cards use their OWN date, defaulting to today, so the four count cards
   // open on today's transition counts without touching the table's own date filter
@@ -65,31 +66,30 @@ export default function HPStock() {
   const [partShipmentStatus, setPartShipmentStatus] = useState<string>("all");
   const [filterOptions, setFilterOptions] = useState<HPStockFilterOptions>({ warranty_trade: [], part_shipment_status: [] });
   // OpenCall "Active Part Cases" count (region-wise) — pushed in from OpenCall. Count only.
-  const [ocPartsByRegion, setOcPartsByRegion] = useState<Record<string, number>>({});
-  const [ocPartsTotal, setOcPartsTotal] = useState(0);
+  const [ocPartsRows, setOcPartsRows] = useState<PartsCallCount[]>([]);
 
   useEffect(() => {
     getPartsCallCounts()
-      .then((rows) => {
-        if (rows.length === 0) return;
-        const latest = rows.reduce(
-          (mx, r) => (r.report_date > mx ? r.report_date : mx),
-          rows[0].report_date,
-        );
-        const map: Record<string, number> = {};
-        let sum = 0;
-        for (const r of rows) {
-          if (r.report_date !== latest) continue;
-          map[r.region] = (map[r.region] || 0) + r.count;
-          sum += r.count;
-        }
-        setOcPartsByRegion(map);
-        setOcPartsTotal(sum);
-      })
+      .then(setOcPartsRows)
       .catch(() => {
         /* non-fatal: cards just show 0 */
       });
   }, []);
+  // The region cards' Active number for the table's day: the latest OpenCall count
+  // pushed on or before it (today still shows yesterday's until today's lands).
+  // With no day picked it is simply the latest.
+  const { ocPartsByRegion, ocPartsTotal } = useMemo(() => {
+    const days = ocPartsRows.map((r) => r.report_date).filter((d) => !selectedDate || d <= selectedDate);
+    const day = days.reduce((mx, d) => (d > mx ? d : mx), "");
+    const map: Record<string, number> = {};
+    let sum = 0;
+    for (const r of ocPartsRows) {
+      if (!day || r.report_date !== day) continue;
+      map[r.region] = (map[r.region] || 0) + r.count;
+      sum += r.count;
+    }
+    return { ocPartsByRegion: map, ocPartsTotal: sum };
+  }, [ocPartsRows, selectedDate]);
   const [page, setPage] = useState(1);
   // Org-wide switch. While it is off there is no In Transit tab and every query
   // below behaves exactly as it always has.
@@ -117,7 +117,7 @@ export default function HPStock() {
     try {
       const apiView = isAdmin ? "overall" : viewMode;
       // Pass the cards' own date so the stage cards count that day's transitions.
-      // The table's date goes along too, so the In Transit badge counts the same rows the tab lists.
+      // The table's date goes along too, so the badge and region numbers count the same rows the tabs list.
       const res = await getHPStockSummary(apiView, undefined, summaryDate || undefined, selectedDate || undefined);
       setSummary(res);
     } catch {
