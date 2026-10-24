@@ -25,6 +25,13 @@ import { useAuthStore } from "@/store/authStore";
 import { REGION_LABELS } from "@/types";
 import type { PaginationMeta, Region } from "@/types";
 
+// Today as YYYY-MM-DD in the browser's local time (IST for every user).
+function todayLocal(): string {
+  const now = new Date();
+  const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(0, 10);
+}
+
 export default function HPStock() {
   const user = useAuthStore((s) => s.user);
   const isAdmin = user?.role === "admin" || user?.role === "super_admin" || user?.role === "manager";
@@ -41,15 +48,13 @@ export default function HPStock() {
     }
     return "";
   });
-  const [selectedDate, setSelectedDate] = useState<string>("");
-  // Stage cards use their OWN date, defaulting to today (local, YYYY-MM-DD), so the
-  // four count cards open on today's transition counts without touching the table's
-  // own date filter (selectedDate). Clearing it shows the all-time totals.
-  const [summaryDate, setSummaryDate] = useState<string>(() => {
-    const now = new Date();
-    const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
-    return local.toISOString().slice(0, 10);
-  });
+  // The table opens on cases opened today (local, YYYY-MM-DD), not every case ever
+  // synced. Clearing the date (✕) lists all dates again.
+  const [selectedDate, setSelectedDate] = useState<string>(todayLocal);
+  // Stage cards use their OWN date, defaulting to today, so the four count cards
+  // open on today's transition counts without touching the table's own date filter
+  // (selectedDate). Clearing it shows the all-time totals.
+  const [summaryDate, setSummaryDate] = useState<string>(todayLocal);
   // When set, the table lists cases that completed this stage (a stage count card
   // is selected). It supersedes the active/dc-cut/closed tab so the row count
   // matches the number on the card.
@@ -112,12 +117,13 @@ export default function HPStock() {
     try {
       const apiView = isAdmin ? "overall" : viewMode;
       // Pass the cards' own date so the stage cards count that day's transitions.
-      const res = await getHPStockSummary(apiView, undefined, summaryDate || undefined);
+      // The table's date goes along too, so the In Transit badge counts the same rows the tab lists.
+      const res = await getHPStockSummary(apiView, undefined, summaryDate || undefined, selectedDate || undefined);
       setSummary(res);
     } catch {
       // silent fail for summary
     }
-  }, [viewMode, isAdmin, summaryDate]);
+  }, [viewMode, isAdmin, summaryDate, selectedDate]);
 
   const fetchData = useCallback(async () => {
     if (dataRef.current.length === 0) {
