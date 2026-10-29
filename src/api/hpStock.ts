@@ -33,6 +33,10 @@ export interface HPStockItem {
   return_option_image_3?: string;
   dc_cut_request_message?: string;
   dc_cut_approved?: boolean;
+  // Taken after the DC cut is approved, before closing. The first is required.
+  sealed_part_image?: string;
+  sealed_part_image_2?: string;
+  sealed_part_image_3?: string;
   dc_cut_chat?: Array<{
     sender: string;
     message: string;
@@ -67,6 +71,7 @@ export interface HPStockItem {
     image?: string;
     image_back?: string;
     return_images?: Array<{ label: string; url: string }>;
+    sealed_images?: Array<{ label: string; url: string }>;
   }>;
   created_at: string;
   updated_at: string;

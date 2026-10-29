@@ -32,7 +32,7 @@ export function HPStockHistoryView({ item, onBack }: HPStockHistoryViewProps) {
   } else {
     steps.push("UNUSED_RETURN");
   }
-  steps.push("HANDOVER", "RETURN_PART_PHOTO", "DC_CUT_REQUEST", "CLOSED");
+  steps.push("HANDOVER", "RETURN_PART_PHOTO", "DC_CUT_REQUEST", "SEALED_PART_PHOTO", "CLOSED");
 
   const milestones = [
     {
@@ -46,6 +46,7 @@ export function HPStockHistoryView({ item, onBack }: HPStockHistoryViewProps) {
       image: "",
       image_back: "",
       return_images: [] as Array<{ label: string; url: string }>,
+      sealed_images: [] as Array<{ label: string; url: string }>,
     }
   ];
 
@@ -64,6 +65,7 @@ export function HPStockHistoryView({ item, onBack }: HPStockHistoryViewProps) {
         return_images: (h.return_images || []).map((ri: any) =>
           typeof ri === "string" ? { label: "Return Part Photo", url: ri } : ri
         ),
+        sealed_images: h.sealed_images || [],
       });
     });
   }
@@ -309,6 +311,25 @@ export function HPStockHistoryView({ item, onBack }: HPStockHistoryViewProps) {
                               onClick={() => window.open(ri.url, "_blank")}
                             >
                               <img src={ri.url} alt={ri.label} className="object-contain w-full h-full" />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {m.sealed_images && m.sealed_images.length > 0 && (
+                    <div className="bg-white dark:bg-slate-900/60 p-3 rounded-lg border border-slate-150 dark:border-slate-800/40 text-xs space-y-3">
+                      <span className="text-slate-400 dark:text-slate-500 font-semibold block">Sealed Part Photos:</span>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {m.sealed_images.map((si) => (
+                          <div key={si.label} className="space-y-1">
+                            <span className="text-[10px] text-slate-400 font-semibold uppercase">{si.label}</span>
+                            <div
+                              className="relative rounded-lg overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 aspect-video max-h-48 w-full flex items-center justify-center cursor-pointer hover:scale-[1.02] transition-transform duration-200"
+                              onClick={() => window.open(si.url, "_blank")}
+                            >
+                              <img src={si.url} alt={si.label} className="object-contain w-full h-full" />
                             </div>
                           </div>
                         ))}

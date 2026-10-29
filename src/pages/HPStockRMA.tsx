@@ -830,9 +830,13 @@ export default function HPStockRMA() {
                           </Button>
                         </TableCell>
                         <TableCell className="text-right">
-                          {item.dc_cut_approved ? (
+                          {item.dc_cut_approved && item.status === "SEALED_PART_PHOTO" ? (
                             <span className="text-xs text-emerald-500 font-semibold flex items-center justify-end gap-1">
                               <Check className="w-4 h-4" /> Ready to Close
+                            </span>
+                          ) : item.dc_cut_approved ? (
+                            <span className="text-xs text-violet-600 dark:text-violet-400 font-semibold flex items-center justify-end gap-1">
+                              <Check className="w-4 h-4" /> Awaiting Sealed Photo
                             </span>
                           ) : (
                             <Button

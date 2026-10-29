@@ -37,7 +37,8 @@ const AVAILABLE_TRANSITIONS: Record<string, string[]> = {
   DOA: ["HANDOVER"],
   HANDOVER: ["RETURN_PART_PHOTO"],
   RETURN_PART_PHOTO: ["DC_CUT_REQUEST"],
-  DC_CUT_REQUEST: ["CLOSED"],
+  DC_CUT_REQUEST: ["SEALED_PART_PHOTO"],
+  SEALED_PART_PHOTO: ["CLOSED"],
 };
 
 const TRANSITION_LABELS: Record<string, string> = {
@@ -51,6 +52,7 @@ const TRANSITION_LABELS: Record<string, string> = {
   HANDOVER: "Record Engineer Handover",
   RETURN_PART_PHOTO: "Return Part Photo",
   DC_CUT_REQUEST: "DC Cut Request",
+  SEALED_PART_PHOTO: "Sealed Part Photo",
   CLOSED: "Close the Case",
 };
 
@@ -67,6 +69,7 @@ export const STATUS_LABELS: Record<string, string> = {
   HANDOVER: "Part Handover by Engineer",
   RETURN_PART_PHOTO: "Return Part Photo",
   DC_CUT_REQUEST: "DC Cut Request",
+  SEALED_PART_PHOTO: "Sealed Part Photo",
   CLOSED: "Close the Case",
 };
 
@@ -83,10 +86,11 @@ export const STATUS_STYLE_MAP: Record<string, { bg: string; text: string; dot: s
   HANDOVER: { bg: "bg-indigo-50 dark:bg-indigo-900/20", text: "text-indigo-700 dark:text-indigo-400", dot: "bg-indigo-600" },
   RETURN_PART_PHOTO: { bg: "bg-blue-50 dark:bg-blue-900/20", text: "text-blue-700 dark:text-blue-400", dot: "bg-blue-600" },
   DC_CUT_REQUEST: { bg: "bg-cyan-50 dark:bg-cyan-900/20", text: "text-cyan-700 dark:text-cyan-400", dot: "bg-cyan-600" },
+  SEALED_PART_PHOTO: { bg: "bg-violet-50 dark:bg-violet-900/20", text: "text-violet-700 dark:text-violet-400", dot: "bg-violet-600" },
   CLOSED: { bg: "bg-emerald-50 dark:bg-emerald-900/20", text: "text-emerald-700 dark:text-emerald-400", dot: "bg-emerald-600" },
 };
 
-const TRACK_STEPS = ["PENDING", "STOCK_CHECK", "GOOD_PART_PHOTO", "ISSUED", "WORK_STATUS", "UNUSED_RETURN", "DEFECTIVE_RETURN", "DOA", "HANDOVER", "RETURN_PART_PHOTO", "DC_CUT_REQUEST", "CLOSED"];
+const TRACK_STEPS = ["PENDING", "STOCK_CHECK", "GOOD_PART_PHOTO", "ISSUED", "WORK_STATUS", "UNUSED_RETURN", "DEFECTIVE_RETURN", "DOA", "HANDOVER", "RETURN_PART_PHOTO", "DC_CUT_REQUEST", "SEALED_PART_PHOTO", "CLOSED"];
 
 // The row-level engineer fields can be stale (older edits overwrite them); the
 // OTP-verified engineer recorded in transition_history is authoritative.
@@ -125,6 +129,8 @@ export const getStatusIcon = (status: string) => {
       return <Camera className="w-3.5 h-3.5" />;
     case "DC_CUT_REQUEST":
       return <FileText className="w-3.5 h-3.5" />;
+    case "SEALED_PART_PHOTO":
+      return <Camera className="w-3.5 h-3.5" />;
     case "CLOSED":
       return <ShieldCheck className="w-3.5 h-3.5" />;
     default:
@@ -214,6 +220,14 @@ const getTransitionNote = (status: string) => {
         bg: "bg-cyan-50/80 dark:bg-cyan-950/20 border-cyan-200 dark:border-cyan-800/60",
         text: "text-cyan-800 dark:text-cyan-300",
       };
+    case "SEALED_PART_PHOTO":
+      return {
+        title: "Sealed Part Photo",
+        message: "The DC cut is approved. Seal the part with its labels and photograph it - the sealed part photo is required to close the case.",
+        icon: <Camera className="w-5 h-5 text-violet-600 dark:text-violet-400" />,
+        bg: "bg-violet-50/80 dark:bg-violet-950/20 border-violet-200 dark:border-violet-800/60",
+        text: "text-violet-800 dark:text-violet-300",
+      };
     case "CLOSED":
       return {
         title: "Final Case Closure",
@@ -239,6 +253,13 @@ const RETURN_PHOTO_FIELDS: { key: keyof HPStockItem; label: string }[] = [
   { key: "return_option_image_1", label: "Option Image 1" },
   { key: "return_option_image_2", label: "Option Image 2" },
   { key: "return_option_image_3", label: "Option Image 3" },
+];
+
+// Sealed part photos. Keys must match backend model fields; only the first is required.
+const SEALED_PHOTO_FIELDS: { key: keyof HPStockItem; label: string; required?: boolean }[] = [
+  { key: "sealed_part_image", label: "Sealed Part Photo (Required)", required: true },
+  { key: "sealed_part_image_2", label: "Label Close-up 1 (Optional)" },
+  { key: "sealed_part_image_3", label: "Label Close-up 2 (Optional)" },
 ];
 
 // Self-contained camera/upload picker for a single return-part photo category.
@@ -356,6 +377,7 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
   const [remarks, setRemarks] = useState("");
   const [goodPartFile, setGoodPartFile] = useState<File | null>(null);
   const [returnFiles, setReturnFiles] = useState<Record<string, File | null>>({});
+  const [sealedFiles, setSealedFiles] = useState<Record<string, File | null>>({});
   const [dcCutRequestMessage, setDcCutRequestMessage] = useState("");
   const [savingTransition, setSavingTransition] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -462,8 +484,11 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
     if (pendingToStatus === "GOOD_PART_PHOTO") {
       return goodPartFile !== null && goodPartBackFile !== null;
     }
+    if (pendingToStatus === "SEALED_PART_PHOTO") {
+      return !!sealedFiles.sealed_part_image;
+    }
     return true;
-  }, [activeRow, engineerName, engineerPhone, otp, showEngineerField, pendingToStatus, goodPartFile, goodPartBackFile]);
+  }, [activeRow, engineerName, engineerPhone, otp, showEngineerField, pendingToStatus, goodPartFile, goodPartBackFile, sealedFiles]);
 
   const openTransition = (row: HPStockItem, target: string) => {
     setActiveRow(row);
@@ -479,6 +504,7 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
     setGoodPartFile(null);
     setGoodPartBackFile(null);
     setReturnFiles({});
+    setSealedFiles({});
     setDcCutRequestMessage(target === "DC_CUT_REQUEST" ? (row.dc_cut_request_message || "") : "");
     setTransitionOpen(true);
     if (target === "ISSUED" || target === "HANDOVER") {
@@ -537,12 +563,13 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
     try {
       let payload: any;
       const returnFileEntries = Object.entries(returnFiles).filter(([, f]) => f) as [string, File][];
+      const sealedFileEntries = Object.entries(sealedFiles).filter(([, f]) => f) as [string, File][];
 
       // Every photo on this transition, paired with the field it is sent as.
       const photos: [string, File][] = [];
       if (goodPartFile) photos.push(["good_part_image", goodPartFile]);
       if (goodPartBackFile) photos.push(["good_part_image_back", goodPartBackFile]);
-      photos.push(...returnFileEntries);
+      photos.push(...returnFileEntries, ...sealedFileEntries);
 
       if (photos.length > 0) {
         // Photos are uploaded exactly as taken — full resolution, no re-encoding.
@@ -768,7 +795,7 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
                     </Button>
                   </TableCell>
                   <TableCell className="text-center">
-                    {item.status === "DC_CUT_REQUEST" || (item.dc_cut_chat && item.dc_cut_chat.length > 0) ? (
+                    {item.status === "DC_CUT_REQUEST" || item.status === "SEALED_PART_PHOTO" || (item.dc_cut_chat && item.dc_cut_chat.length > 0) ? (
                       <Button
                         size="sm"
                         variant="ghost"
@@ -1128,6 +1155,23 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
                 ))}
               </div>
             )}
+            {pendingToStatus === "SEALED_PART_PHOTO" && (
+              <div className="space-y-4 border-l-2 border-violet-500 pl-3 py-1">
+                <p className="text-[11px] text-slate-500">
+                  Photograph the part after sealing it with its labels. The first photo is required; label close-ups are optional.
+                </p>
+                {SEALED_PHOTO_FIELDS.map((f) => (
+                  <ReturnPhotoPicker
+                    key={f.key as string}
+                    label={f.label}
+                    file={sealedFiles[f.key as string] || null}
+                    onChange={(file) =>
+                      setSealedFiles((prev) => ({ ...prev, [f.key as string]: file }))
+                    }
+                  />
+                ))}
+              </div>
+            )}
             {pendingToStatus === "DC_CUT_REQUEST" && (
               <div className="space-y-2 border-l-2 border-cyan-500 pl-3 py-1">
                 <Label className="text-cyan-600 dark:text-cyan-400 font-medium">
@@ -1188,9 +1232,9 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
                 } else {
                   steps.push("UNUSED_RETURN");
                 }
-                steps.push("HANDOVER", "RETURN_PART_PHOTO", "CLOSED");
+                steps.push("HANDOVER", "RETURN_PART_PHOTO", "DC_CUT_REQUEST", "SEALED_PART_PHOTO", "CLOSED");
 
-                const colsClass = "grid grid-cols-2 md:grid-cols-9 gap-3";
+                const colsClass = "grid grid-cols-2 md:grid-cols-6 gap-3";
 
                 return (
                   <div className={colsClass}>
@@ -1232,6 +1276,7 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
                       image: "",
                       image_back: "",
                       return_images: [] as Array<{ label: string; url: string }>,
+                      sealed_images: [] as Array<{ label: string; url: string }>,
                     }
                   ];
 
@@ -1250,6 +1295,7 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
                         return_images: (h.return_images || []).map((ri: any) =>
                           typeof ri === "string" ? { label: "Return Part Photo", url: ri } : ri
                         ),
+                        sealed_images: h.sealed_images || [],
                       });
                     });
                   }
@@ -1332,6 +1378,21 @@ export function HPStockTable({ data, loading, pagination, onPageChange, onEdit, 
                                       <p className="text-[10px] text-slate-400 font-semibold uppercase max-w-[140px]">{ri.label}</p>
                                       <div className="relative rounded-lg overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 aspect-video max-h-24 max-w-[140px] flex items-center justify-center cursor-pointer hover:scale-[1.03] transition-transform duration-200" onClick={() => window.open(ri.url, "_blank")}>
                                         <img src={ri.url} alt={ri.label} className="object-contain w-full h-full" />
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            {m.sealed_images && m.sealed_images.length > 0 && (
+                              <div className="flex flex-col gap-2 mt-2 pt-2 border-t border-slate-100 dark:border-slate-800/40">
+                                <span className="text-slate-400 dark:text-slate-500 w-24 shrink-0 font-medium">Sealed Part Photos:</span>
+                                <div className="flex flex-wrap gap-3 pl-0 sm:pl-24">
+                                  {m.sealed_images.map((si) => (
+                                    <div key={si.label} className="space-y-1">
+                                      <p className="text-[10px] text-slate-400 font-semibold uppercase max-w-[140px]">{si.label}</p>
+                                      <div className="relative rounded-lg overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 aspect-video max-h-24 max-w-[140px] flex items-center justify-center cursor-pointer hover:scale-[1.03] transition-transform duration-200" onClick={() => window.open(si.url, "_blank")}>
+                                        <img src={si.url} alt={si.label} className="object-contain w-full h-full" />
                                       </div>
                                     </div>
                                   ))}

@@ -558,6 +558,7 @@ export function HPStockFormDialog({ open, onOpenChange, editing, onSuccess }: Pr
                   <SelectItem value="HANDOVER">Part Handover by Engineer</SelectItem>
                   <SelectItem value="RETURN_PART_PHOTO">Return Part Photo</SelectItem>
                   <SelectItem value="DC_CUT_REQUEST">DC Cut Request</SelectItem>
+                  <SelectItem value="SEALED_PART_PHOTO">Sealed Part Photo</SelectItem>
                   <SelectItem value="CLOSED">Close the Case</SelectItem>
                 </SelectContent>
               </Select>
