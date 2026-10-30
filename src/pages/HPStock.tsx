@@ -48,14 +48,12 @@ export default function HPStock() {
     }
     return "";
   });
-  // The table opens on today's snapshot (local, YYYY-MM-DD): Active / In Transit list
+  // The page's one day (local, YYYY-MM-DD), opening on today. Every number follows it:
+  // region cards, action cards, value cards, and the table - Active / In Transit list
   // the day's OpenCall active part cases, DC Cut and Closed the cases that got there
-  // that day. Clearing the date (✕) lists all dates again.
+  // that day. "All dates" clears it back to the all-time view.
   const [selectedDate, setSelectedDate] = useState<string>(todayLocal);
-  // Stage cards use their OWN date, defaulting to today, so the four count cards
-  // open on today's transition counts without touching the table's own date filter
-  // (selectedDate). Clearing it shows the all-time totals.
-  const [summaryDate, setSummaryDate] = useState<string>(todayLocal);
+  const today = todayLocal();
   // When set, the table lists cases that completed this stage (a stage count card
   // is selected). It supersedes the active/dc-cut/closed tab so the row count
   // matches the number on the card.
@@ -117,14 +115,14 @@ export default function HPStock() {
   const fetchSummary = useCallback(async () => {
     try {
       const apiView = isAdmin ? "overall" : viewMode;
-      // Pass the cards' own date so the stage cards count that day's transitions.
-      // The table's date goes along too, so the badge and region numbers count the same rows the tabs list.
-      const res = await getHPStockSummary(apiView, undefined, summaryDate || undefined, selectedDate || undefined);
+      // The same day drives both: the stage cards count that day's transitions, and
+      // the badge, region and value numbers count the same rows the tabs list.
+      const res = await getHPStockSummary(apiView, undefined, selectedDate || undefined, selectedDate || undefined);
       setSummary(res);
     } catch {
       // silent fail for summary
     }
-  }, [viewMode, isAdmin, summaryDate, selectedDate]);
+  }, [viewMode, isAdmin, selectedDate]);
 
   const fetchData = useCallback(async () => {
     if (dataRef.current.length === 0) {
@@ -149,10 +147,10 @@ export default function HPStock() {
           ? undefined
           : activeTab === "closed" ? "true" : activeTab === "dc_cut_request" ? "dc_cut_request" : "false",
         stage_done: stageFilter || undefined,
-        // When a stage card is clicked while its date is set, scope the table to the
-        // cases that reached that stage on that day — so the rows match the card count.
-        // PENDING_RETURN is a current-state card (date-independent), so it opts out.
-        stage_on_date: stageFilter && stageFilter !== "PENDING_RETURN" && summaryDate ? summaryDate : undefined,
+        // A stage card clicked while a day is set lists the cases that reached that
+        // stage on that day (Pending Return: taken that day, still out) — so the rows
+        // match the card count.
+        stage_on_date: stageFilter && selectedDate ? selectedDate : undefined,
         value_band: valueBandFilter || undefined,
         date: selectedDate || undefined,
         warranty_trade: warrantyTrade !== "all" ? warrantyTrade : undefined,
@@ -166,7 +164,7 @@ export default function HPStock() {
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, viewMode, page, isAdmin, selectedRegion, activeTab, selectedDate, summaryDate, warrantyTrade, partShipmentStatus, stageFilter, valueBandFilter]);
+  }, [debouncedSearch, viewMode, page, isAdmin, selectedRegion, activeTab, selectedDate, warrantyTrade, partShipmentStatus, stageFilter, valueBandFilter]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
   useEffect(() => { fetchSummary(); }, [fetchSummary]);
@@ -240,9 +238,38 @@ export default function HPStock() {
         />
       ) : (
         <>
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">HP Stock RMA Workflow</h1>
-            <p className="text-slate-500 dark:text-slate-400 mt-1">Manage HP stock and logistics.</p>
+          <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">HP Stock RMA Workflow</h1>
+              <p className="text-slate-500 dark:text-slate-400 mt-1">Manage HP stock and logistics.</p>
+            </div>
+            {/* The page's single date: every card and the table below follow it. */}
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                Showing
+              </span>
+              <div className="relative w-44">
+                <Calendar className="absolute left-3 top-2.5 w-4 h-4 text-slate-400 pointer-events-none" />
+                <Input
+                  type="date"
+                  aria-label="Date"
+                  max={today}
+                  value={selectedDate}
+                  onChange={(e) => { setSelectedDate(e.target.value); setPage(1); }}
+                  className="pl-9 bg-white dark:bg-slate-900"
+                />
+              </div>
+              {selectedDate !== today && (
+                <Button variant="outline" size="sm" className="h-9" onClick={() => { setSelectedDate(today); setPage(1); }}>
+                  Today
+                </Button>
+              )}
+              {selectedDate && (
+                <Button variant="ghost" size="sm" className="h-9 text-slate-500" onClick={() => { setSelectedDate(""); setPage(1); }}>
+                  All dates
+                </Button>
+              )}
+            </div>
           </div>
 
       {summary && summary.regions.length > 0 && (
@@ -325,31 +352,13 @@ export default function HPStock() {
 
       {/* Stage completion counts — how many cases did each action on the chosen day. */}
       {summary && (
-        <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
-          <div className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-            Actions on{" "}
-            <span className="text-indigo-600 dark:text-indigo-400">
-              {summaryDate
-                ? new Date(summaryDate).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
-                : "all dates"}
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <input
-              type="date"
-              value={summaryDate}
-              onChange={(e) => setSummaryDate(e.target.value)}
-              className="h-9 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
-            {summaryDate && (
-              <button
-                onClick={() => setSummaryDate("")}
-                className="h-9 rounded-lg border border-slate-200 dark:border-slate-700 px-3 text-xs font-medium text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
-              >
-                Show all-time
-              </button>
-            )}
-          </div>
+        <div className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-3">
+          Actions on{" "}
+          <span className="text-indigo-600 dark:text-indigo-400">
+            {selectedDate
+              ? new Date(selectedDate).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
+              : "all dates"}
+          </span>
         </div>
       )}
       {summary && (
@@ -392,8 +401,8 @@ export default function HPStock() {
               activeRing: "ring-2 ring-emerald-600",
             },
             {
-              // Part still out with an engineer (taken, not yet handed back). Current
-              // state, so it ignores the date filter — always "who is holding a part now".
+              // Part still out with an engineer (taken, not yet handed back). With a day
+              // picked: the parts taken that day that are still out.
               stage: "PENDING_RETURN",
               label: "Pending Return (with Engineer)",
               value: summary.pending_return_total || 0,
@@ -552,24 +561,6 @@ export default function HPStock() {
             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
             className="pl-9"
           />
-        </div>
-
-        <div className="relative w-full sm:w-44">
-          <Calendar className="absolute left-3 top-2.5 w-4 h-4 text-slate-400 pointer-events-none" />
-          <Input
-            type="date"
-            value={selectedDate}
-            onChange={(e) => { setSelectedDate(e.target.value); setPage(1); }}
-            className="pl-9 pr-8"
-          />
-          {selectedDate && (
-            <button
-              onClick={() => { setSelectedDate(""); setPage(1); }}
-              className="absolute right-3 top-2.5 text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-            >
-              ✕
-            </button>
-          )}
         </div>
 
         <Select value={warrantyTrade} onValueChange={(v) => { setWarrantyTrade(v); setPage(1); }}>
